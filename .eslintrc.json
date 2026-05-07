@@ -1,0 +1,23 @@
+{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "react/no-unescaped-entities": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["components/factures/facture-pdf.tsx", "components/devis/devis-pdf.tsx"],
+      "rules": {
+        "jsx-a11y/alt-text": "off"
+      }
+    }
+  ]
+}

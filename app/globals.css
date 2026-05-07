@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Thème de couleurs (variables HSL pour Tailwind + shadcn).
+ * Couleur primaire : vert #2A7D5B → HSL(154, 50%, 33%).
+ * Mode clair par défaut, dark mode activable via classe .dark.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 14% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 14% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 14% 12%;
+
+    --primary: 154 50% 33%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 14% 12%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 154 40% 92%;
+    --accent-foreground: 154 50% 22%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 154 50% 33%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 14% 8%;
+    --foreground: 210 20% 98%;
+
+    --card: 222 14% 11%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 222 14% 11%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 154 50% 45%;
+    --primary-foreground: 222 14% 8%;
+
+    --secondary: 217 19% 18%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 217 19% 18%;
+    --muted-foreground: 215 16% 65%;
+
+    --accent: 154 30% 22%;
+    --accent-foreground: 154 50% 85%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 217 19% 22%;
+    --input: 217 19% 22%;
+    --ring: 154 50% 45%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
