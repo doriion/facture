@@ -1,66 +1,48 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import type { Database } from "./types/database";
-
 /**
- * Middleware Next.js : rafraîchit la session Supabase et applique le
- * gate d'auth (toutes les routes protégées sauf /login et assets).
+ * Middleware Edge ultra-léger : redirection rapide vers /login si aucun
+ * cookie de session Supabase n'est présent. La vraie validation (parser
+ * le JWT, vérifier qu'il n'est pas expiré, rafraîchir si besoin) est faite
+ * dans le layout authentifié `app/(app)/layout.tsx` qui tourne en runtime
+ * Node.js.
  *
- * NB : la logique est inlinée ici (au lieu d'être importée via `@/lib/...`)
- * car l'alias TypeScript `@/` n'est pas résolu correctement par le bundler
- * Edge de Vercel pour le fichier `middleware.ts`.
+ * Pourquoi ce design :
+ * - `@supabase/ssr` bundle du code Node-only (`__dirname`) qui crash à
+ *   l'exécution dans le runtime Edge de Vercel. Garder le middleware
+ *   minimal évite ce problème et reste très rapide.
+ * - La sécurité n'est pas dégradée : la RLS Supabase + la double-vérif
+ *   dans le layout garantissent qu'aucune donnée ne fuite, même si un
+ *   cookie est forgé/expiré.
  */
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
-
-  // Appel obligatoire pour rafraîchir la session entre createServerClient
-  // et la suite du code (cf. doc Supabase SSR).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
   const isPublicRoute =
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico";
 
-  if (!user && !isPublicRoute) {
+  // Heuristique : si un cookie Supabase est présent, on suppose que la
+  // session est valide. Le layout fera la vérification stricte.
+  const hasSupabaseSession = request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+
+  if (!hasSupabaseSession && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname === "/login") {
+  if (hasSupabaseSession && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
-  return supabaseResponse;
+  return NextResponse.next();
 }
 
 export const config = {
