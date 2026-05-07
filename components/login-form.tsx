@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { createClient } from "@/lib/supabase/client";
+import { signInAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +27,6 @@ const schema = z.object({
 type LoginValues = z.infer<typeof schema>;
 
 export function LoginForm() {
-  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -42,24 +40,19 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginValues) {
     setSubmitting(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword(values);
+    // signInAction redirige côté serveur en cas de succès, donc on ne
+    // récupère un retour QUE si erreur (sinon le navigateur a déjà bougé).
+    const result = await signInAction(values.email, values.password);
+    setSubmitting(false);
 
-    if (error) {
+    if (result && !result.ok) {
       toast.error("Échec de connexion", {
         description:
-          error.message === "Invalid login credentials"
+          result.error === "Invalid login credentials"
             ? "Email ou mot de passe incorrect."
-            : error.message,
+            : result.error,
       });
-      setSubmitting(false);
-      return;
     }
-
-    toast.success("Connexion réussie");
-    // Refresh forces le middleware à reprendre la session côté serveur.
-    router.refresh();
-    router.push("/dashboard");
   }
 
   return (

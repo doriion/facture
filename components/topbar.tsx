@@ -1,10 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { LogOut, User } from "lucide-react";
 import { toast } from "sonner";
 
-import { createClient } from "@/lib/supabase/client";
+import { signOutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,21 +16,20 @@ import {
 
 /**
  * Bandeau supérieur. Affiche l'email connecté + menu déconnexion.
+ * La déconnexion passe par une Server Action pour cohérence avec le
+ * login (cookies serveur + redirect synchrones).
  */
 export function Topbar({ email }: { email: string }) {
-  const router = useRouter();
-
   async function handleSignOut() {
-    const supabase = createClient();
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      await signOutAction();
+      // signOutAction redirige côté serveur ; ce code n'est pas atteint
+      // sauf en cas d'erreur réseau.
+    } catch (err) {
       toast.error("Erreur lors de la déconnexion", {
-        description: error.message,
+        description: err instanceof Error ? err.message : "Inconnue",
       });
-      return;
     }
-    router.refresh();
-    router.push("/login");
   }
 
   return (
