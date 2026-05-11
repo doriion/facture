@@ -17,8 +17,12 @@ export type AgendaEvent = {
   /** Description libre saisie par l'utilisateur (sépare le « titre fallback » du contenu réellement tapé) */
   description: string | null;
   client_nom: string | null;
+  client_id: string | null;
   href: string;
   statut?: string | null;
+  /** HH:MM:SS — null si évènement all-day */
+  heure_debut: string | null;
+  heure_fin: string | null;
   /**
    * Pour les interventions : true si une facture est rattachée.
    * Permet d'afficher l'alerte "à facturer".
@@ -76,13 +80,14 @@ export async function getAgendaEvents(
     supabase
       .from("interventions")
       .select(
-        "id, date_intervention, date_fin, type, description, facture_id, client:clients(nom)",
+        "id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, client_id, client:clients(nom)",
       )
       // Pour les interventions multi-jours, on doit inclure celles qui
       // *intersectent* la fenêtre, pas seulement celles qui commencent dedans.
       .gte("date_intervention", new Date(new Date(ws).getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10))
       .lte("date_intervention", we)
-      .order("date_intervention", { ascending: true }),
+      .order("date_intervention", { ascending: true })
+      .order("heure_debut", { ascending: true, nullsFirst: true }),
     supabase
       .from("factures")
       .select(
@@ -117,9 +122,12 @@ export async function getAgendaEvents(
     id: string;
     date_intervention: string;
     date_fin: string | null;
+    heure_debut: string | null;
+    heure_fin: string | null;
     type: string;
     description: string | null;
     facture_id: string | null;
+    client_id: string;
     client: { nom: string } | null;
   };
   for (const it of (interventionsRes.data ?? []) as InterventionRow[]) {
@@ -135,6 +143,9 @@ export async function getAgendaEvents(
       title: it.description || it.type || "Intervention",
       description: it.description,
       client_nom: it.client?.nom ?? null,
+      client_id: it.client_id,
+      heure_debut: it.heure_debut,
+      heure_fin: it.heure_fin,
       href: `/interventions/${it.id}`,
       facture_emise: Boolean(it.facture_id),
       type_activite: it.type,
@@ -160,6 +171,9 @@ export async function getAgendaEvents(
       title: `Facture ${f.numero}`,
       description: null,
       client_nom: f.client?.nom ?? null,
+      client_id: null,
+      heure_debut: null,
+      heure_fin: null,
       href: `/factures/${f.id}`,
       statut: f.statut,
       numero: f.numero,
@@ -193,6 +207,9 @@ export async function getAgendaEvents(
       title: `Devis ${d.numero}`,
       description: null,
       client_nom: d.client?.nom ?? null,
+      client_id: null,
+      heure_debut: null,
+      heure_fin: null,
       href: `/devis/${d.id}`,
       statut: d.statut,
       numero: d.numero,
@@ -217,6 +234,9 @@ export async function getAgendaEvents(
       title: c.intitule || "Visite maintenance",
       description: null,
       client_nom: c.client?.nom ?? null,
+      client_id: null,
+      heure_debut: null,
+      heure_fin: null,
       href: `/maintenance/${c.id}`,
     });
   }

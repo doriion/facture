@@ -119,6 +119,8 @@ export async function createInterventionAction(
       client_id: v.client_id,
       date_intervention: v.date_intervention,
       date_fin: v.date_fin || null,
+      heure_debut: v.heure_debut || null,
+      heure_fin: v.heure_fin || null,
       type: v.type,
       description: v.description || null,
       equipement_marque: v.equipement_marque || null,
@@ -162,6 +164,8 @@ export async function updateInterventionAction(
       client_id: v.client_id,
       date_intervention: v.date_intervention,
       date_fin: v.date_fin || null,
+      heure_debut: v.heure_debut || null,
+      heure_fin: v.heure_fin || null,
       type: v.type,
       description: v.description || null,
       equipement_marque: v.equipement_marque || null,
@@ -189,5 +193,45 @@ export async function deleteInterventionAction(
   const { error } = await supabase.from("interventions").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/interventions");
+  revalidatePath("/agenda");
+  return { ok: true, data: undefined };
+}
+
+/**
+ * Mise à jour partielle utilisée par le dialogue rapide depuis l'agenda :
+ * ne touche que les champs édités (planning + métadonnées), préserve
+ * équipement / fluides / notes / facture_id. À utiliser à la place de
+ * updateInterventionAction quand seul le planning est modifié.
+ */
+export async function quickEditInterventionAction(
+  id: string,
+  partial: {
+    client_id: string;
+    date_intervention: string;
+    date_fin: string | null;
+    heure_debut: string | null;
+    heure_fin: string | null;
+    type: string;
+    description: string | null;
+  },
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("interventions")
+    .update({
+      client_id: partial.client_id,
+      date_intervention: partial.date_intervention,
+      date_fin: partial.date_fin,
+      heure_debut: partial.heure_debut,
+      heure_fin: partial.heure_fin,
+      type: partial.type,
+      description: partial.description,
+    })
+    .eq("id", id);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/interventions");
+  revalidatePath(`/interventions/${id}`);
+  revalidatePath("/agenda");
   return { ok: true, data: undefined };
 }

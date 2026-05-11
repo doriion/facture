@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getFrenchHolidays } from "@/lib/holidays-fr";
 import type { AgendaEvent, AgendaData } from "@/lib/actions/agenda";
 import {
   QuickInterventionDialog,
   type ClientOption,
+  type InterventionEditData,
 } from "@/components/agenda/quick-intervention-dialog";
 
 const MOIS_FR = [
@@ -80,16 +82,31 @@ function eventColorClasses(e: AgendaEvent): string {
   return "bg-cyan-100 text-cyan-900 hover:bg-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-100";
 }
 
+/** Convertit "HH:MM:SS" en "HH:MM" pour un affichage compact. */
+function shortTime(t: string | null): string | null {
+  if (!t) return null;
+  return t.slice(0, 5);
+}
+
+/** Préfixe horaire affiché dans la pill ("09:00–12:00 · " ou "09:00 · " ou ""). */
+function eventTimePrefix(e: AgendaEvent): string {
+  const start = shortTime(e.heure_debut);
+  const end = shortTime(e.heure_fin);
+  if (start && end) return `${start}–${end} · `;
+  if (start) return `${start} · `;
+  return "";
+}
+
 function eventShortLabel(e: AgendaEvent): string {
   if (e.kind === "intervention") {
     // Priorité à la description saisie par l'utilisateur (c'est l'info la
     // plus parlante), avec le client en complément si la place reste.
-    if (e.description) {
-      return e.client_nom
+    const base = e.description
+      ? e.client_nom
         ? `${e.description} · ${e.client_nom}`
-        : e.description;
-    }
-    return e.client_nom ?? e.title;
+        : e.description
+      : (e.client_nom ?? e.title);
+    return eventTimePrefix(e) + base;
   }
   if (e.kind === "facture_prestation") {
     return `${e.numero ?? ""} ${e.client_nom ? "· " + e.client_nom : ""}`.trim();
@@ -114,11 +131,40 @@ export function AgendaCalendar({
 
   const grid = useMemo(() => buildMonthGrid(year, month), [year, month]);
 
+  // Jours fériés FR du mois affiché (+ mois précédent/suivant pour les
+  // cases débordantes de la grille).
+  const holidays = useMemo(() => {
+    const prevYear = month === 1 ? year - 1 : year;
+    const nextYear = month === 12 ? year + 1 : year;
+    return {
+      ...getFrenchHolidays(prevYear),
+      ...getFrenchHolidays(year),
+      ...getFrenchHolidays(nextYear),
+    };
+  }, [year, month]);
+
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddDate, setQuickAddDate] = useState(todayYmd);
+  const [editTarget, setEditTarget] = useState<InterventionEditData | null>(null);
 
   const openQuickAdd = (ymd: string) => {
+    setEditTarget(null);
     setQuickAddDate(ymd);
+    setQuickAddOpen(true);
+  };
+
+  const openEdit = (e: AgendaEvent) => {
+    if (e.kind !== "intervention" || !e.client_id) return;
+    setEditTarget({
+      id: e.id,
+      client_id: e.client_id,
+      date_intervention: e.date_start,
+      date_fin: e.date_end !== e.date_start ? e.date_end : null,
+      heure_debut: e.heure_debut,
+      heure_fin: e.heure_fin,
+      type: e.type_activite ?? "installation",
+      description: e.description,
+    });
     setQuickAddOpen(true);
   };
 
@@ -203,8 +249,14 @@ export function AgendaCalendar({
         <CardContent className="p-0">
           {/* Entête jours */}
           <div className="grid grid-cols-7 border-b bg-muted/30 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {JOURS_FR.map((j) => (
-              <div key={j} className="px-2 py-2">
+            {JOURS_FR.map((j, i) => (
+              <div
+                key={j}
+                className={cn(
+                  "px-2 py-2",
+                  (i === 5 || i === 6) && "text-orange-700 dark:text-orange-400",
+                )}
+              >
                 {j}
               </div>
             ))}
@@ -216,6 +268,8 @@ export function AgendaCalendar({
               const isCurrentMonth = day.getMonth() === month - 1;
               const isToday = ymd === todayYmd;
               const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+              const holidayName = holidays[ymd] ?? null;
+              const isHoliday = Boolean(holidayName);
               const dayEvents = events.filter((e) => eventCoversDate(e, ymd));
 
               return (
@@ -230,13 +284,18 @@ export function AgendaCalendar({
                       openQuickAdd(ymd);
                     }
                   }}
-                  title="Cliquez pour planifier une intervention"
+                  title={
+                    holidayName
+                      ? `${holidayName} — Cliquez pour planifier`
+                      : "Cliquez pour planifier une intervention"
+                  }
                   className={cn(
                     "group relative min-h-[110px] cursor-pointer border-b border-r p-1.5 text-xs transition-colors hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     idx % 7 === 6 && "border-r-0",
                     idx >= 35 && "border-b-0",
                     !isCurrentMonth && "bg-muted/20 text-muted-foreground/60",
-                    isCurrentMonth && isWeekend && "bg-muted/10",
+                    isCurrentMonth && isWeekend && !isHoliday && "bg-orange-50/60 dark:bg-orange-950/10",
+                    isCurrentMonth && isHoliday && "bg-rose-50 dark:bg-rose-950/20",
                   )}
                 >
                   <div className="mb-1 flex items-center justify-between">
@@ -244,6 +303,8 @@ export function AgendaCalendar({
                       className={cn(
                         "inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium",
                         isToday && "bg-primary text-primary-foreground",
+                        !isToday && isHoliday && "text-rose-700 dark:text-rose-300",
+                        !isToday && !isHoliday && isWeekend && "text-orange-700 dark:text-orange-400",
                       )}
                     >
                       {day.getDate()}
@@ -262,21 +323,51 @@ export function AgendaCalendar({
                       </span>
                     </div>
                   </div>
+                  {holidayName && isCurrentMonth && (
+                    <div className="mb-1 truncate text-[10px] font-medium uppercase tracking-wide text-rose-700 dark:text-rose-400">
+                      {holidayName}
+                    </div>
+                  )}
                   <div className="space-y-0.5">
-                    {dayEvents.slice(0, 3).map((e) => (
-                      <Link
-                        key={`${e.kind}-${e.id}-${ymd}`}
-                        href={e.href}
-                        onClick={(ev) => ev.stopPropagation()}
-                        className={cn(
-                          "block line-clamp-2 break-words rounded px-1.5 py-0.5 text-[11px] leading-tight transition-colors",
-                          eventColorClasses(e),
-                        )}
-                        title={`${e.description ? e.description + " — " : ""}${e.client_nom ?? e.title}`}
-                      >
-                        {eventShortLabel(e)}
-                      </Link>
-                    ))}
+                    {dayEvents.slice(0, 3).map((e) => {
+                      const isIntervention = e.kind === "intervention";
+                      const commonClass = cn(
+                        "block w-full text-left line-clamp-2 break-words rounded px-1.5 py-0.5 text-[11px] leading-tight transition-colors",
+                        eventColorClasses(e),
+                      );
+                      const tooltip = `${e.description ? e.description + " — " : ""}${e.client_nom ?? e.title}${isIntervention ? "\n(Cliquez pour modifier)" : ""}`;
+                      // Pour les interventions : clic ouvre le dialogue d'édition
+                      // rapide (inline) plutôt que la fiche complète — plus rapide
+                      // pour ajuster planning/description. Lien "Fiche complète"
+                      // disponible dans le dialogue.
+                      if (isIntervention) {
+                        return (
+                          <button
+                            key={`${e.kind}-${e.id}-${ymd}`}
+                            type="button"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              openEdit(e);
+                            }}
+                            className={commonClass}
+                            title={tooltip}
+                          >
+                            {eventShortLabel(e)}
+                          </button>
+                        );
+                      }
+                      return (
+                        <Link
+                          key={`${e.kind}-${e.id}-${ymd}`}
+                          href={e.href}
+                          onClick={(ev) => ev.stopPropagation()}
+                          className={commonClass}
+                          title={tooltip}
+                        >
+                          {eventShortLabel(e)}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -297,9 +388,13 @@ export function AgendaCalendar({
 
       <QuickInterventionDialog
         open={quickAddOpen}
-        onOpenChange={setQuickAddOpen}
-        date={quickAddDate}
+        onOpenChange={(next) => {
+          setQuickAddOpen(next);
+          if (!next) setEditTarget(null);
+        }}
+        date={editTarget?.date_intervention ?? quickAddDate}
         clients={clients}
+        editIntervention={editTarget ?? undefined}
       />
     </div>
   );
@@ -338,6 +433,8 @@ function Legend() {
       <LegendDot className="bg-red-200" label="En retard" />
       <LegendDot className="bg-violet-200" label="Devis planifié" />
       <LegendDot className="bg-cyan-200" label="Maintenance" />
+      <LegendDot className="bg-rose-100 ring-1 ring-rose-300" label="Jour férié" />
+      <LegendDot className="bg-orange-100 ring-1 ring-orange-300" label="Week-end" />
     </div>
   );
 }

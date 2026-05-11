@@ -21,7 +21,10 @@ type AgendaRow = {
   ev_id: string;
   date_start: string;
   date_end: string;
+  heure_debut: string | null;
+  heure_fin: string | null;
   title: string;
+  description: string | null;
   client_nom: string | null;
   statut: string | null;
   numero: string | null;
@@ -75,16 +78,33 @@ function buildIcs(events: AgendaRow[]): string {
   ];
 
   for (const ev of events) {
-    const startCompact = ev.date_start.replace(/-/g, "");
-    const endExclusive = addOneDay(ev.date_end).replace(/-/g, "");
     const summary = buildSummary(ev);
     const description = buildDescription(ev);
+    const isSingleDay = ev.date_start === ev.date_end;
+    const isTimed = isSingleDay && Boolean(ev.heure_debut);
 
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:${ev.kind}-${ev.ev_id}@facture-ae`);
     lines.push(`DTSTAMP:${now}`);
-    lines.push(`DTSTART;VALUE=DATE:${startCompact}`);
-    lines.push(`DTEND;VALUE=DATE:${endExclusive}`);
+    if (isTimed) {
+      // Évènement borné dans le temps : DTSTART/DTEND avec heures en
+      // timezone Europe/Paris. Si pas d'heure de fin, on bloque 1 h
+      // par défaut pour avoir un évènement visible dans l'agenda.
+      const startTime = (ev.heure_debut ?? "00:00").slice(0, 5);
+      const endTime =
+        ev.heure_fin?.slice(0, 5) ?? addOneHour(startTime);
+      lines.push(
+        `DTSTART;TZID=Europe/Paris:${ev.date_start.replace(/-/g, "")}T${startTime.replace(":", "")}00`,
+      );
+      lines.push(
+        `DTEND;TZID=Europe/Paris:${ev.date_end.replace(/-/g, "")}T${endTime.replace(":", "")}00`,
+      );
+    } else {
+      const startCompact = ev.date_start.replace(/-/g, "");
+      const endExclusive = addOneDay(ev.date_end).replace(/-/g, "");
+      lines.push(`DTSTART;VALUE=DATE:${startCompact}`);
+      lines.push(`DTEND;VALUE=DATE:${endExclusive}`);
+    }
     lines.push(foldLine(`SUMMARY:${escapeIcs(summary)}`));
     if (description) {
       lines.push(foldLine(`DESCRIPTION:${escapeIcs(description)}`));
@@ -192,4 +212,12 @@ function addOneDay(ymd: string): string {
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + 1);
   return dt.toISOString().slice(0, 10);
+}
+
+/** Ajoute 1h à une heure "HH:MM" (wrap 23:xx → 23:59). */
+function addOneHour(hm: string): string {
+  const [h, m] = hm.split(":").map(Number);
+  const nextH = Math.min(h + 1, 23);
+  const finalM = h + 1 > 23 ? 59 : m;
+  return `${String(nextH).padStart(2, "0")}:${String(finalM).padStart(2, "0")}`;
 }

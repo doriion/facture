@@ -71,6 +71,12 @@ export function InterventionForm({
       client_id: intervention?.client_id ?? "",
       date_intervention: intervention?.date_intervention ?? today,
       date_fin: intervention?.date_fin ?? "",
+      heure_debut: intervention?.heure_debut
+        ? intervention.heure_debut.slice(0, 5)
+        : "",
+      heure_fin: intervention?.heure_fin
+        ? intervention.heure_fin.slice(0, 5)
+        : "",
       type:
         (intervention?.type as InterventionFormInput["type"]) ?? "entretien",
       description: intervention?.description ?? "",
@@ -174,6 +180,30 @@ export function InterventionForm({
             <DureeBadge
               jours={computeDureeJours(watch("date_intervention"), watch("date_fin"))}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="heure_debut">Heure début (optionnel)</Label>
+            <Input
+              id="heure_debut"
+              type="time"
+              {...register("heure_debut")}
+            />
+            <p className="text-xs text-muted-foreground">
+              Ex : 09:00 — pour planifier sur l'agenda à une heure précise.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="heure_fin">Heure fin (optionnel)</Label>
+            <Input
+              id="heure_fin"
+              type="time"
+              {...register("heure_fin")}
+            />
+            {errors.heure_fin && (
+              <p className="text-xs text-destructive">
+                {errors.heure_fin.message}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="type">Type *</Label>

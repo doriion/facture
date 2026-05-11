@@ -27,6 +27,8 @@ export const interventionSchema = z.object({
   client_id: z.string().uuid("Sélectionnez un client."),
   date_intervention: z.string().min(1, "Date obligatoire."),
   date_fin: z.string().optional().or(z.literal("")),
+  heure_debut: z.string().optional().or(z.literal("")),
+  heure_fin: z.string().optional().or(z.literal("")),
   type: z.enum(TYPES_INTERVENTION),
   description: z.string().trim().max(2000).optional().or(z.literal("")),
 
@@ -59,6 +61,19 @@ export const interventionSchema = z.object({
       code: "custom",
       path: ["date_fin"],
       message: "La date de fin doit être postérieure ou égale au début.",
+    });
+  }
+  if (
+    val.heure_debut &&
+    val.heure_fin &&
+    val.heure_fin < val.heure_debut &&
+    // Si plage sur un seul jour : la fin doit être après le début
+    (!val.date_fin || val.date_fin === val.date_intervention)
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["heure_fin"],
+      message: "L'heure de fin doit être postérieure au début.",
     });
   }
 });

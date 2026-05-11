@@ -397,6 +397,8 @@ export type Database = {
           created_at: string;
           date_intervention: string;
           date_fin: string | null;
+          heure_debut: string | null;
+          heure_fin: string | null;
           description: string | null;
           duree_minutes: number | null;
           equipement_marque: string | null;
@@ -417,6 +419,8 @@ export type Database = {
           created_at?: string;
           date_intervention: string;
           date_fin?: string | null;
+          heure_debut?: string | null;
+          heure_fin?: string | null;
           description?: string | null;
           duree_minutes?: number | null;
           equipement_marque?: string | null;
@@ -437,6 +441,8 @@ export type Database = {
           created_at?: string;
           date_intervention?: string;
           date_fin?: string | null;
+          heure_debut?: string | null;
+          heure_fin?: string | null;
           description?: string | null;
           duree_minutes?: number | null;
           equipement_marque?: string | null;
@@ -708,7 +714,10 @@ export type Database = {
           ev_id: string;
           date_start: string;
           date_end: string;
+          heure_debut: string | null;
+          heure_fin: string | null;
           title: string;
+          description: string | null;
           client_nom: string | null;
           statut: string | null;
           numero: string | null;
