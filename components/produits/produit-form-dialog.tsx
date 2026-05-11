@@ -182,10 +182,9 @@ export function ProduitFormDialog({
             <div className="relative">
               <Input
                 id="prix_ht"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 inputMode="decimal"
+                autoComplete="off"
                 placeholder="0,00"
                 className="pr-10"
                 {...register("prix_ht")}

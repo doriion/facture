@@ -1,6 +1,10 @@
 import { z } from "zod";
 
+import { parseMoneyInput } from "@/lib/format";
 import { ligneFactureSchema } from "@/lib/validations/facture";
+
+const moneyInputOrNull = (v: unknown) =>
+  v === "" || v === null || v === undefined ? null : parseMoneyInput(v);
 
 const TYPES_ACTIVITE = [
   "plomberie",
@@ -30,16 +34,16 @@ export type StatutDevis = (typeof STATUTS_DEVIS)[number];
  */
 export const performancesSchema = z.object({
   cop: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).max(20).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).max(20).nullable(),
   ),
   scop: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).max(20).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).max(20).nullable(),
   ),
   seer: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).max(20).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).max(20).nullable(),
   ),
   classe_energetique: z
     .string()
@@ -60,23 +64,23 @@ export const equipementDevisSchema = z.object({
   num_serie: z.string().trim().max(100).optional().or(z.literal("")),
   fluide_frigo_type: z.string().trim().max(50).optional().or(z.literal("")),
   fluide_frigo_kg: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).max(1000).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).max(1000).nullable(),
   ),
 });
 
 export const aidesDevisSchema = z.object({
   maprimerenov: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).nullable(),
   ),
   cee: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).nullable(),
   ),
   eco_ptz: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).nullable(),
   ),
 });
 
@@ -91,8 +95,8 @@ export const devisSchema = z.object({
   date_validite: z.string().min(1, "Date de validité obligatoire."),
   date_debut_travaux: z.string().optional().or(z.literal("")),
   duree_estimee_jours: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().int().min(0).max(3650).nullable(),
+    moneyInputOrNull,
+    z.number().int().min(0).max(3650).nullable(),
   ),
   conditions: z.string().trim().max(2000).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),

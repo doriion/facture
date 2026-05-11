@@ -339,10 +339,10 @@ export function DevisForm({
               </Label>
               <Input
                 id="equip_fluide_kg"
-                type="number"
-                step="0.001"
-                min="0"
+                type="text"
                 inputMode="decimal"
+                autoComplete="off"
+                placeholder="1,4"
                 {...register("equipement.fluide_frigo_kg")}
               />
             </div>
@@ -365,10 +365,9 @@ export function DevisForm({
               <Label htmlFor="perf_cop">COP</Label>
               <Input
                 id="perf_cop"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 inputMode="decimal"
+                autoComplete="off"
                 placeholder="Ex : 4,2"
                 {...register("performances_energetiques.cop")}
               />
@@ -380,10 +379,9 @@ export function DevisForm({
               <Label htmlFor="perf_scop">SCOP</Label>
               <Input
                 id="perf_scop"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 inputMode="decimal"
+                autoComplete="off"
                 placeholder="Ex : 4,0"
                 {...register("performances_energetiques.scop")}
               />
@@ -395,10 +393,9 @@ export function DevisForm({
               <Label htmlFor="perf_seer">SEER</Label>
               <Input
                 id="perf_seer"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 inputMode="decimal"
+                autoComplete="off"
                 placeholder="Ex : 7,5"
                 {...register("performances_energetiques.seer")}
               />
@@ -432,10 +429,9 @@ export function DevisForm({
             <Label htmlFor="aide_mpr">MaPrimeRénov'</Label>
             <Input
               id="aide_mpr"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               inputMode="decimal"
+              autoComplete="off"
               placeholder="0,00 €"
               {...register("aides_financieres.maprimerenov")}
             />
@@ -444,10 +440,9 @@ export function DevisForm({
             <Label htmlFor="aide_cee">Certificats d'Économie d'Énergie</Label>
             <Input
               id="aide_cee"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               inputMode="decimal"
+              autoComplete="off"
               placeholder="0,00 €"
               {...register("aides_financieres.cee")}
             />
@@ -456,10 +451,9 @@ export function DevisForm({
             <Label htmlFor="aide_ecoptz">Eco-PTZ</Label>
             <Input
               id="aide_ecoptz"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               inputMode="decimal"
+              autoComplete="off"
               placeholder="0,00 €"
               {...register("aides_financieres.eco_ptz")}
             />

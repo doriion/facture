@@ -23,8 +23,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatEuros } from "@/lib/format";
+import { formatEuros, parseMoneyInput } from "@/lib/format";
 import type { Database } from "@/types/database";
+
+/** Convertit une valeur de champ (string tolérant FR/EN) en number sûr. */
+function toNum(v: number | string | null | undefined): number {
+  if (v === null || v === undefined || v === "") return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  const n = parseMoneyInput(v);
+  return Number.isFinite(n) ? n : 0;
+}
 
 type Produit = Database["public"]["Tables"]["produits_services"]["Row"];
 
@@ -85,8 +93,8 @@ export function LignesEditor<T extends FieldValues>({
   }
 
   const totalHt = lignes.reduce((sum, l) => {
-    const q = Number(l.quantite) || 0;
-    const p = Number(l.prix_unitaire_ht) || 0;
+    const q = toNum(l.quantite);
+    const p = toNum(l.prix_unitaire_ht);
     return sum + q * p;
   }, 0);
 
@@ -120,8 +128,7 @@ export function LignesEditor<T extends FieldValues>({
             {fields.map((field, index) => {
               const ligne = lignes[index];
               const lineTotal =
-                (Number(ligne?.quantite) || 0) *
-                (Number(ligne?.prix_unitaire_ht) || 0);
+                toNum(ligne?.quantite) * toNum(ligne?.prix_unitaire_ht);
               const errDesignation = lineErr(index, "designation");
               const errQuantite = lineErr(index, "quantite");
               const errPrix = lineErr(index, "prix_unitaire_ht");
@@ -141,10 +148,10 @@ export function LignesEditor<T extends FieldValues>({
                   </div>
                   <div className="col-span-2 space-y-1">
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
                       inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="1"
                       className="text-right"
                       {...register(`${fieldName}.${index}.quantite` as Path<T>)}
                     />
@@ -154,10 +161,10 @@ export function LignesEditor<T extends FieldValues>({
                   </div>
                   <div className="col-span-2 space-y-1">
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
                       inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="0,00"
                       className="text-right"
                       {...register(
                         `${fieldName}.${index}.prix_unitaire_ht` as Path<T>,

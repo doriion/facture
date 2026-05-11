@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+import { parseMoneyInput } from "@/lib/format";
+
+/** Préprocesseur pour montants saisis comme texte (FR/EN tolérant). */
+const moneyInput = (v: unknown) =>
+  v === "" || v === null || v === undefined ? v : parseMoneyInput(v);
+const moneyInputOrNull = (v: unknown) =>
+  v === "" || v === null || v === undefined ? null : parseMoneyInput(v);
+
 const TYPES_ACTIVITE = [
   "plomberie",
   "installation_clim",
@@ -33,14 +41,20 @@ export const ligneFactureSchema = z.object({
     .trim()
     .min(1, "La désignation est obligatoire.")
     .max(500),
-  quantite: z.coerce
-    .number({ error: "Quantité invalide." })
-    .positive("La quantité doit être positive.")
-    .max(100000, "Quantité trop élevée."),
-  prix_unitaire_ht: z.coerce
-    .number({ error: "Prix unitaire invalide." })
-    .min(0, "Le prix ne peut pas être négatif.")
-    .max(1_000_000, "Prix trop élevé."),
+  quantite: z.preprocess(
+    moneyInput,
+    z
+      .number({ error: "Quantité invalide." })
+      .positive("La quantité doit être positive.")
+      .max(100000, "Quantité trop élevée."),
+  ),
+  prix_unitaire_ht: z.preprocess(
+    moneyInput,
+    z
+      .number({ error: "Prix unitaire invalide." })
+      .min(0, "Le prix ne peut pas être négatif.")
+      .max(1_000_000, "Prix trop élevé."),
+  ),
 });
 
 /**
@@ -53,8 +67,8 @@ export const equipementSchema = z.object({
   num_serie: z.string().trim().max(100).optional().or(z.literal("")),
   fluide_frigo_type: z.string().trim().max(50).optional().or(z.literal("")),
   fluide_frigo_kg: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).max(1000).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).max(1000).nullable(),
   ),
 });
 
@@ -65,16 +79,16 @@ export type EquipementValues = z.infer<typeof equipementSchema>;
  */
 export const aidesFinancieresSchema = z.object({
   maprimerenov: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).nullable(),
   ),
   cee: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).nullable(),
   ),
   eco_ptz: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? null : v),
-    z.coerce.number().min(0).nullable(),
+    moneyInputOrNull,
+    z.number().min(0).nullable(),
   ),
 });
 

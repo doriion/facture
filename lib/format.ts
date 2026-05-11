@@ -88,6 +88,45 @@ export function stripSpaces(s: string): string {
 }
 
 /**
+ * Parse une saisie monétaire tolérante : accepte
+ *   - séparateur décimal "," OU "."   (ex "1500,50" ou "1500.50")
+ *   - séparateur de milliers " ", " ", " "  (ex "1 500,50")
+ *   - symbole € éventuel
+ *   - signe "-" en tête uniquement
+ * Renvoie un nombre, ou NaN si non parsable. Une chaîne vide renvoie NaN
+ * pour laisser le préprocessing Zod décider du fallback (null vs 0).
+ *
+ * Pourquoi : les inputs HTML `type=number` se basent sur la locale et
+ * peuvent interpréter "1,000" comme 1 (FR) ou refuser tel quel (EN).
+ * On contourne en passant par `type=text` côté UI + ce parser ici.
+ */
+export function parseMoneyInput(raw: unknown): number {
+  if (typeof raw === "number") return raw;
+  if (typeof raw !== "string") return Number.NaN;
+  const trimmed = raw.trim();
+  if (trimmed === "") return Number.NaN;
+  // Supprime symbole monétaire, espaces (incl. NBSP et narrow NBSP)
+  let s = trimmed
+    .replace(/[€$]/g, "")
+    .replace(/[\s  ]/g, "");
+  // S'il y a une virgule ET un point, on suppose le dernier en date
+  // est le séparateur décimal et l'autre la séparation milliers.
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+  if (lastComma !== -1 && lastDot !== -1) {
+    const decimalSep = lastComma > lastDot ? "," : ".";
+    const thousandSep = decimalSep === "," ? "." : ",";
+    s = s.split(thousandSep).join("");
+    s = s.replace(decimalSep, ".");
+  } else if (lastComma !== -1) {
+    // Une seule virgule → considérée comme séparateur décimal
+    s = s.replace(",", ".");
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : Number.NaN;
+}
+
+/**
  * Catégories de prestations (libellés FR pour l'UI).
  * Les clés correspondent aux valeurs stockées en base.
  */

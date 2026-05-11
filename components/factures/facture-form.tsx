@@ -346,11 +346,10 @@ export function FactureForm({
               </Label>
               <Input
                 id="equip_fluide_kg"
-                type="number"
-                step="0.001"
-                min="0"
+                type="text"
                 inputMode="decimal"
-                placeholder="1.4"
+                autoComplete="off"
+                placeholder="1,4"
                 {...register("equipement.fluide_frigo_kg")}
               />
             </div>
@@ -372,10 +371,9 @@ export function FactureForm({
             <Label htmlFor="aide_mpr">MaPrimeRénov'</Label>
             <Input
               id="aide_mpr"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               inputMode="decimal"
+              autoComplete="off"
               placeholder="0,00 €"
               {...register("aides_financieres.maprimerenov")}
             />
@@ -384,10 +382,9 @@ export function FactureForm({
             <Label htmlFor="aide_cee">Certificats d'Économie d'Énergie</Label>
             <Input
               id="aide_cee"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               inputMode="decimal"
+              autoComplete="off"
               placeholder="0,00 €"
               {...register("aides_financieres.cee")}
             />
@@ -396,10 +393,9 @@ export function FactureForm({
             <Label htmlFor="aide_ecoptz">Eco-PTZ</Label>
             <Input
               id="aide_ecoptz"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               inputMode="decimal"
+              autoComplete="off"
               placeholder="0,00 €"
               {...register("aides_financieres.eco_ptz")}
             />
