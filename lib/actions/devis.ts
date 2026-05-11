@@ -482,6 +482,15 @@ export async function convertirDevisEnFactureAction(
       date_emission: today,
       date_echeance: echeance,
       date_prestation: devis.date_debut_travaux,
+      date_prestation_fin:
+        devis.date_debut_travaux && devis.duree_estimee_jours
+          ? new Date(
+              new Date(devis.date_debut_travaux).getTime() +
+                (devis.duree_estimee_jours - 1) * 24 * 3600 * 1000,
+            )
+              .toISOString()
+              .slice(0, 10)
+          : null,
       type_activite: devis.type_activite,
       statut: "brouillon",
       total_ht: devis.total_ht,

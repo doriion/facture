@@ -282,6 +282,7 @@ export type Database = {
           date_echeance: string;
           date_emission: string;
           date_prestation: string | null;
+          date_prestation_fin: string | null;
           email_envoye_le: string | null;
           equipement_info: Json;
           id: string;
@@ -302,6 +303,7 @@ export type Database = {
           date_echeance: string;
           date_emission?: string;
           date_prestation?: string | null;
+          date_prestation_fin?: string | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
           id?: string;
@@ -322,6 +324,7 @@ export type Database = {
           date_echeance?: string;
           date_emission?: string;
           date_prestation?: string | null;
+          date_prestation_fin?: string | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
           id?: string;

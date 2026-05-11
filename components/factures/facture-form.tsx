@@ -93,6 +93,7 @@ export function FactureForm({
       date_emission: facture?.date_emission ?? today,
       date_echeance: facture?.date_echeance ?? inThirtyDays,
       date_prestation: facture?.date_prestation ?? "",
+      date_prestation_fin: facture?.date_prestation_fin ?? "",
       conditions_paiement:
         facture?.conditions_paiement ?? defaultConditionsPaiement ?? "",
       notes: facture?.notes ?? "",
@@ -248,20 +249,35 @@ export function FactureForm({
               </p>
             )}
           </div>
-          <div className="space-y-1.5 md:col-span-2">
+          <div className="space-y-1.5">
             <Label htmlFor="date_prestation">
-              Date de prestation (optionnel)
+              Date de prestation (début)
             </Label>
             <Input
               id="date_prestation"
               type="date"
               {...register("date_prestation")}
             />
-            <p className="text-xs text-muted-foreground">
-              Date d'exécution effective des travaux. Souvent demandée par
-              l'administration et les assurances.
-            </p>
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="date_prestation_fin">
+              Date de fin (si plusieurs jours)
+            </Label>
+            <Input
+              id="date_prestation_fin"
+              type="date"
+              {...register("date_prestation_fin")}
+            />
+            {errors.date_prestation_fin && (
+              <p className="text-xs text-destructive">
+                {errors.date_prestation_fin.message}
+              </p>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground md:col-span-2">
+            Date(s) d'exécution effective des travaux. Pour un chantier d'un
+            seul jour, laissez la date de fin vide.
+          </p>
         </CardContent>
       </Card>
 

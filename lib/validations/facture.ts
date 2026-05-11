@@ -91,6 +91,7 @@ export const factureSchema = z.object({
   date_emission: z.string().min(1, "Date d'émission obligatoire."),
   date_echeance: z.string().min(1, "Date d'échéance obligatoire."),
   date_prestation: z.string().optional().or(z.literal("")),
+  date_prestation_fin: z.string().optional().or(z.literal("")),
   conditions_paiement: z.string().trim().max(500).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   lignes: z
@@ -108,7 +109,21 @@ export const factureSchema = z.object({
     cee: null,
     eco_ptz: null,
   }),
-});
+})
+  .superRefine((val, ctx) => {
+    // Cohérence des dates de prestation (si les deux remplies)
+    if (
+      val.date_prestation &&
+      val.date_prestation_fin &&
+      val.date_prestation_fin < val.date_prestation
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["date_prestation_fin"],
+        message: "La date de fin doit être postérieure au début.",
+      });
+    }
+  });
 
 export type FactureFormInput = z.input<typeof factureSchema>;
 export type FactureFormValues = z.output<typeof factureSchema>;

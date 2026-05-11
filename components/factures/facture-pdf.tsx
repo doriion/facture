@@ -306,7 +306,11 @@ export function FacturePdf({
             </Text>
             {facture.date_prestation && (
               <Text style={styles.factureDate}>
-                Prestation : {formatDateFr(facture.date_prestation)}
+                Prestation :{" "}
+                {facture.date_prestation_fin &&
+                facture.date_prestation_fin !== facture.date_prestation
+                  ? `du ${formatDateFr(facture.date_prestation)} au ${formatDateFr(facture.date_prestation_fin)}`
+                  : `le ${formatDateFr(facture.date_prestation)}`}
               </Text>
             )}
             <Text style={styles.factureDate}>
