@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { LogOut, User } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MobileNav } from "@/components/mobile-nav";
 
 /**
  * Bandeau supérieur. Affiche l'email connecté + menu déconnexion.
@@ -33,16 +35,27 @@ export function Topbar({ email }: { email: string }) {
   }
 
   return (
-    <header className="flex h-16 items-center justify-end border-b bg-background px-6">
+    <header className="flex h-14 items-center justify-between gap-2 border-b bg-background px-3 sm:h-16 sm:px-6">
+      <div className="flex items-center gap-2">
+        <MobileNav />
+        <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <span className="text-xs font-bold">F</span>
+          </div>
+          <span className="text-sm font-semibold">Facture AE</span>
+        </Link>
+      </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="gap-2">
             <User className="size-4" />
-            <span className="max-w-[200px] truncate">{email}</span>
+            <span className="hidden max-w-[200px] truncate sm:inline">
+              {email}
+            </span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+          <DropdownMenuLabel className="truncate">{email}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
             <LogOut className="size-4" />

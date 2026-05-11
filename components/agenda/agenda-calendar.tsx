@@ -28,7 +28,8 @@ const MOIS_FR = [
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
 
-const JOURS_FR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const JOURS_FR_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
+const JOURS_FR_FULL = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 function toYmd(d: Date): string {
   const y = d.getFullYear();
@@ -256,15 +257,16 @@ export function AgendaCalendar({
         <CardContent className="p-0">
           {/* Entête jours */}
           <div className="grid grid-cols-7 border-b bg-muted/30 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {JOURS_FR.map((j, i) => (
+            {JOURS_FR_FULL.map((j, i) => (
               <div
                 key={j}
                 className={cn(
-                  "px-2 py-2",
+                  "px-1 py-2 sm:px-2",
                   (i === 5 || i === 6) && "text-orange-700 dark:text-orange-400",
                 )}
               >
-                {j}
+                <span className="sm:hidden">{JOURS_FR_SHORT[i]}</span>
+                <span className="hidden sm:inline">{j}</span>
               </div>
             ))}
           </div>
@@ -297,7 +299,7 @@ export function AgendaCalendar({
                       : "Cliquez pour planifier une intervention"
                   }
                   className={cn(
-                    "group relative min-h-[110px] cursor-pointer border-b border-r p-1.5 text-xs transition-colors hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "group relative min-h-[70px] cursor-pointer border-b border-r p-1 text-xs transition-colors hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[110px] sm:p-1.5",
                     idx % 7 === 6 && "border-r-0",
                     idx >= 35 && "border-b-0",
                     !isCurrentMonth && "bg-muted/20 text-muted-foreground/60",
@@ -317,8 +319,13 @@ export function AgendaCalendar({
                       {day.getDate()}
                     </span>
                     <div className="flex items-center gap-1">
+                      {isCurrentMonth && dayEvents.length > 2 && (
+                        <span className="text-[9px] text-muted-foreground sm:hidden">
+                          +{dayEvents.length - 2}
+                        </span>
+                      )}
                       {isCurrentMonth && dayEvents.length > 3 && (
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="hidden text-[10px] text-muted-foreground sm:inline">
                           +{dayEvents.length - 3}
                         </span>
                       )}
@@ -336,11 +343,13 @@ export function AgendaCalendar({
                     </div>
                   )}
                   <div className="space-y-0.5">
-                    {dayEvents.slice(0, 3).map((e) => {
+                    {dayEvents.slice(0, 3).map((e, evIdx) => {
                       const isIntervention = e.kind === "intervention";
                       const commonClass = cn(
-                        "block w-full text-left line-clamp-2 break-words rounded px-1.5 py-0.5 text-[11px] leading-tight transition-colors",
+                        "block w-full text-left line-clamp-1 break-words rounded px-1 py-0.5 text-[10px] leading-tight transition-colors sm:line-clamp-2 sm:px-1.5 sm:text-[11px]",
                         eventColorClasses(e, couleurs),
+                        // 3e évènement masqué sur mobile pour gagner de la place
+                        evIdx === 2 && "hidden sm:block",
                       );
                       const tooltip = `${e.description ? e.description + " — " : ""}${e.client_nom ?? e.title}${isIntervention ? "\n(Cliquez pour modifier)" : ""}`;
                       // Pour les interventions : clic ouvre le dialogue d'édition

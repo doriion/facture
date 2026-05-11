@@ -55,7 +55,7 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
               f.statut === "envoyee" || f.statut_affichage === "retard";
             return (
               <TableRow key={f.id}>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <Link
                     href={`/factures/${f.id}`}
                     className="font-mono font-medium hover:underline"
@@ -63,10 +63,10 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
                     {f.numero}
                   </Link>
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="whitespace-nowrap text-sm">
                   {formatDateFr(f.date_emission)}
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="whitespace-nowrap text-sm">
                   {formatDateFr(f.date_echeance)}
                 </TableCell>
                 <TableCell>
@@ -89,7 +89,7 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
                 <TableCell>
                   <StatutBadge statut={f.statut_affichage} />
                 </TableCell>
-                <TableCell className="text-right font-medium tabular-nums">
+                <TableCell className="whitespace-nowrap text-right font-medium tabular-nums">
                   {formatEuros(Number(f.total_ht))}
                 </TableCell>
                 <TableCell className="text-right">
