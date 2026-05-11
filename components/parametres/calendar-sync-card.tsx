@@ -5,6 +5,7 @@ import { Copy, RefreshCw, Loader2, Check, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 import { getOrCreateCalendarToken } from "@/lib/actions/profil";
+import { SUPABASE_URL } from "@/lib/supabase/config";
 import {
   Card,
   CardContent,
@@ -28,18 +29,20 @@ import {
 
 export function CalendarSyncCard({
   initialToken,
-  origin,
 }: {
   initialToken: string | null;
-  /** Origine absolue (https://...) calculée côté serveur */
-  origin: string;
 }) {
   const [token, setToken] = useState<string | null>(initialToken);
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
 
-  const url = token ? `${origin}/api/calendar/${token}` : null;
-  // Pour iOS, on propose aussi la variante webcal:// — abonnement direct.
+  // Le flux est servi par une Edge Function Supabase (domain *.supabase.co),
+  // qui contourne la Deployment Protection de Vercel — sinon iOS reçoit un
+  // 401 et le calendrier reste vide.
+  const url = token
+    ? `${SUPABASE_URL}/functions/v1/calendar-ics?token=${token}`
+    : null;
+  // Pour iOS, variante webcal:// — abonnement direct depuis Safari.
   const webcalUrl = url ? url.replace(/^https?:\/\//, "webcal://") : null;
 
   const handleGenerate = (regenerate: boolean) => {

@@ -1,63 +1,20 @@
-import { type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+// Supabase Edge Function : flux iCal public.
+//
+// Pourquoi cette fonction existe alors qu'on a déjà la route Next.js
+// /api/calendar/[token] : la "Deployment Protection" de Vercel renvoie
+// 401 sur toutes les URLs *.vercel.app, ce qui rend le flux iCal
+// inaccessible à l'app Calendrier d'iOS. On déplace donc l'endpoint sur
+// Supabase (no-verify-jwt = pas d'auth requise), ce qui le rend public.
+//
+// Sécurité : l'auth repose sur le token opaque (32 octets) dans l'URL.
+// La fonction Postgres calendar_events_for_token est SECURITY DEFINER et
+// filtre par token ; un token invalide renvoie 0 ligne.
 
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/config";
-import type { Database } from "@/types/database";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-/**
- * Flux iCal public (sans auth) — abonnement depuis l'app Calendrier d'iOS
- * ou Google Calendar. Les évènements sont filtrés via un token opaque,
- * vérifié par la fonction Postgres `calendar_events_for_token` qui
- * tourne en SECURITY DEFINER.
- *
- * URL : /api/calendar/{token}
- *
- * Sécurité : un token invalide retourne un calendrier vide (200 OK)
- * — pas de fuite d'information sur l'existence d'un compte.
- */
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { token: string } },
-) {
-  const token = decodeURIComponent(params.token).replace(/\.ics$/i, "");
-
-  // Client anonyme (pas de cookies, pas de session) — l'auth est portée
-  // par le token dans l'URL et la fonction Postgres.
-  const supabase = createServerClient<Database>(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY,
-    {
-      cookies: { getAll: () => [], setAll: () => {} },
-    },
-  );
-
-  let events: NonNullable<
-    Awaited<ReturnType<typeof supabase.rpc<"calendar_events_for_token">>>["data"]
-  > = [];
-
-  if (token && token.length >= 16) {
-    const { data } = await supabase.rpc("calendar_events_for_token", {
-      p_token: token,
-    });
-    if (data) events = data;
-  }
-
-  const ics = buildIcs(events);
-
-  return new Response(ics, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/calendar; charset=utf-8",
-      // Cache court : iOS rafraîchit toutes les ~15 min, on autorise
-      // un cache CDN bref pour absorber les pics tout en restant frais.
-      "Cache-Control": "public, max-age=300, s-maxage=300",
-      "Content-Disposition": 'inline; filename="facture-ae-agenda.ics"',
-    },
-  });
-}
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 type AgendaRow = {
   kind: string;
@@ -72,9 +29,39 @@ type AgendaRow = {
   facture_emise: boolean | null;
 };
 
+Deno.serve(async (req: Request) => {
+  const url = new URL(req.url);
+
+  // Token accepté via path (...calendar-ics/TOKEN[.ics]) ou query ?token=...
+  const pathMatch = url.pathname.match(/calendar-ics\/(.+?)(?:\.ics)?$/i);
+  const rawToken =
+    (pathMatch && pathMatch[1]) || url.searchParams.get("token") || "";
+  const token = rawToken.replace(/\.ics$/i, "");
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let events: AgendaRow[] = [];
+  if (token && token.length >= 16) {
+    const { data } = await supabase.rpc("calendar_events_for_token", {
+      p_token: token,
+    });
+    if (Array.isArray(data)) events = data as AgendaRow[];
+  }
+
+  const ics = buildIcs(events);
+
+  return new Response(ics, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/calendar; charset=utf-8",
+      "Cache-Control": "public, max-age=300, s-maxage=300",
+      "Content-Disposition": 'inline; filename="facture-ae-agenda.ics"',
+    },
+  });
+});
+
 function buildIcs(events: AgendaRow[]): string {
   const now = formatIcsTimestamp(new Date());
-
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -89,7 +76,6 @@ function buildIcs(events: AgendaRow[]): string {
 
   for (const ev of events) {
     const startCompact = ev.date_start.replace(/-/g, "");
-    // DTEND est exclusif pour les évènements all-day → +1 jour sur date_end
     const endExclusive = addOneDay(ev.date_end).replace(/-/g, "");
     const summary = buildSummary(ev);
     const description = buildDescription(ev);
@@ -119,8 +105,6 @@ function buildIcs(events: AgendaRow[]): string {
   }
 
   lines.push("END:VCALENDAR");
-
-  // iCal : lignes séparées par CRLF
   return lines.join("\r\n") + "\r\n";
 }
 
@@ -139,7 +123,6 @@ function buildSummary(ev: AgendaRow): string {
     const client = ev.client_nom ? ` — ${ev.client_nom}` : "";
     return `📋 ${ev.title}${client}`;
   }
-  // visite_maintenance
   const client = ev.client_nom ? ` — ${ev.client_nom}` : "";
   return `🔧 ${ev.title}${client}`;
 }
@@ -175,10 +158,6 @@ function labelStatutFacture(s: string): string {
   }
 }
 
-/**
- * Échappement iCal : virgules, points-virgules, antislashes et retours
- * à la ligne doivent être protégés (RFC 5545).
- */
 function escapeIcs(s: string): string {
   return s
     .replace(/\\/g, "\\\\")
@@ -187,18 +166,12 @@ function escapeIcs(s: string): string {
     .replace(/;/g, "\\;");
 }
 
-/**
- * Pliage des lignes longues (RFC 5545 : 75 octets max par ligne).
- * Les continuations commencent par un espace.
- */
 function foldLine(line: string): string {
   if (line.length <= 75) return line;
   const chunks: string[] = [];
   let i = 0;
-  // Première ligne : 75 caractères max
   chunks.push(line.slice(i, i + 75));
   i += 75;
-  // Suivantes : 74 caractères (le " " initial compte)
   while (i < line.length) {
     chunks.push(" " + line.slice(i, i + 74));
     i += 74;
@@ -207,7 +180,6 @@ function foldLine(line: string): string {
 }
 
 function formatIcsTimestamp(d: Date): string {
-  // YYYYMMDDTHHMMSSZ
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
     `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
