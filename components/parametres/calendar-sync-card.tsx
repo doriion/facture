@@ -39,8 +39,13 @@ export function CalendarSyncCard({
   // Le flux est servi par une Edge Function Supabase (domain *.supabase.co),
   // qui contourne la Deployment Protection de Vercel — sinon iOS reçoit un
   // 401 et le calendrier reste vide.
+  //
+  // URL en path-style se terminant par .ics : indispensable sur iOS pour
+  // que Safari déclenche le prompt « S'abonner à ce calendrier » au lieu
+  // d'importer le fichier comme un évènement unique (piège avec les query
+  // strings ?token=...).
   const url = token
-    ? `${SUPABASE_URL}/functions/v1/calendar-ics?token=${token}`
+    ? `${SUPABASE_URL}/functions/v1/calendar-ics/${token}.ics`
     : null;
   // Pour iOS, variante webcal:// — abonnement direct depuis Safari.
   const webcalUrl = url ? url.replace(/^https?:\/\//, "webcal://") : null;
