@@ -34,6 +34,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DureeBadge,
+  computeDureeJours,
+} from "@/components/agenda/duree-badge";
 
 export type ClientOption = { id: string; nom: string };
 
@@ -71,6 +75,9 @@ export function QuickInterventionDialog({
 
   const currentClient = watch("client_id");
   const currentType = watch("type");
+  const currentStart = watch("date_intervention");
+  const currentEnd = watch("date_fin");
+  const dureeJours = computeDureeJours(currentStart, currentEnd);
 
   async function onSubmit(values: InterventionFormValues) {
     setSubmitting(true);
@@ -104,33 +111,38 @@ export function QuickInterventionDialog({
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-4"
         >
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="date_intervention">Date (début) *</Label>
-              <Input
-                id="date_intervention"
-                type="date"
-                {...register("date_intervention")}
-              />
-              {errors.date_intervention && (
-                <p className="text-xs text-destructive">
-                  {errors.date_intervention.message}
-                </p>
-              )}
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="date_intervention">Date (début) *</Label>
+                <Input
+                  id="date_intervention"
+                  type="date"
+                  {...register("date_intervention")}
+                />
+                {errors.date_intervention && (
+                  <p className="text-xs text-destructive">
+                    {errors.date_intervention.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="date_fin">
+                  Date de fin (si plusieurs jours)
+                </Label>
+                <Input
+                  id="date_fin"
+                  type="date"
+                  {...register("date_fin")}
+                />
+                {errors.date_fin && (
+                  <p className="text-xs text-destructive">
+                    {errors.date_fin.message}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="date_fin">Date de fin (si plusieurs jours)</Label>
-              <Input
-                id="date_fin"
-                type="date"
-                {...register("date_fin")}
-              />
-              {errors.date_fin && (
-                <p className="text-xs text-destructive">
-                  {errors.date_fin.message}
-                </p>
-              )}
-            </div>
+            <DureeBadge jours={dureeJours} />
           </div>
 
           <div className="space-y-1.5">

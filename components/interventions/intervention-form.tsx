@@ -36,6 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DureeBadge,
+  computeDureeJours,
+} from "@/components/agenda/duree-badge";
 
 import type { Database } from "@/types/database";
 
@@ -165,6 +169,11 @@ export function InterventionForm({
                 {errors.date_fin.message}
               </p>
             )}
+          </div>
+          <div className="md:col-span-2">
+            <DureeBadge
+              jours={computeDureeJours(watch("date_intervention"), watch("date_fin"))}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="type">Type *</Label>
