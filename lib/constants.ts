@@ -11,6 +11,7 @@ import {
   Package,
   Wrench,
   CalendarClock,
+  CalendarDays,
   Settings,
 } from "lucide-react";
 
@@ -30,6 +31,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/dashboard",
     label: "Tableau de bord",
     icon: LayoutDashboard,
+  },
+  {
+    href: "/agenda",
+    label: "Agenda",
+    icon: CalendarDays,
+    description: "Vue calendrier des interventions et facturation",
   },
   {
     href: "/factures",
