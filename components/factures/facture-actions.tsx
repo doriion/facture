@@ -93,11 +93,7 @@ export function FactureActions({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" asChild>
-        <a
-          href={`/api/factures/${factureId}/pdf`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href={`/api/factures/${factureId}/pdf`} download>
           <Download className="size-4" />
           Télécharger PDF
         </a>

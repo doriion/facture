@@ -109,11 +109,7 @@ export function DevisActions({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" asChild>
-        <a
-          href={`/api/devis/${devisId}/pdf`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href={`/api/devis/${devisId}/pdf`} download>
           <Download className="size-4" />
           Télécharger PDF
         </a>

@@ -104,7 +104,7 @@ export async function GET(
   return new NextResponse(webStream, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${factureClean.numero ?? "facture"}.pdf"`,
+      "Content-Disposition": `attachment; filename="${factureClean.numero ?? "facture"}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

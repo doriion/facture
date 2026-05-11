@@ -96,7 +96,7 @@ export async function GET(
   return new NextResponse(webStream, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${devisClean.numero ?? "devis"}.pdf"`,
+      "Content-Disposition": `attachment; filename="${devisClean.numero ?? "devis"}.pdf"`,
       "Cache-Control": "no-store",
     },
   });
