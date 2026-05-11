@@ -82,7 +82,14 @@ function eventColorClasses(e: AgendaEvent): string {
 
 function eventShortLabel(e: AgendaEvent): string {
   if (e.kind === "intervention") {
-    return e.client_nom ? `${e.client_nom}` : e.title;
+    // Priorité à la description saisie par l'utilisateur (c'est l'info la
+    // plus parlante), avec le client en complément si la place reste.
+    if (e.description) {
+      return e.client_nom
+        ? `${e.description} · ${e.client_nom}`
+        : e.description;
+    }
+    return e.client_nom ?? e.title;
   }
   if (e.kind === "facture_prestation") {
     return `${e.numero ?? ""} ${e.client_nom ? "· " + e.client_nom : ""}`.trim();
@@ -262,10 +269,10 @@ export function AgendaCalendar({
                         href={e.href}
                         onClick={(ev) => ev.stopPropagation()}
                         className={cn(
-                          "block truncate rounded px-1.5 py-0.5 text-[11px] leading-tight transition-colors",
+                          "block line-clamp-2 break-words rounded px-1.5 py-0.5 text-[11px] leading-tight transition-colors",
                           eventColorClasses(e),
                         )}
-                        title={`${e.title}${e.client_nom ? " — " + e.client_nom : ""}`}
+                        title={`${e.description ? e.description + " — " : ""}${e.client_nom ?? e.title}`}
                       >
                         {eventShortLabel(e)}
                       </Link>

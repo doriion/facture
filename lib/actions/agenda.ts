@@ -14,6 +14,8 @@ export type AgendaEvent = {
   date_start: string; // YYYY-MM-DD
   date_end: string;   // YYYY-MM-DD (= date_start si single-day)
   title: string;
+  /** Description libre saisie par l'utilisateur (sépare le « titre fallback » du contenu réellement tapé) */
+  description: string | null;
   client_nom: string | null;
   href: string;
   statut?: string | null;
@@ -131,6 +133,7 @@ export async function getAgendaEvents(
       date_start: it.date_intervention,
       date_end: end,
       title: it.description || it.type || "Intervention",
+      description: it.description,
       client_nom: it.client?.nom ?? null,
       href: `/interventions/${it.id}`,
       facture_emise: Boolean(it.facture_id),
@@ -155,6 +158,7 @@ export async function getAgendaEvents(
       date_start: f.date_prestation,
       date_end: f.date_prestation_fin ?? f.date_prestation,
       title: `Facture ${f.numero}`,
+      description: null,
       client_nom: f.client?.nom ?? null,
       href: `/factures/${f.id}`,
       statut: f.statut,
@@ -187,6 +191,7 @@ export async function getAgendaEvents(
       date_start: start,
       date_end: end,
       title: `Devis ${d.numero}`,
+      description: null,
       client_nom: d.client?.nom ?? null,
       href: `/devis/${d.id}`,
       statut: d.statut,
@@ -210,6 +215,7 @@ export async function getAgendaEvents(
       date_start: c.prochaine_visite,
       date_end: c.prochaine_visite,
       title: c.intitule || "Visite maintenance",
+      description: null,
       client_nom: c.client?.nom ?? null,
       href: `/maintenance/${c.id}`,
     });
