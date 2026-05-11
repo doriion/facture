@@ -1,16 +1,66 @@
-import { LayoutDashboard } from "lucide-react";
-
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { getDashboardData } from "@/lib/actions/dashboard";
+import { KpiCards } from "@/components/dashboard/kpi-cards";
+import { SeuilTvaCard } from "@/components/dashboard/seuil-tva-card";
+import { CaMensuelChart } from "@/components/dashboard/ca-mensuel-chart";
+import { RepartitionActiviteChart } from "@/components/dashboard/repartition-activite-chart";
+import { AlertesSection } from "@/components/dashboard/alertes-section";
+import { TopClients } from "@/components/dashboard/top-clients";
+import {
+  DevisRecentsCard,
+  FacturesRecentesCard,
+} from "@/components/dashboard/recents-lists";
 
 export const metadata = { title: "Tableau de bord — Facture AE" };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const data = await getDashboardData();
+
   return (
-    <PlaceholderPage
-      title="Tableau de bord"
-      description="Vue d'ensemble de votre activité — chiffre d'affaires, factures, devis."
-      phase="en Phase 7"
-      icon={LayoutDashboard}
-    />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Tableau de bord</h1>
+        <p className="text-sm text-muted-foreground">
+          Vue d'ensemble de votre activité — année {data.annee}
+        </p>
+      </div>
+
+      <KpiCards
+        caMois={data.caMois}
+        caMoisPrecedent={data.caMoisPrecedent}
+        caAnnee={data.caAnnee}
+        nbFacturesImpayees={data.nbFacturesImpayees}
+        montantImpaye={data.montantImpaye}
+        nbDevisEnAttente={data.nbDevisEnAttente}
+        tauxConversionDevis={data.tauxConversionDevis}
+        annee={data.annee}
+      />
+
+      <SeuilTvaCard
+        caCalendrierAnnee={data.caCalendrierAnnee}
+        seuilTva={data.seuilTva}
+        pourcentageSeuilTva={data.pourcentageSeuilTva}
+        annee={data.annee}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <CaMensuelChart data={data.caParMois} />
+        <RepartitionActiviteChart
+          data={data.caParActivite}
+          annee={data.annee}
+        />
+      </div>
+
+      <AlertesSection
+        facturesEnRetard={data.facturesEnRetard}
+        devisExpirantBientot={data.devisExpirantBientot}
+        prochainesVisitesMaintenance={data.prochainesVisitesMaintenance}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <FacturesRecentesCard factures={data.facturesRecentes} />
+        <DevisRecentsCard devis={data.devisRecents} />
+        <TopClients clients={data.topClients} annee={data.annee} />
+      </div>
+    </div>
   );
 }
