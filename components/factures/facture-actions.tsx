@@ -212,14 +212,53 @@ export function FactureActions({
       )}
 
       {statut === "annulee" && (
-        <Button
-          variant="outline"
-          onClick={() => changeStatut("brouillon", "Facture restaurée en brouillon")}
-          disabled={pending === "brouillon"}
-        >
-          <Undo2 className="size-4" />
-          Restaurer en brouillon
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            onClick={() => changeStatut("brouillon", "Facture restaurée en brouillon")}
+            disabled={pending === "brouillon"}
+          >
+            <Undo2 className="size-4" />
+            Restaurer en brouillon
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="text-destructive">
+                <Trash2 className="size-4" />
+                Supprimer définitivement
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Supprimer définitivement cette facture ?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  La facture <strong>{numero}</strong> sera supprimée
+                  définitivement de la base. Cette action est irréversible.
+                  Possible uniquement parce qu'elle est annulée — sans valeur
+                  comptable, sa suppression n'a pas d'impact légal.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onDelete();
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={pending === "delete"}
+                >
+                  {pending === "delete" && (
+                    <Loader2 className="size-4 animate-spin" />
+                  )}
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )}
     </div>
   );

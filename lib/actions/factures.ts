@@ -411,11 +411,17 @@ export async function deleteFactureAction(id: string): Promise<ActionResult> {
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Facture introuvable." };
-  if (existing.statut !== "brouillon") {
+  // Suppression autorisée pour brouillons et factures annulées.
+  // Une facture annulée n'a aucune valeur comptable (le numéro a déjà
+  // été « consommé » mais la facture elle-même est sans effet), donc
+  // sa suppression définitive est sans conséquence légale.
+  // Les statuts envoyée / payée / retard sont protégés : il faut d'abord
+  // les annuler.
+  if (existing.statut !== "brouillon" && existing.statut !== "annulee") {
     return {
       ok: false,
       error:
-        "Seuls les brouillons peuvent être supprimés. Pour les autres, utilisez « Annuler ».",
+        "Cette facture doit d'abord être annulée avant d'être supprimée.",
     };
   }
   const { error } = await supabase.from("factures").delete().eq("id", id);
