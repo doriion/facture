@@ -10,6 +10,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getFrenchHolidays } from "@/lib/holidays-fr";
+import {
+  getColorClasses,
+  getSwatchClass,
+  DEFAULT_AGENDA_COULEURS,
+  type AgendaCouleurs,
+} from "@/lib/agenda-colors";
 import type { AgendaEvent, AgendaData } from "@/lib/actions/agenda";
 import {
   QuickInterventionDialog,
@@ -53,33 +59,32 @@ function eventCoversDate(e: AgendaEvent, ymd: string): boolean {
   return ymd >= e.date_start && ymd <= e.date_end;
 }
 
-function eventColorClasses(e: AgendaEvent): string {
+function eventColorClasses(e: AgendaEvent, couleurs: AgendaCouleurs): string {
   if (e.kind === "intervention") {
-    return e.facture_emise
-      ? "bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-100"
-      : "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-100";
+    return getColorClasses(
+      e.facture_emise
+        ? couleurs.intervention_facturee
+        : couleurs.intervention_a_facturer,
+    );
   }
   if (e.kind === "facture_prestation") {
-    switch (e.statut) {
-      case "payee":
-        return "bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-100";
-      case "retard":
-        return "bg-red-100 text-red-900 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-100";
-      case "envoyee":
-        return "bg-blue-100 text-blue-900 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-100";
-      case "brouillon":
-        return "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200";
-      case "annulee":
-        return "bg-slate-100 text-slate-500 line-through hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400";
-      default:
-        return "bg-blue-100 text-blue-900 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-100";
+    // Le statut nuance la couleur de base. Pour conserver une lecture
+    // métier essentielle, on garde les statuts spéciaux en hard-coded
+    // (retard = rouge, annulée = barré) ; le statut "courant" utilise
+    // la couleur utilisateur.
+    if (e.statut === "retard") {
+      return "bg-red-100 text-red-900 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-100";
     }
+    if (e.statut === "annulee") {
+      return "bg-slate-100 text-slate-500 line-through hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400";
+    }
+    return getColorClasses(couleurs.facture);
   }
   if (e.kind === "devis_planifie") {
-    return "bg-violet-100 text-violet-900 hover:bg-violet-200 dark:bg-violet-900/40 dark:text-violet-100";
+    return getColorClasses(couleurs.devis);
   }
   // visite_maintenance
-  return "bg-cyan-100 text-cyan-900 hover:bg-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-100";
+  return getColorClasses(couleurs.maintenance);
 }
 
 /** Convertit "HH:MM:SS" en "HH:MM" pour un affichage compact. */
@@ -120,9 +125,11 @@ function eventShortLabel(e: AgendaEvent): string {
 export function AgendaCalendar({
   data,
   clients,
+  couleurs = DEFAULT_AGENDA_COULEURS,
 }: {
   data: AgendaData;
   clients: ClientOption[];
+  couleurs?: AgendaCouleurs;
 }) {
   const router = useRouter();
   const { year, month, events, stats } = data;
@@ -221,7 +228,7 @@ export function AgendaCalendar({
             <Plus className="size-4" />
             Planifier
           </Button>
-          <Legend />
+          <Legend couleurs={couleurs} />
         </div>
       </div>
 
@@ -333,7 +340,7 @@ export function AgendaCalendar({
                       const isIntervention = e.kind === "intervention";
                       const commonClass = cn(
                         "block w-full text-left line-clamp-2 break-words rounded px-1.5 py-0.5 text-[11px] leading-tight transition-colors",
-                        eventColorClasses(e),
+                        eventColorClasses(e, couleurs),
                       );
                       const tooltip = `${e.description ? e.description + " — " : ""}${e.client_nom ?? e.title}${isIntervention ? "\n(Cliquez pour modifier)" : ""}`;
                       // Pour les interventions : clic ouvre le dialogue d'édition
@@ -424,17 +431,38 @@ function StatCard({
   );
 }
 
-function Legend() {
+function Legend({ couleurs }: { couleurs: AgendaCouleurs }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-      <LegendDot className="bg-emerald-200" label="Facturée / payée" />
-      <LegendDot className="bg-amber-200" label="À facturer" />
-      <LegendDot className="bg-blue-200" label="Facture envoyée" />
+      <LegendDot
+        className={getSwatchClass(couleurs.intervention_facturee)}
+        label="Facturée / payée"
+      />
+      <LegendDot
+        className={getSwatchClass(couleurs.intervention_a_facturer)}
+        label="À facturer"
+      />
+      <LegendDot
+        className={getSwatchClass(couleurs.facture)}
+        label="Facture"
+      />
       <LegendDot className="bg-red-200" label="En retard" />
-      <LegendDot className="bg-violet-200" label="Devis planifié" />
-      <LegendDot className="bg-cyan-200" label="Maintenance" />
-      <LegendDot className="bg-rose-100 ring-1 ring-rose-300" label="Jour férié" />
-      <LegendDot className="bg-orange-100 ring-1 ring-orange-300" label="Week-end" />
+      <LegendDot
+        className={getSwatchClass(couleurs.devis)}
+        label="Devis planifié"
+      />
+      <LegendDot
+        className={getSwatchClass(couleurs.maintenance)}
+        label="Maintenance"
+      />
+      <LegendDot
+        className="bg-rose-100 ring-1 ring-rose-300"
+        label="Jour férié"
+      />
+      <LegendDot
+        className="bg-orange-100 ring-1 ring-orange-300"
+        label="Week-end"
+      />
     </div>
   );
 }

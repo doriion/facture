@@ -593,6 +593,7 @@ export type Database = {
           banque_nom: string | null;
           bic: string | null;
           calendar_token: string | null;
+          agenda_couleurs: Json;
           code_ape: string | null;
           code_postal: string | null;
           conditions_paiement_default: string | null;
@@ -630,6 +631,7 @@ export type Database = {
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;
+          agenda_couleurs?: Json;
           code_ape?: string | null;
           code_postal?: string | null;
           conditions_paiement_default?: string | null;
@@ -667,6 +669,7 @@ export type Database = {
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;
+          agenda_couleurs?: Json;
           code_ape?: string | null;
           code_postal?: string | null;
           conditions_paiement_default?: string | null;

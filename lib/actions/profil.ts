@@ -217,3 +217,49 @@ export async function getOrCreateCalendarToken(
   }
   return { ok: true, data };
 }
+
+/**
+ * Sauvegarde la mapping catégorie → couleur d'agenda choisie par l'user.
+ * Les valeurs sont validées côté action (whitelist de couleurs).
+ */
+export async function saveAgendaCouleursAction(
+  couleurs: Record<string, string>,
+): Promise<ActionResult> {
+  const ALLOWED_COLORS = [
+    "emerald", "amber", "blue", "red", "violet", "cyan",
+    "rose", "indigo", "yellow", "orange", "fuchsia", "slate",
+  ];
+  const ALLOWED_CATEGORIES = [
+    "intervention_a_facturer",
+    "intervention_facturee",
+    "facture",
+    "devis",
+    "maintenance",
+  ];
+
+  const clean: Record<string, string> = {};
+  for (const cat of ALLOWED_CATEGORIES) {
+    const v = couleurs[cat];
+    if (typeof v === "string" && ALLOWED_COLORS.includes(v)) {
+      clean[cat] = v;
+    }
+  }
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { error } = await supabase
+    .from("profil_entreprise")
+    .upsert(
+      { user_id: user.id, agenda_couleurs: clean },
+      { onConflict: "user_id" },
+    );
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/parametres");
+  revalidatePath("/agenda");
+  return { ok: true, data: undefined };
+}
