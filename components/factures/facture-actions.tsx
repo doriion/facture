@@ -237,14 +237,64 @@ export function FactureActions({
       )}
 
       {statut === "annulee" && (
-        <Button
-          variant="outline"
-          onClick={() => changeStatut("brouillon", "Facture restaurée en brouillon")}
-          disabled={pending === "brouillon"}
-        >
-          <Undo2 className="size-4" />
-          Restaurer en brouillon
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            onClick={() => changeStatut("brouillon", "Facture restaurée en brouillon")}
+            disabled={pending === "brouillon"}
+          >
+            <Undo2 className="size-4" />
+            Restaurer en brouillon
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-destructive">
+                <Trash2 className="size-4" />
+                Supprimer (test)
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Supprimer définitivement {numero} ?
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2">
+                    <p>
+                      ⚠️ <strong>À n'utiliser qu'en phase de test.</strong> En usage
+                      réel, garde plutôt les factures annulées en base : leur
+                      conservation justifie le « trou » dans la séquence des
+                      numéros en cas de contrôle fiscal.
+                    </p>
+                    <p>
+                      La facture <strong>{numero}</strong> sera supprimée
+                      définitivement, mais le numéro reste « consommé » par le
+                      compteur. Pour repartir d'une numérotation propre,
+                      utilise « Réinitialiser la numérotation » dans Paramètres
+                      après avoir supprimé toutes les factures de l'année.
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onDelete();
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={pending === "delete"}
+                >
+                  {pending === "delete" && (
+                    <Loader2 className="size-4 animate-spin" />
+                  )}
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )}
 
       <Dialog open={annulerOpen} onOpenChange={setAnnulerOpen}>

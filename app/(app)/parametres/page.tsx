@@ -2,6 +2,7 @@ import { ProfilForm } from "@/components/parametres/profil-form";
 import { LogoUpload } from "@/components/parametres/logo-upload";
 import { CalendarSyncCard } from "@/components/parametres/calendar-sync-card";
 import { AgendaCouleursCard } from "@/components/parametres/agenda-couleurs-card";
+import { ResetNumerotationCard } from "@/components/parametres/reset-numerotation-card";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import {
   Card,
@@ -51,6 +52,8 @@ export default async function ParametresPage() {
       />
 
       <ProfilForm profil={profil} />
+
+      <ResetNumerotationCard />
     </div>
   );
 }

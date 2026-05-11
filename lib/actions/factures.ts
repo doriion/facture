@@ -431,20 +431,72 @@ export async function deleteFactureAction(id: string): Promise<ActionResult> {
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Facture introuvable." };
-  // Seuls les brouillons sont supprimables. Toute facture qui a porté un
-  // numéro consommé (envoyée, payée, retard, annulée) doit rester en base
-  // pour assurer la traçabilité fiscale (numérotation séquentielle sans
-  // rupture inexpliquée — art. 242 nonies A annexe II CGI).
-  if (existing.statut !== "brouillon") {
+  // Suppression autorisée pour brouillons et factures annulées.
+  // - Brouillon : pas de numéro réellement utilisé en pratique.
+  // - Annulée : utile pour purger les tests. ⚠️ En usage réel, conserver
+  //   la facture annulée est recommandé pour justifier le « trou » dans
+  //   la séquence des numéros (art. 242 nonies A annexe II CGI).
+  // Les statuts envoyée / payée / retard sont protégés : annulation
+  // obligatoire au préalable.
+  if (existing.statut !== "brouillon" && existing.statut !== "annulee") {
     return {
       ok: false,
       error:
-        "Seuls les brouillons peuvent être supprimés. Les factures annulées sont conservées pour la traçabilité fiscale.",
+        "Cette facture doit d'abord être annulée avant d'être supprimée.",
     };
   }
   const { error } = await supabase.from("factures").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/factures");
+  return { ok: true, data: undefined };
+}
+
+/**
+ * Réinitialise le compteur de numérotation pour un type de document
+ * (facture ou devis) et une année. Utilisé après suppression de données
+ * de test pour repartir d'une séquence propre.
+ *
+ * ⚠️ Refuse l'opération s'il reste des documents non supprimés pour
+ * cette année afin d'éviter les collisions de numéros.
+ */
+export async function resetNumerotationAction(
+  type: "facture" | "devis",
+  annee: number,
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const yearStart = `${annee}-01-01`;
+  const yearEnd = `${annee + 1}-01-01`;
+  const table = type === "facture" ? "factures" : "devis";
+  const { count, error: countErr } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .gte("date_emission", yearStart)
+    .lt("date_emission", yearEnd);
+
+  if (countErr) return { ok: false, error: countErr.message };
+  if ((count ?? 0) > 0) {
+    return {
+      ok: false,
+      error: `Il reste ${count} ${type}(s) en base pour ${annee}. Supprimez-les d'abord (en passant par "Annulé" → "Supprimer définitivement" si nécessaire).`,
+    };
+  }
+
+  const { error } = await supabase
+    .from("numerotation")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("annee", annee)
+    .eq("type_document", type);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/factures");
+  revalidatePath("/devis");
+  revalidatePath("/parametres");
   return { ok: true, data: undefined };
 }
 
