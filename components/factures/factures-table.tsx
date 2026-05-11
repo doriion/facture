@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatutBadge } from "@/components/factures/statut-badge";
+import { MarkAsPaidButton } from "@/components/factures/mark-as-paid-button";
 import { formatDateFr, formatEuros } from "@/lib/format";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 
@@ -45,50 +46,58 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
             <TableHead>Activité</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead className="text-right">Total HT</TableHead>
+            <TableHead className="w-0" />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {factures.map((f) => (
-            <TableRow key={f.id}>
-              <TableCell>
-                <Link
-                  href={`/factures/${f.id}`}
-                  className="font-mono font-medium hover:underline"
-                >
-                  {f.numero}
-                </Link>
-              </TableCell>
-              <TableCell className="text-sm">
-                {formatDateFr(f.date_emission)}
-              </TableCell>
-              <TableCell className="text-sm">
-                {formatDateFr(f.date_echeance)}
-              </TableCell>
-              <TableCell>
-                {f.client ? (
+          {factures.map((f) => {
+            const canMarkPaid =
+              f.statut === "envoyee" || f.statut_affichage === "retard";
+            return (
+              <TableRow key={f.id}>
+                <TableCell>
                   <Link
-                    href={`/clients/${f.client.id}`}
-                    className="hover:underline"
+                    href={`/factures/${f.id}`}
+                    className="font-mono font-medium hover:underline"
                   >
-                    {f.client.nom}
+                    {f.numero}
                   </Link>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </TableCell>
-              <TableCell className="text-sm">
-                {LABELS_TYPE_ACTIVITE[
-                  f.type_activite as keyof typeof LABELS_TYPE_ACTIVITE
-                ] ?? f.type_activite}
-              </TableCell>
-              <TableCell>
-                <StatutBadge statut={f.statut_affichage} />
-              </TableCell>
-              <TableCell className="text-right font-medium tabular-nums">
-                {formatEuros(Number(f.total_ht))}
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {formatDateFr(f.date_emission)}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {formatDateFr(f.date_echeance)}
+                </TableCell>
+                <TableCell>
+                  {f.client ? (
+                    <Link
+                      href={`/clients/${f.client.id}`}
+                      className="hover:underline"
+                    >
+                      {f.client.nom}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {LABELS_TYPE_ACTIVITE[
+                    f.type_activite as keyof typeof LABELS_TYPE_ACTIVITE
+                  ] ?? f.type_activite}
+                </TableCell>
+                <TableCell>
+                  <StatutBadge statut={f.statut_affichage} />
+                </TableCell>
+                <TableCell className="text-right font-medium tabular-nums">
+                  {formatEuros(Number(f.total_ht))}
+                </TableCell>
+                <TableCell className="text-right">
+                  {canMarkPaid && <MarkAsPaidButton factureId={f.id} />}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
