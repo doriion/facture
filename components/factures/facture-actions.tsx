@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Ban,
   Check,
+  Copy,
   Download,
   Loader2,
   Send,
@@ -15,6 +16,7 @@ import { toast } from "sonner";
 
 import {
   deleteFactureAction,
+  duplicateFactureAction,
   setFactureStatutAction,
 } from "@/lib/actions/factures";
 import { Button } from "@/components/ui/button";
@@ -74,6 +76,20 @@ export function FactureActions({
     }
   }
 
+  async function onDuplicate() {
+    setPending("duplicate");
+    const result = await duplicateFactureAction(factureId);
+    setPending(null);
+    if (result.ok) {
+      toast.success(`Facture ${result.data.numero} créée`, {
+        description: "Brouillon dupliqué — modifiez avant envoi.",
+      });
+      router.push(`/factures/${result.data.factureId}`);
+    } else {
+      toast.error("Erreur", { description: result.error });
+    }
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" asChild>
@@ -85,6 +101,19 @@ export function FactureActions({
           <Download className="size-4" />
           Télécharger PDF
         </a>
+      </Button>
+
+      <Button
+        variant="outline"
+        onClick={onDuplicate}
+        disabled={pending === "duplicate"}
+      >
+        {pending === "duplicate" ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Copy className="size-4" />
+        )}
+        Dupliquer
       </Button>
 
       {statut === "brouillon" && (

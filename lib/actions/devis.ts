@@ -301,6 +301,103 @@ export async function setDevisStatutAction(
 /**
  * Supprime un devis (uniquement les brouillons).
  */
+/**
+ * Duplique un devis existant. La copie est créée en brouillon avec un
+ * nouveau numéro, date d'émission = aujourd'hui, validité + 3 mois.
+ * Le lien éventuel vers une facture (devis converti) n'est pas recopié.
+ */
+export async function duplicateDevisAction(
+  id: string,
+): Promise<ActionResult<{ devisId: string; numero: string }>> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { data: source } = await supabase
+    .from("devis")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (!source) return { ok: false, error: "Devis introuvable." };
+
+  const { data: lignes } = await supabase
+    .from("devis_lignes")
+    .select("*")
+    .eq("devis_id", id)
+    .order("ordre");
+
+  // Nouveau numéro
+  const { data: numero, error: numeroErr } = await supabase.rpc(
+    "next_document_number",
+    { p_type: "devis" },
+  );
+  if (numeroErr || !numero) {
+    return {
+      ok: false,
+      error: numeroErr?.message ?? "Échec de la numérotation.",
+    };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const validite = new Date(Date.now() + 90 * 24 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: devis, error: insertErr } = await supabase
+    .from("devis")
+    .insert({
+      user_id: user.id,
+      numero,
+      client_id: source.client_id,
+      date_emission: today,
+      date_validite: validite,
+      date_debut_travaux: null,
+      duree_estimee_jours: source.duree_estimee_jours,
+      type_activite: source.type_activite,
+      statut: "brouillon",
+      total_ht: source.total_ht,
+      conditions: source.conditions,
+      notes: `Dupliqué depuis le devis ${source.numero}.`,
+      equipement_info: source.equipement_info,
+      performances_energetiques: source.performances_energetiques,
+      aides_financieres: source.aides_financieres,
+      facture_id: null,
+    })
+    .select("id, numero")
+    .single();
+
+  if (insertErr || !devis) {
+    return {
+      ok: false,
+      error: insertErr?.message ?? "Échec de la duplication.",
+    };
+  }
+
+  if (lignes && lignes.length > 0) {
+    const lignesPayload = lignes.map((l, idx) => ({
+      user_id: user.id,
+      devis_id: devis.id,
+      ordre: idx,
+      designation: l.designation,
+      quantite: Number(l.quantite),
+      prix_unitaire_ht: Number(l.prix_unitaire_ht),
+      total_ht: Number(l.total_ht),
+    }));
+    const { error: lignesErr } = await supabase
+      .from("devis_lignes")
+      .insert(lignesPayload);
+    if (lignesErr) {
+      await supabase.from("devis").delete().eq("id", devis.id);
+      return { ok: false, error: lignesErr.message };
+    }
+  }
+
+  revalidatePath("/devis");
+  return { ok: true, data: { devisId: devis.id, numero: devis.numero } };
+}
+
 export async function deleteDevisAction(id: string): Promise<ActionResult> {
   const supabase = createClient();
   const { data: existing } = await supabase

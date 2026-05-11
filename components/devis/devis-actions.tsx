@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check,
+  Copy,
   Download,
   FileText,
   Loader2,
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import {
   convertirDevisEnFactureAction,
   deleteDevisAction,
+  duplicateDevisAction,
   setDevisStatutAction,
 } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
@@ -90,6 +92,20 @@ export function DevisActions({
     }
   }
 
+  async function onDuplicate() {
+    setPending("duplicate");
+    const result = await duplicateDevisAction(devisId);
+    setPending(null);
+    if (result.ok) {
+      toast.success(`Devis ${result.data.numero} créé`, {
+        description: "Brouillon dupliqué — modifiez avant envoi.",
+      });
+      router.push(`/devis/${result.data.devisId}`);
+    } else {
+      toast.error("Erreur", { description: result.error });
+    }
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" asChild>
@@ -101,6 +117,19 @@ export function DevisActions({
           <Download className="size-4" />
           Télécharger PDF
         </a>
+      </Button>
+
+      <Button
+        variant="outline"
+        onClick={onDuplicate}
+        disabled={pending === "duplicate"}
+      >
+        {pending === "duplicate" ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Copy className="size-4" />
+        )}
+        Dupliquer
       </Button>
 
       {factureId && (

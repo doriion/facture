@@ -305,6 +305,102 @@ export async function setFactureStatutAction(
  * Supprime une facture (uniquement les brouillons — les autres doivent
  * être annulées pour conserver la traçabilité légale).
  */
+/**
+ * Duplique une facture existante : recopie l'en-tête, les lignes,
+ * l'équipement, les aides. La copie est créée en brouillon avec un
+ * nouveau numéro et une date d'émission = aujourd'hui (échéance +30j).
+ * Le lien vers le devis source éventuel n'est pas recopié (la nouvelle
+ * facture est autonome).
+ */
+export async function duplicateFactureAction(
+  id: string,
+): Promise<ActionResult<{ factureId: string; numero: string }>> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { data: source } = await supabase
+    .from("factures")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (!source) return { ok: false, error: "Facture introuvable." };
+
+  const { data: lignes } = await supabase
+    .from("factures_lignes")
+    .select("*")
+    .eq("facture_id", id)
+    .order("ordre");
+
+  // Nouveau numéro
+  const { data: numero, error: numeroErr } = await supabase.rpc(
+    "next_document_number",
+    { p_type: "facture" },
+  );
+  if (numeroErr || !numero) {
+    return {
+      ok: false,
+      error: numeroErr?.message ?? "Échec de la numérotation.",
+    };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: facture, error: insertErr } = await supabase
+    .from("factures")
+    .insert({
+      user_id: user.id,
+      numero,
+      client_id: source.client_id,
+      date_emission: today,
+      date_echeance: echeance,
+      date_prestation: null,
+      type_activite: source.type_activite,
+      statut: "brouillon",
+      total_ht: source.total_ht,
+      conditions_paiement: source.conditions_paiement,
+      notes: `Dupliquée depuis la facture ${source.numero}.`,
+      equipement_info: source.equipement_info,
+      aides_financieres: source.aides_financieres,
+    })
+    .select("id, numero")
+    .single();
+
+  if (insertErr || !facture) {
+    return {
+      ok: false,
+      error: insertErr?.message ?? "Échec de la duplication.",
+    };
+  }
+
+  if (lignes && lignes.length > 0) {
+    const lignesPayload = lignes.map((l, idx) => ({
+      user_id: user.id,
+      facture_id: facture.id,
+      ordre: idx,
+      designation: l.designation,
+      quantite: Number(l.quantite),
+      prix_unitaire_ht: Number(l.prix_unitaire_ht),
+      total_ht: Number(l.total_ht),
+    }));
+    const { error: lignesErr } = await supabase
+      .from("factures_lignes")
+      .insert(lignesPayload);
+    if (lignesErr) {
+      await supabase.from("factures").delete().eq("id", facture.id);
+      return { ok: false, error: lignesErr.message };
+    }
+  }
+
+  revalidatePath("/factures");
+  return { ok: true, data: { factureId: facture.id, numero: facture.numero } };
+}
+
 export async function deleteFactureAction(id: string): Promise<ActionResult> {
   const supabase = createClient();
   const { data: existing } = await supabase
