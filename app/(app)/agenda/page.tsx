@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { Smartphone } from "lucide-react";
+
 import { getAgendaEvents } from "@/lib/actions/agenda";
 import { listClients } from "@/lib/actions/clients";
 import { AgendaCalendar } from "@/components/agenda/agenda-calendar";
@@ -35,13 +38,22 @@ export default async function AgendaPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
-        <p className="text-sm text-muted-foreground">
-          Vue calendrier de vos interventions, prestations facturées, devis
-          planifiés et visites de maintenance. Repérez en un coup d'œil les
-          interventions à facturer.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
+          <p className="text-sm text-muted-foreground">
+            Vue calendrier de vos interventions, prestations facturées, devis
+            planifiés et visites de maintenance. Repérez en un coup d'œil les
+            interventions à facturer.
+          </p>
+        </div>
+        <Link
+          href="/parametres#calendar-sync"
+          className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+        >
+          <Smartphone className="size-3.5" />
+          Synchroniser avec mon téléphone
+        </Link>
       </div>
 
       <AgendaCalendar data={data} clients={clients} />

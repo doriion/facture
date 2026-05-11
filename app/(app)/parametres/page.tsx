@@ -1,5 +1,8 @@
+import { headers } from "next/headers";
+
 import { ProfilForm } from "@/components/parametres/profil-form";
 import { LogoUpload } from "@/components/parametres/logo-upload";
+import { CalendarSyncCard } from "@/components/parametres/calendar-sync-card";
 import {
   Card,
   CardContent,
@@ -18,6 +21,12 @@ export const metadata = { title: "Paramètres — Facture AE" };
 export default async function ParametresPage() {
   const profil = await getProfil();
   const logoUrl = await getLogoUrl(profil?.logo_url);
+
+  // Origine absolue pour construire l'URL d'abonnement iCal.
+  const h = headers();
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost";
+  const origin = `${proto}://${host}`;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -40,6 +49,11 @@ export default async function ParametresPage() {
           <LogoUpload currentLogoUrl={logoUrl} />
         </CardContent>
       </Card>
+
+      <CalendarSyncCard
+        initialToken={profil?.calendar_token ?? null}
+        origin={origin}
+      />
 
       <ProfilForm profil={profil} />
     </div>

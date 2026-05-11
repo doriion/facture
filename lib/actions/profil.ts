@@ -197,3 +197,23 @@ export async function getLogoUrl(path: string | null | undefined) {
     .createSignedUrl(path, 3600);
   return data?.signedUrl ?? null;
 }
+
+/**
+ * Renvoie le token iCal de l'utilisateur, en le créant s'il n'existe pas.
+ * Si `regenerate = true`, force la regénération (invalide l'URL précédente).
+ */
+export async function getOrCreateCalendarToken(
+  regenerate = false,
+): Promise<ActionResult<string>> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("ensure_calendar_token", {
+    p_force: regenerate,
+  });
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "Échec." };
+  }
+  if (regenerate) {
+    revalidatePath("/parametres");
+  }
+  return { ok: true, data };
+}

@@ -583,6 +583,7 @@ export type Database = {
           assureur_decennale: string | null;
           banque_nom: string | null;
           bic: string | null;
+          calendar_token: string | null;
           code_ape: string | null;
           code_postal: string | null;
           conditions_paiement_default: string | null;
@@ -619,6 +620,7 @@ export type Database = {
           assureur_decennale?: string | null;
           banque_nom?: string | null;
           bic?: string | null;
+          calendar_token?: string | null;
           code_ape?: string | null;
           code_postal?: string | null;
           conditions_paiement_default?: string | null;
@@ -655,6 +657,7 @@ export type Database = {
           assureur_decennale?: string | null;
           banque_nom?: string | null;
           bic?: string | null;
+          calendar_token?: string | null;
           code_ape?: string | null;
           code_postal?: string | null;
           conditions_paiement_default?: string | null;
@@ -691,6 +694,25 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       next_document_number: { Args: { p_type: string }; Returns: string };
+      ensure_calendar_token: {
+        Args: { p_force?: boolean };
+        Returns: string;
+      };
+      calendar_events_for_token: {
+        Args: { p_token: string };
+        Returns: Array<{
+          kind: string;
+          ev_id: string;
+          date_start: string;
+          date_end: string;
+          title: string;
+          client_nom: string | null;
+          statut: string | null;
+          numero: string | null;
+          type_activite: string | null;
+          facture_emise: boolean | null;
+        }>;
+      };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
