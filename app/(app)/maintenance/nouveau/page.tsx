@@ -19,7 +19,7 @@ export default async function NouveauContratPage() {
             Retour aux contrats
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
           Nouveau contrat de maintenance
         </h1>
       </div>

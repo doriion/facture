@@ -196,7 +196,7 @@ export function AgendaCalendar({
   return (
     <div className="space-y-4">
       {/* Stats du mois */}
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
         <StatCard
           label="Interventions"
           value={stats.nbInterventions}
@@ -208,24 +208,54 @@ export function AgendaCalendar({
         <StatCard label="Visites maint." value={stats.nbVisites} hint="contrats" />
       </div>
 
-      {/* Toolbar : navigation mois */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={prevMonth} aria-label="Mois précédent">
+      {/* Toolbar : navigation mois.
+          Mobile : 2 lignes (nav + bouton Planifier en haut, légende dessous).
+          Desktop : 1 ligne (nav à gauche, planifier + légende à droite). */}
+      <div className="space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:space-y-0">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={prevMonth}
+            aria-label="Mois précédent"
+            className="h-9 w-9"
+          >
             <ChevronLeft className="size-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={nextMonth} aria-label="Mois suivant">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={nextMonth}
+            aria-label="Mois suivant"
+            className="h-9 w-9"
+          >
             <ChevronRight className="size-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={goToday}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={goToday}
+            className="px-2 sm:px-3"
+          >
             Aujourd'hui
           </Button>
-          <h2 className="ml-2 text-lg font-semibold tracking-tight">
+          <h2 className="ml-auto text-sm font-semibold tracking-tight sm:ml-2 sm:text-lg">
             {MOIS_FR[month - 1]} {year}
           </h2>
+          <Button
+            size="sm"
+            onClick={() => openQuickAdd(todayYmd)}
+            className="sm:hidden"
+          >
+            <Plus className="size-4" />
+          </Button>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => openQuickAdd(todayYmd)}>
+          <Button
+            size="sm"
+            onClick={() => openQuickAdd(todayYmd)}
+            className="hidden sm:inline-flex"
+          >
             <Plus className="size-4" />
             Planifier
           </Button>
@@ -429,12 +459,18 @@ function StatCard({
 }) {
   return (
     <Card className={tone === "warning" ? "border-amber-400" : undefined}>
-      <CardContent className="p-4">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
+      <CardContent className="p-3 sm:p-4">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground sm:text-xs">
           {label}
         </div>
-        <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
-        {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
+        <div className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">
+          {value}
+        </div>
+        {hint && (
+          <div className="mt-0.5 text-[10px] text-muted-foreground sm:text-xs">
+            {hint}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -22,7 +22,7 @@ export default async function ClientsPage({
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Clients</h1>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Clients</h1>
           <p className="text-sm text-muted-foreground">
             {clients.length} client{clients.length > 1 ? "s" : ""} enregistré
             {clients.length > 1 ? "s" : ""}.

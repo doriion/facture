@@ -25,7 +25,7 @@ export default async function NouvelleFacturePage() {
             Retour aux factures
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Nouvelle facture</h1>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Nouvelle facture</h1>
         <p className="text-sm text-muted-foreground">
           La facture sera créée en brouillon. Vous pourrez ensuite la marquer
           envoyée et générer le PDF.

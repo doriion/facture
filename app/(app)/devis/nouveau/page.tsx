@@ -25,7 +25,7 @@ export default async function NouveauDevisPage() {
             Retour aux devis
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Nouveau devis</h1>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Nouveau devis</h1>
         <p className="text-sm text-muted-foreground">
           Le devis sera créé en brouillon. Vous pourrez ensuite le marquer
           envoyé, télécharger le PDF, et le convertir en facture une fois

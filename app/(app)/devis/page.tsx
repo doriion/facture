@@ -29,7 +29,7 @@ export default async function DevisPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Devis</h1>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Devis</h1>
           <p className="text-sm text-muted-foreground">
             {devis.length} devis —{" "}
             {totalAffiche.toLocaleString("fr-FR", {

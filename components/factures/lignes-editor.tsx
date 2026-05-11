@@ -117,12 +117,14 @@ export function LignesEditor<T extends FieldValues>({
 
       {fields.length > 0 && (
         <div className="overflow-hidden rounded-lg border">
-          <div className="grid grid-cols-12 gap-2 border-b bg-muted/30 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <div className="col-span-6">Désignation</div>
-            <div className="col-span-2 text-right">Quantité</div>
-            <div className="col-span-2 text-right">P.U. HT</div>
-            <div className="col-span-1 text-right">Total HT</div>
-            <div className="col-span-1" />
+          {/* En-têtes : uniquement >=sm. Sur mobile, chaque ligne porte
+              ses propres mini-libellés (compact + lisible). */}
+          <div className="hidden border-b bg-muted/30 px-3 py-2 sm:flex sm:items-center sm:gap-2 sm:text-xs sm:font-medium sm:uppercase sm:tracking-wide sm:text-muted-foreground">
+            <div className="flex-1">Désignation</div>
+            <div className="w-20 text-right">Qté</div>
+            <div className="w-24 text-right">P.U. HT</div>
+            <div className="w-24 text-right">Total</div>
+            <div className="w-9" />
           </div>
           <div className="divide-y">
             {fields.map((field, index) => {
@@ -135,9 +137,13 @@ export function LignesEditor<T extends FieldValues>({
               return (
                 <div
                   key={field.id}
-                  className="grid grid-cols-12 items-start gap-2 px-3 py-2"
+                  className="space-y-2 px-3 py-3 sm:flex sm:items-start sm:gap-2 sm:space-y-0 sm:py-2"
                 >
-                  <div className="col-span-6 space-y-1">
+                  {/* Désignation */}
+                  <div className="space-y-1 sm:flex-1">
+                    <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
+                      Ligne #{index + 1}
+                    </span>
                     <Input
                       placeholder="Désignation de la prestation"
                       {...register(`${fieldName}.${index}.designation` as Path<T>)}
@@ -146,54 +152,74 @@ export function LignesEditor<T extends FieldValues>({
                       <p className="text-xs text-destructive">{errDesignation}</p>
                     )}
                   </div>
-                  <div className="col-span-2 space-y-1">
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      placeholder="1"
-                      className="text-right"
-                      {...register(`${fieldName}.${index}.quantite` as Path<T>)}
-                    />
-                    {errQuantite && (
-                      <p className="text-xs text-destructive">{errQuantite}</p>
-                    )}
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      placeholder="0,00"
-                      className="text-right"
-                      {...register(
-                        `${fieldName}.${index}.prix_unitaire_ht` as Path<T>,
+
+                  {/* Quantité + Prix : côte à côte sur mobile, inline desktop */}
+                  <div className="grid grid-cols-2 gap-2 sm:contents">
+                    <div className="space-y-1 sm:w-20">
+                      <span className="block text-[11px] text-muted-foreground sm:hidden">
+                        Quantité
+                      </span>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
+                        placeholder="1"
+                        className="text-right"
+                        {...register(`${fieldName}.${index}.quantite` as Path<T>)}
+                      />
+                      {errQuantite && (
+                        <p className="text-xs text-destructive">{errQuantite}</p>
                       )}
-                    />
-                    {errPrix && (
-                      <p className="text-xs text-destructive">{errPrix}</p>
-                    )}
+                    </div>
+                    <div className="space-y-1 sm:w-24">
+                      <span className="block text-[11px] text-muted-foreground sm:hidden">
+                        P.U. HT (€)
+                      </span>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
+                        placeholder="0,00"
+                        className="text-right"
+                        {...register(
+                          `${fieldName}.${index}.prix_unitaire_ht` as Path<T>,
+                        )}
+                      />
+                      {errPrix && (
+                        <p className="text-xs text-destructive">{errPrix}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="col-span-1 pt-2 text-right text-sm font-medium tabular-nums">
-                    {formatEuros(lineTotal, { withSymbol: false })}
-                  </div>
-                  <div className="col-span-1 flex justify-end pt-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove(index)}
-                      title="Supprimer la ligne"
-                    >
-                      <Trash2 className="size-4 text-muted-foreground" />
-                    </Button>
+
+                  {/* Total ligne + bouton supprimer */}
+                  <div className="flex items-center justify-between gap-2 border-t pt-2 sm:w-auto sm:border-t-0 sm:pt-0 sm:contents">
+                    <span className="text-[11px] uppercase tracking-wide text-muted-foreground sm:hidden">
+                      Total
+                    </span>
+                    <div className="flex items-center gap-1 sm:contents">
+                      <span className="text-sm font-medium tabular-nums sm:w-24 sm:pt-2 sm:text-right">
+                        {formatEuros(lineTotal, { withSymbol: false })} €
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        title="Supprimer la ligne"
+                        className="sm:w-9 sm:shrink-0"
+                      >
+                        <Trash2 className="size-4 text-muted-foreground" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="flex items-center justify-end gap-4 border-t bg-muted/30 px-4 py-3">
-            <span className="text-sm text-muted-foreground">Total HT</span>
+          <div className="flex items-center justify-between gap-4 border-t bg-muted/30 px-4 py-3 sm:justify-end">
+            <span className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Total HT
+            </span>
             <span className="text-lg font-semibold tabular-nums">
               {formatEuros(totalHt)}
             </span>

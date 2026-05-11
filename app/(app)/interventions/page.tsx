@@ -28,7 +28,7 @@ export default async function InterventionsPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Interventions</h1>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Interventions</h1>
           <p className="text-sm text-muted-foreground">
             Suivi des chantiers, dépannages et entretiens. Les fluides
             frigorigènes sont consignés pour la déclaration F-Gas.

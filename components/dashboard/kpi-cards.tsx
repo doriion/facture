@@ -39,16 +39,16 @@ export function KpiCards({
   const evolutionPositive = evolutionMois !== null && evolutionMois >= 0;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
             CA du mois
           </CardTitle>
           <Euro className="size-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold tabular-nums">
+          <div className="text-lg font-bold tabular-nums sm:text-2xl">
             {formatEuros(caMois)}
           </div>
           {evolutionMois !== null && (
@@ -71,13 +71,13 @@ export function KpiCards({
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
             CA cumulé {annee}
           </CardTitle>
           <TrendingUp className="size-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold tabular-nums">
+          <div className="text-lg font-bold tabular-nums sm:text-2xl">
             {formatEuros(caAnnee)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -88,13 +88,13 @@ export function KpiCards({
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
             Factures impayées
           </CardTitle>
           <FileText className="size-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold tabular-nums">
+          <div className="text-lg font-bold tabular-nums sm:text-2xl">
             {nbFacturesImpayees}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -105,13 +105,13 @@ export function KpiCards({
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
             Devis en attente
           </CardTitle>
           <FileSignature className="size-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold tabular-nums">
+          <div className="text-lg font-bold tabular-nums sm:text-2xl">
             {nbDevisEnAttente}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">

@@ -19,7 +19,7 @@ export default async function NouvelleInterventionPage() {
             Retour aux interventions
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
           Nouvelle intervention
         </h1>
       </div>

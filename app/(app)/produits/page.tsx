@@ -27,7 +27,7 @@ export default async function ProduitsPage({
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Catalogue</h1>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Catalogue</h1>
           <p className="text-sm text-muted-foreground">
             Prestations et tarifs réutilisables sur vos factures et devis.
           </p>
