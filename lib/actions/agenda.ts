@@ -74,9 +74,11 @@ export async function getAgendaEvents(
     supabase
       .from("interventions")
       .select(
-        "id, date_intervention, type, description, facture_id, client:clients(nom)",
+        "id, date_intervention, date_fin, type, description, facture_id, client:clients(nom)",
       )
-      .gte("date_intervention", ws)
+      // Pour les interventions multi-jours, on doit inclure celles qui
+      // *intersectent* la fenêtre, pas seulement celles qui commencent dedans.
+      .gte("date_intervention", new Date(new Date(ws).getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10))
       .lte("date_intervention", we)
       .order("date_intervention", { ascending: true }),
     supabase
@@ -112,17 +114,22 @@ export async function getAgendaEvents(
   type InterventionRow = {
     id: string;
     date_intervention: string;
+    date_fin: string | null;
     type: string;
     description: string | null;
     facture_id: string | null;
     client: { nom: string } | null;
   };
   for (const it of (interventionsRes.data ?? []) as InterventionRow[]) {
+    const end = it.date_fin ?? it.date_intervention;
+    // Filtre côté Node : ignorer les interventions dont la plage est
+    // entièrement hors de la fenêtre du calendrier.
+    if (end < ws) continue;
     events.push({
       id: it.id,
       kind: "intervention",
       date_start: it.date_intervention,
-      date_end: it.date_intervention,
+      date_end: end,
       title: it.description || it.type || "Intervention",
       client_nom: it.client?.nom ?? null,
       href: `/interventions/${it.id}`,

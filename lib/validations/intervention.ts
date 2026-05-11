@@ -26,6 +26,7 @@ export const LABELS_TYPE_INTERVENTION = {
 export const interventionSchema = z.object({
   client_id: z.string().uuid("Sélectionnez un client."),
   date_intervention: z.string().min(1, "Date obligatoire."),
+  date_fin: z.string().optional().or(z.literal("")),
   type: z.enum(TYPES_INTERVENTION),
   description: z.string().trim().max(2000).optional().or(z.literal("")),
 
@@ -52,6 +53,14 @@ export const interventionSchema = z.object({
 
   facture_id: z.string().uuid().nullable().optional(),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
+}).superRefine((val, ctx) => {
+  if (val.date_fin && val.date_intervention && val.date_fin < val.date_intervention) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["date_fin"],
+      message: "La date de fin doit être postérieure ou égale au début.",
+    });
+  }
 });
 
 export type InterventionFormInput = z.input<typeof interventionSchema>;

@@ -118,6 +118,7 @@ export async function createInterventionAction(
       user_id: user.id,
       client_id: v.client_id,
       date_intervention: v.date_intervention,
+      date_fin: v.date_fin || null,
       type: v.type,
       description: v.description || null,
       equipement_marque: v.equipement_marque || null,
@@ -160,6 +161,7 @@ export async function updateInterventionAction(
     .update({
       client_id: v.client_id,
       date_intervention: v.date_intervention,
+      date_fin: v.date_fin || null,
       type: v.type,
       description: v.description || null,
       equipement_marque: v.equipement_marque || null,

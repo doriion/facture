@@ -396,6 +396,7 @@ export type Database = {
           client_id: string;
           created_at: string;
           date_intervention: string;
+          date_fin: string | null;
           description: string | null;
           duree_minutes: number | null;
           equipement_marque: string | null;
@@ -415,6 +416,7 @@ export type Database = {
           client_id: string;
           created_at?: string;
           date_intervention: string;
+          date_fin?: string | null;
           description?: string | null;
           duree_minutes?: number | null;
           equipement_marque?: string | null;
@@ -434,6 +436,7 @@ export type Database = {
           client_id?: string;
           created_at?: string;
           date_intervention?: string;
+          date_fin?: string | null;
           description?: string | null;
           duree_minutes?: number | null;
           equipement_marque?: string | null;

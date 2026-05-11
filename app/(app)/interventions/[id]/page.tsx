@@ -34,7 +34,11 @@ export default async function EditInterventionPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              Intervention du {formatDateFr(intervention.date_intervention)}
+              Intervention{" "}
+              {intervention.date_fin &&
+              intervention.date_fin !== intervention.date_intervention
+                ? `du ${formatDateFr(intervention.date_intervention)} au ${formatDateFr(intervention.date_fin)}`
+                : `du ${formatDateFr(intervention.date_intervention)}`}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {LABELS_TYPE_INTERVENTION[

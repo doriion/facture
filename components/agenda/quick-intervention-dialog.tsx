@@ -104,18 +104,33 @@ export function QuickInterventionDialog({
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-4"
         >
-          <div className="space-y-1.5">
-            <Label htmlFor="date_intervention">Date *</Label>
-            <Input
-              id="date_intervention"
-              type="date"
-              {...register("date_intervention")}
-            />
-            {errors.date_intervention && (
-              <p className="text-xs text-destructive">
-                {errors.date_intervention.message}
-              </p>
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="date_intervention">Date (début) *</Label>
+              <Input
+                id="date_intervention"
+                type="date"
+                {...register("date_intervention")}
+              />
+              {errors.date_intervention && (
+                <p className="text-xs text-destructive">
+                  {errors.date_intervention.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="date_fin">Date de fin (si plusieurs jours)</Label>
+              <Input
+                id="date_fin"
+                type="date"
+                {...register("date_fin")}
+              />
+              {errors.date_fin && (
+                <p className="text-xs text-destructive">
+                  {errors.date_fin.message}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -214,6 +229,7 @@ function makeDefaults(date: string): InterventionFormInput {
   return {
     client_id: "",
     date_intervention: date,
+    date_fin: "",
     type: "installation",
     description: "",
     equipement_marque: "",

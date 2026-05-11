@@ -15,6 +15,7 @@ import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
 type InterventionRow = {
   id: string;
   date_intervention: string;
+  date_fin: string | null;
   type: string;
   description: string | null;
   equipement_marque: string | null;
@@ -70,7 +71,9 @@ export function InterventionsTable({
                   href={`/interventions/${i.id}`}
                   className="font-medium hover:underline"
                 >
-                  {formatDateFr(i.date_intervention)}
+                  {i.date_fin && i.date_fin !== i.date_intervention
+                    ? `${formatDateFr(i.date_intervention)} → ${formatDateFr(i.date_fin)}`
+                    : formatDateFr(i.date_intervention)}
                 </Link>
                 {i.description && (
                   <p className="line-clamp-1 text-xs text-muted-foreground">

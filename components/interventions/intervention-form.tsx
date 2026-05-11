@@ -66,6 +66,7 @@ export function InterventionForm({
     defaultValues: {
       client_id: intervention?.client_id ?? "",
       date_intervention: intervention?.date_intervention ?? today,
+      date_fin: intervention?.date_fin ?? "",
       type:
         (intervention?.type as InterventionFormInput["type"]) ?? "entretien",
       description: intervention?.description ?? "",
@@ -149,6 +150,19 @@ export function InterventionForm({
             {errors.date_intervention && (
               <p className="text-xs text-destructive">
                 {errors.date_intervention.message}
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="date_fin">Date de fin (si plusieurs jours)</Label>
+            <Input
+              id="date_fin"
+              type="date"
+              {...register("date_fin")}
+            />
+            {errors.date_fin && (
+              <p className="text-xs text-destructive">
+                {errors.date_fin.message}
               </p>
             )}
           </div>
