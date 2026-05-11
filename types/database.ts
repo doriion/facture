@@ -283,6 +283,8 @@ export type Database = {
           date_emission: string;
           date_prestation: string | null;
           date_prestation_fin: string | null;
+          date_annulation: string | null;
+          motif_annulation: string | null;
           email_envoye_le: string | null;
           equipement_info: Json;
           id: string;
@@ -304,6 +306,8 @@ export type Database = {
           date_emission?: string;
           date_prestation?: string | null;
           date_prestation_fin?: string | null;
+          date_annulation?: string | null;
+          motif_annulation?: string | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
           id?: string;
@@ -325,6 +329,8 @@ export type Database = {
           date_emission?: string;
           date_prestation?: string | null;
           date_prestation_fin?: string | null;
+          date_annulation?: string | null;
+          motif_annulation?: string | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
           id?: string;

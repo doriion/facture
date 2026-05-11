@@ -65,9 +65,23 @@ export default async function EditFacturePage({
       </div>
 
       {isLocked ? (
-        <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-sm text-muted-foreground">
-          Cette facture a été annulée. Pour la modifier, restaurez-la d'abord
-          en brouillon.
+        <div className="rounded-lg border-l-4 border-rose-500 bg-rose-50 p-4 text-sm dark:bg-rose-950/30">
+          <p className="font-medium text-rose-900 dark:text-rose-100">
+            ⊘ Facture annulée
+            {facture.date_annulation && (
+              <> le {formatDateFr(facture.date_annulation)}</>
+            )}
+          </p>
+          {facture.motif_annulation && (
+            <p className="mt-1 text-rose-800 dark:text-rose-200">
+              <strong>Motif :</strong> {facture.motif_annulation}
+            </p>
+          )}
+          <p className="mt-2 text-xs text-rose-700/80 dark:text-rose-300/80">
+            Le numéro <strong>{facture.numero}</strong> reste réservé en base
+            pour la traçabilité fiscale. Pour modifier le contenu, restaurez
+            d'abord en brouillon.
+          </p>
         </div>
       ) : (
         <FactureForm

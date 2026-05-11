@@ -291,11 +291,31 @@ export async function updateFactureAction(
 export async function setFactureStatutAction(
   id: string,
   statut: "brouillon" | "envoyee" | "payee" | "annulee",
+  motif?: string,
 ): Promise<ActionResult> {
   const supabase = createClient();
+  // Gestion spécifique annulation : on enregistre date + motif pour la
+  // traçabilité fiscale (justifie le « trou » dans la séquence des numéros).
+  // Si on sort du statut annulée (restauration), on nettoie les champs.
+  const today = new Date().toISOString().slice(0, 10);
+  const update: {
+    statut: string;
+    date_annulation?: string | null;
+    motif_annulation?: string | null;
+  } = { statut };
+  if (statut === "annulee") {
+    update.date_annulation = today;
+    if (motif !== undefined) {
+      update.motif_annulation = motif.trim() || null;
+    }
+  } else {
+    update.date_annulation = null;
+    update.motif_annulation = null;
+  }
+
   const { error } = await supabase
     .from("factures")
-    .update({ statut })
+    .update(update)
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/factures");
@@ -411,17 +431,15 @@ export async function deleteFactureAction(id: string): Promise<ActionResult> {
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Facture introuvable." };
-  // Suppression autorisée pour brouillons et factures annulées.
-  // Une facture annulée n'a aucune valeur comptable (le numéro a déjà
-  // été « consommé » mais la facture elle-même est sans effet), donc
-  // sa suppression définitive est sans conséquence légale.
-  // Les statuts envoyée / payée / retard sont protégés : il faut d'abord
-  // les annuler.
-  if (existing.statut !== "brouillon" && existing.statut !== "annulee") {
+  // Seuls les brouillons sont supprimables. Toute facture qui a porté un
+  // numéro consommé (envoyée, payée, retard, annulée) doit rester en base
+  // pour assurer la traçabilité fiscale (numérotation séquentielle sans
+  // rupture inexpliquée — art. 242 nonies A annexe II CGI).
+  if (existing.statut !== "brouillon") {
     return {
       ok: false,
       error:
-        "Cette facture doit d'abord être annulée avant d'être supprimée.",
+        "Seuls les brouillons peuvent être supprimés. Les factures annulées sont conservées pour la traçabilité fiscale.",
     };
   }
   const { error } = await supabase.from("factures").delete().eq("id", id);

@@ -31,6 +31,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import type { StatutFacture } from "@/lib/validations/facture";
 
 /**
@@ -48,13 +58,16 @@ export function FactureActions({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
+  const [annulerOpen, setAnnulerOpen] = useState(false);
+  const [motif, setMotif] = useState("");
 
   async function changeStatut(
     next: "brouillon" | "envoyee" | "payee" | "annulee",
     successMsg: string,
+    motifText?: string,
   ) {
     setPending(next);
-    const result = await setFactureStatutAction(factureId, next);
+    const result = await setFactureStatutAction(factureId, next, motifText);
     setPending(null);
     if (result.ok) {
       toast.success(successMsg);
@@ -62,6 +75,18 @@ export function FactureActions({
     } else {
       toast.error("Erreur", { description: result.error });
     }
+  }
+
+  async function confirmAnnulation() {
+    if (!motif.trim()) {
+      toast.error("Motif obligatoire", {
+        description: "Indiquez la raison de l'annulation pour la traçabilité fiscale.",
+      });
+      return;
+    }
+    await changeStatut("annulee", "Facture annulée", motif.trim());
+    setAnnulerOpen(false);
+    setMotif("");
   }
 
   async function onDelete() {
@@ -191,7 +216,7 @@ export function FactureActions({
           <Button
             variant="outline"
             className="text-destructive"
-            onClick={() => changeStatut("annulee", "Facture annulée")}
+            onClick={() => setAnnulerOpen(true)}
             disabled={pending === "annulee"}
           >
             <Ban className="size-4" />
@@ -212,54 +237,60 @@ export function FactureActions({
       )}
 
       {statut === "annulee" && (
-        <>
-          <Button
-            variant="outline"
-            onClick={() => changeStatut("brouillon", "Facture restaurée en brouillon")}
-            disabled={pending === "brouillon"}
-          >
-            <Undo2 className="size-4" />
-            Restaurer en brouillon
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="text-destructive">
-                <Trash2 className="size-4" />
-                Supprimer définitivement
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Supprimer définitivement cette facture ?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  La facture <strong>{numero}</strong> sera supprimée
-                  définitivement de la base. Cette action est irréversible.
-                  Possible uniquement parce qu'elle est annulée — sans valeur
-                  comptable, sa suppression n'a pas d'impact légal.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onDelete();
-                  }}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={pending === "delete"}
-                >
-                  {pending === "delete" && (
-                    <Loader2 className="size-4 animate-spin" />
-                  )}
-                  Supprimer
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
+        <Button
+          variant="outline"
+          onClick={() => changeStatut("brouillon", "Facture restaurée en brouillon")}
+          disabled={pending === "brouillon"}
+        >
+          <Undo2 className="size-4" />
+          Restaurer en brouillon
+        </Button>
       )}
+
+      <Dialog open={annulerOpen} onOpenChange={setAnnulerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Annuler la facture {numero} ?</DialogTitle>
+            <DialogDescription>
+              La facture sera conservée en base avec son numéro, marquée
+              « Annulée ». Le motif est obligatoire pour justifier le « trou »
+              dans la séquence en cas de contrôle fiscal.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="motif">Motif d'annulation *</Label>
+            <Textarea
+              id="motif"
+              value={motif}
+              onChange={(e) => setMotif(e.target.value)}
+              rows={3}
+              placeholder="Ex : erreur sur le montant, client a annulé la commande, doublon avec F-2026-XXXX…"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAnnulerOpen(false)}
+              disabled={pending === "annulee"}
+            >
+              Retour
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmAnnulation}
+              disabled={pending === "annulee" || !motif.trim()}
+            >
+              {pending === "annulee" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Ban className="size-4" />
+              )}
+              Confirmer l'annulation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
