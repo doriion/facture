@@ -1,15 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertCircle, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AgendaEvent, AgendaData } from "@/lib/actions/agenda";
+import {
+  QuickInterventionDialog,
+  type ClientOption,
+} from "@/components/agenda/quick-intervention-dialog";
 
 const MOIS_FR = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -89,13 +93,27 @@ function eventShortLabel(e: AgendaEvent): string {
   return e.client_nom ? `Visite · ${e.client_nom}` : "Visite";
 }
 
-export function AgendaCalendar({ data }: { data: AgendaData }) {
+export function AgendaCalendar({
+  data,
+  clients,
+}: {
+  data: AgendaData;
+  clients: ClientOption[];
+}) {
   const router = useRouter();
   const { year, month, events, stats } = data;
 
   const todayYmd = useMemo(() => toYmd(new Date()), []);
 
   const grid = useMemo(() => buildMonthGrid(year, month), [year, month]);
+
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddDate, setQuickAddDate] = useState(todayYmd);
+
+  const openQuickAdd = (ymd: string) => {
+    setQuickAddDate(ymd);
+    setQuickAddOpen(true);
+  };
 
   const goto = (y: number, m: number) => {
     router.push(`/agenda?year=${y}&month=${m}`);
@@ -145,7 +163,13 @@ export function AgendaCalendar({ data }: { data: AgendaData }) {
             {MOIS_FR[month - 1]} {year}
           </h2>
         </div>
-        <Legend />
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => openQuickAdd(todayYmd)}>
+            <Plus className="size-4" />
+            Planifier
+          </Button>
+          <Legend />
+        </div>
       </div>
 
       {/* Alerte interventions non facturées */}
@@ -190,8 +214,18 @@ export function AgendaCalendar({ data }: { data: AgendaData }) {
               return (
                 <div
                   key={idx}
+                  onClick={() => openQuickAdd(ymd)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter" || ev.key === " ") {
+                      ev.preventDefault();
+                      openQuickAdd(ymd);
+                    }
+                  }}
+                  title="Cliquez pour planifier une intervention"
                   className={cn(
-                    "min-h-[110px] border-b border-r p-1.5 text-xs",
+                    "group relative min-h-[110px] cursor-pointer border-b border-r p-1.5 text-xs transition-colors hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     idx % 7 === 6 && "border-r-0",
                     idx >= 35 && "border-b-0",
                     !isCurrentMonth && "bg-muted/20 text-muted-foreground/60",
@@ -207,17 +241,26 @@ export function AgendaCalendar({ data }: { data: AgendaData }) {
                     >
                       {day.getDate()}
                     </span>
-                    {isCurrentMonth && dayEvents.length > 3 && (
-                      <span className="text-[10px] text-muted-foreground">
-                        +{dayEvents.length - 3}
+                    <div className="flex items-center gap-1">
+                      {isCurrentMonth && dayEvents.length > 3 && (
+                        <span className="text-[10px] text-muted-foreground">
+                          +{dayEvents.length - 3}
+                        </span>
+                      )}
+                      <span
+                        aria-hidden="true"
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 transition-opacity group-hover:opacity-100"
+                      >
+                        <Plus className="size-3" />
                       </span>
-                    )}
+                    </div>
                   </div>
                   <div className="space-y-0.5">
                     {dayEvents.slice(0, 3).map((e) => (
                       <Link
                         key={`${e.kind}-${e.id}-${ymd}`}
                         href={e.href}
+                        onClick={(ev) => ev.stopPropagation()}
                         className={cn(
                           "block truncate rounded px-1.5 py-0.5 text-[11px] leading-tight transition-colors",
                           eventColorClasses(e),
@@ -236,14 +279,21 @@ export function AgendaCalendar({ data }: { data: AgendaData }) {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Cliquez sur un évènement pour ouvrir la fiche correspondante. Les
-        interventions en{" "}
+        Cliquez sur une case du calendrier pour planifier une intervention,
+        ou sur un évènement existant pour ouvrir sa fiche. Les interventions
+        en{" "}
         <span className="font-medium text-amber-700 dark:text-amber-400">
           orange
         </span>{" "}
         n'ont pas encore de facture associée.
       </p>
 
+      <QuickInterventionDialog
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+        date={quickAddDate}
+        clients={clients}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { getAgendaEvents } from "@/lib/actions/agenda";
+import { listClients } from "@/lib/actions/clients";
 import { AgendaCalendar } from "@/components/agenda/agenda-calendar";
 
 export const metadata = { title: "Agenda — Facture AE" };
@@ -26,7 +27,11 @@ export default async function AgendaPage({
   const year = parseIntInRange(searchParams.year, 2000, 2100, now.getFullYear());
   const month = parseIntInRange(searchParams.month, 1, 12, now.getMonth() + 1);
 
-  const data = await getAgendaEvents(year, month);
+  const [data, clientsAll] = await Promise.all([
+    getAgendaEvents(year, month),
+    listClients(),
+  ]);
+  const clients = clientsAll.map((c) => ({ id: c.id, nom: c.nom }));
 
   return (
     <div className="space-y-6">
@@ -39,7 +44,7 @@ export default async function AgendaPage({
         </p>
       </div>
 
-      <AgendaCalendar data={data} />
+      <AgendaCalendar data={data} clients={clients} />
     </div>
   );
 }
