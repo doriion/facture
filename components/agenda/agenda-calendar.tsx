@@ -204,12 +204,24 @@ export function AgendaCalendar({
       {/* Stats du mois */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
         <StatCard
-          label="Interventions"
-          value={stats.nbInterventions}
-          hint={`dont ${stats.nbInterventionsAFacturer} à facturer`}
-          tone={stats.nbInterventionsAFacturer > 0 ? "warning" : "default"}
+          label="À facturer"
+          value={stats.nbInterventionsAFacturer + stats.nbExternal}
+          hint={
+            stats.nbExternal > 0
+              ? `${stats.nbInterventionsAFacturer} intervention(s) + ${stats.nbExternal} RDV iPhone`
+              : `${stats.nbInterventions} intervention(s) ce mois`
+          }
+          tone={
+            stats.nbInterventionsAFacturer + stats.nbExternal > 0
+              ? "warning"
+              : "default"
+          }
         />
-        <StatCard label="Factures" value={stats.nbFactures} hint="prestations facturées" />
+        <StatCard
+          label="Factures"
+          value={stats.nbFactures}
+          hint="prestations facturées"
+        />
         <StatCard label="Devis planifiés" value={stats.nbDevis} hint="travaux prévus" />
         <StatCard label="Visites maint." value={stats.nbVisites} hint="contrats" />
       </div>
@@ -277,20 +289,30 @@ export function AgendaCalendar({
         </div>
       )}
 
-      {/* Alerte interventions non facturées */}
-      {stats.nbInterventionsAFacturer > 0 && (
+      {/* Alerte : choses à facturer (interventions + RDV iPhone importés) */}
+      {stats.nbInterventionsAFacturer + stats.nbExternal > 0 && (
         <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p className="font-medium">
-              {stats.nbInterventionsAFacturer} intervention
-              {stats.nbInterventionsAFacturer > 1 ? "s" : ""} de ce mois
-              {stats.nbInterventionsAFacturer > 1 ? " ne sont " : " n'est "}
-              pas encore facturée
-              {stats.nbInterventionsAFacturer > 1 ? "s" : ""}.
-            </p>
+          <div className="space-y-1">
+            {stats.nbInterventionsAFacturer > 0 && (
+              <p className="font-medium">
+                {stats.nbInterventionsAFacturer} intervention
+                {stats.nbInterventionsAFacturer > 1 ? "s" : ""} de ce mois
+                {stats.nbInterventionsAFacturer > 1 ? " ne sont " : " n'est "}
+                pas encore facturée
+                {stats.nbInterventionsAFacturer > 1 ? "s" : ""}.
+              </p>
+            )}
+            {stats.nbExternal > 0 && (
+              <p className="font-medium">
+                {stats.nbExternal} RDV noté{stats.nbExternal > 1 ? "s" : ""} sur
+                votre iPhone ce mois — pensez à créer la facture pour
+                ceux qui sont terminés.
+              </p>
+            )}
             <p className="text-xs opacity-80">
-              Repérables en orange dans le calendrier ci-dessous.
+              Tout est repérable en orange dans le calendrier ci-dessous (les
+              📱 viennent de l'iPhone, les autres de l'app).
             </p>
           </div>
         </div>
@@ -417,16 +439,18 @@ export function AgendaCalendar({
                         );
                       }
                       // Évènements externes (calendrier iPhone) : non
-                      // cliquables — ce sont des copies lecture seule.
+                      // cliquables. Préfixe ⚠ pour rappeler qu'ils sont
+                      // « à facturer » tant qu'aucune facture côté site
+                      // n'a été émise pour ce RDV.
                       if (e.kind === "external") {
                         return (
                           <div
                             key={`${e.kind}-${e.id}-${ymd}`}
                             onClick={(ev) => ev.stopPropagation()}
-                            className={cn(commonClass, "cursor-default opacity-90")}
-                            title={`${e.title}${e.description ? "\n" + e.description : ""}\n(depuis votre calendrier téléphone)`}
+                            className={cn(commonClass, "cursor-default")}
+                            title={`${e.title}${e.description ? "\n" + e.description : ""}\n📱 Noté sur votre iPhone — pensez à créer la facture si c'est terminé`}
                           >
-                            📱 {eventShortLabel(e)}
+                            ⚠︎📱 {eventShortLabel(e)}
                           </div>
                         );
                       }
@@ -452,12 +476,13 @@ export function AgendaCalendar({
 
       <p className="text-xs text-muted-foreground">
         Cliquez sur une case du calendrier pour planifier une intervention,
-        ou sur un évènement existant pour ouvrir sa fiche. Les interventions
+        ou sur un évènement existant pour ouvrir sa fiche. Tout ce qui est
         en{" "}
         <span className="font-medium text-amber-700 dark:text-amber-400">
-          orange
+          orange ⚠︎
         </span>{" "}
-        n'ont pas encore de facture associée.
+        est <strong>à facturer</strong> — interventions sans facture
+        associée ou RDV notés sur l'iPhone (préfixe 📱).
       </p>
 
       <QuickInterventionDialog
@@ -530,7 +555,7 @@ function Legend({ couleurs }: { couleurs: AgendaCouleurs }) {
       />
       <LegendDot
         className={getSwatchClass(couleurs.external)}
-        label="📱 Téléphone"
+        label="📱 RDV iPhone à facturer"
       />
       <LegendDot
         className="bg-rose-100 ring-1 ring-rose-300"

@@ -104,7 +104,7 @@ export const CATEGORY_LABELS: Record<AgendaCategory, string> = {
   facture: "Facture (prestation)",
   devis: "Devis planifié",
   maintenance: "Visite maintenance",
-  external: "Calendrier externe (téléphone)",
+  external: "RDV téléphone à facturer",
 };
 
 export type AgendaCouleurs = Record<AgendaCategory, PaletteColor>;
@@ -115,7 +115,10 @@ export const DEFAULT_AGENDA_COULEURS: AgendaCouleurs = {
   facture: "blue",
   devis: "violet",
   maintenance: "cyan",
-  external: "slate",
+  // Par défaut même couleur que "à facturer" : un RDV noté sur l'iPhone
+  // dans le calendrier "Chantiers" est un travail à facturer tant qu'on
+  // n'a pas créé la facture correspondante côté site.
+  external: "amber",
 };
 
 /**
