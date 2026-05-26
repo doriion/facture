@@ -2,6 +2,7 @@ import { ProfilForm } from "@/components/parametres/profil-form";
 import { LogoUpload } from "@/components/parametres/logo-upload";
 import { CalendarSyncCard } from "@/components/parametres/calendar-sync-card";
 import { AgendaCouleursCard } from "@/components/parametres/agenda-couleurs-card";
+import { ExternalCalendarCard } from "@/components/parametres/external-calendar-card";
 import { ResetNumerotationCard } from "@/components/parametres/reset-numerotation-card";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import {
@@ -46,6 +47,10 @@ export default async function ParametresPage() {
       </Card>
 
       <CalendarSyncCard initialToken={profil?.calendar_token ?? null} />
+
+      <ExternalCalendarCard
+        initialUrl={profil?.external_calendar_url ?? null}
+      />
 
       <AgendaCouleursCard
         initialCouleurs={normalizeCouleurs(profil?.agenda_couleurs)}

@@ -95,7 +95,8 @@ export type AgendaCategory =
   | "intervention_facturee"
   | "facture"
   | "devis"
-  | "maintenance";
+  | "maintenance"
+  | "external";
 
 export const CATEGORY_LABELS: Record<AgendaCategory, string> = {
   intervention_a_facturer: "Intervention à facturer",
@@ -103,6 +104,7 @@ export const CATEGORY_LABELS: Record<AgendaCategory, string> = {
   facture: "Facture (prestation)",
   devis: "Devis planifié",
   maintenance: "Visite maintenance",
+  external: "Calendrier externe (téléphone)",
 };
 
 export type AgendaCouleurs = Record<AgendaCategory, PaletteColor>;
@@ -113,6 +115,7 @@ export const DEFAULT_AGENDA_COULEURS: AgendaCouleurs = {
   facture: "blue",
   devis: "violet",
   maintenance: "cyan",
+  external: "slate",
 };
 
 /**

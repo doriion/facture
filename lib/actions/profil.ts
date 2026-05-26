@@ -219,6 +219,47 @@ export async function getOrCreateCalendarToken(
 }
 
 /**
+ * Enregistre l'URL d'un calendrier externe (iCal/webcal) à importer en
+ * lecture seule dans l'agenda. Accepte webcal:// (transformé en https://)
+ * et http(s)://. Une chaîne vide ou null efface l'abonnement.
+ */
+export async function saveExternalCalendarUrlAction(
+  rawUrl: string | null,
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  let normalized: string | null = null;
+  if (rawUrl && rawUrl.trim()) {
+    let u = rawUrl.trim();
+    // webcal://... → https://...
+    if (u.startsWith("webcal://")) u = "https://" + u.slice(9);
+    if (u.startsWith("webcals://")) u = "https://" + u.slice(10);
+    if (!/^https?:\/\//i.test(u)) {
+      return {
+        ok: false,
+        error: "L'URL doit commencer par https:// ou webcal://",
+      };
+    }
+    normalized = u;
+  }
+
+  const { error } = await supabase
+    .from("profil_entreprise")
+    .upsert(
+      { user_id: user.id, external_calendar_url: normalized },
+      { onConflict: "user_id" },
+    );
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/agenda");
+  revalidatePath("/parametres");
+  return { ok: true, data: undefined };
+}
+
+/**
  * Sauvegarde la mapping catégorie → couleur d'agenda choisie par l'user.
  * Les valeurs sont validées côté action (whitelist de couleurs).
  */
@@ -235,6 +276,7 @@ export async function saveAgendaCouleursAction(
     "facture",
     "devis",
     "maintenance",
+    "external",
   ];
 
   const clean: Record<string, string> = {};

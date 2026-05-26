@@ -84,6 +84,9 @@ function eventColorClasses(e: AgendaEvent, couleurs: AgendaCouleurs): string {
   if (e.kind === "devis_planifie") {
     return getColorClasses(couleurs.devis);
   }
+  if (e.kind === "external") {
+    return getColorClasses(couleurs.external);
+  }
   // visite_maintenance
   return getColorClasses(couleurs.maintenance);
 }
@@ -119,6 +122,9 @@ function eventShortLabel(e: AgendaEvent): string {
   }
   if (e.kind === "devis_planifie") {
     return `${e.numero ?? ""} ${e.client_nom ? "· " + e.client_nom : ""}`.trim();
+  }
+  if (e.kind === "external") {
+    return eventTimePrefix(e) + (e.title || "(évènement)");
   }
   return e.client_nom ? `Visite · ${e.client_nom}` : "Visite";
 }
@@ -263,6 +269,14 @@ export function AgendaCalendar({
         </div>
       </div>
 
+      {/* Erreur calendrier externe */}
+      {data.externalCalendarError && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+          ⚠︎ Impossible de récupérer votre calendrier téléphone :{" "}
+          {data.externalCalendarError}
+        </div>
+      )}
+
       {/* Alerte interventions non facturées */}
       {stats.nbInterventionsAFacturer > 0 && (
         <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
@@ -402,6 +416,20 @@ export function AgendaCalendar({
                           </button>
                         );
                       }
+                      // Évènements externes (calendrier iPhone) : non
+                      // cliquables — ce sont des copies lecture seule.
+                      if (e.kind === "external") {
+                        return (
+                          <div
+                            key={`${e.kind}-${e.id}-${ymd}`}
+                            onClick={(ev) => ev.stopPropagation()}
+                            className={cn(commonClass, "cursor-default opacity-90")}
+                            title={`${e.title}${e.description ? "\n" + e.description : ""}\n(depuis votre calendrier téléphone)`}
+                          >
+                            📱 {eventShortLabel(e)}
+                          </div>
+                        );
+                      }
                       return (
                         <Link
                           key={`${e.kind}-${e.id}-${ymd}`}
@@ -499,6 +527,10 @@ function Legend({ couleurs }: { couleurs: AgendaCouleurs }) {
       <LegendDot
         className={getSwatchClass(couleurs.maintenance)}
         label="Maintenance"
+      />
+      <LegendDot
+        className={getSwatchClass(couleurs.external)}
+        label="📱 Téléphone"
       />
       <LegendDot
         className="bg-rose-100 ring-1 ring-rose-300"

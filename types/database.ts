@@ -600,6 +600,7 @@ export type Database = {
           bic: string | null;
           calendar_token: string | null;
           agenda_couleurs: Json;
+          external_calendar_url: string | null;
           code_ape: string | null;
           code_postal: string | null;
           conditions_paiement_default: string | null;
@@ -638,6 +639,7 @@ export type Database = {
           bic?: string | null;
           calendar_token?: string | null;
           agenda_couleurs?: Json;
+          external_calendar_url?: string | null;
           code_ape?: string | null;
           code_postal?: string | null;
           conditions_paiement_default?: string | null;
@@ -676,6 +678,7 @@ export type Database = {
           bic?: string | null;
           calendar_token?: string | null;
           agenda_couleurs?: Json;
+          external_calendar_url?: string | null;
           code_ape?: string | null;
           code_postal?: string | null;
           conditions_paiement_default?: string | null;
