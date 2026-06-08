@@ -6,7 +6,9 @@ import { listClients } from "@/lib/actions/clients";
 import { listProduits } from "@/lib/actions/produits";
 import { getFacture } from "@/lib/actions/factures";
 import { getProfil } from "@/lib/actions/profil";
+import { getFacturePaiements } from "@/lib/actions/paiements";
 import { FactureForm } from "@/components/factures/facture-form";
+import { FacturePaiements } from "@/components/factures/facture-paiements";
 import { FactureActions } from "@/components/factures/facture-actions";
 import { StatutBadge } from "@/components/factures/statut-badge";
 import { Button } from "@/components/ui/button";
@@ -23,10 +25,11 @@ export default async function EditFacturePage({
   const { facture, lignes, client } = await getFacture(params.id);
   if (!facture) notFound();
 
-  const [clients, produits, profil] = await Promise.all([
+  const [clients, produits, profil, paiementsSummary] = await Promise.all([
     listClients(),
     listProduits({ inclureInactifs: false }),
     getProfil(),
+    getFacturePaiements(params.id),
   ]);
 
   const isLocked = facture.statut === "annulee";
@@ -90,6 +93,13 @@ export default async function EditFacturePage({
           facture={facture}
           lignes={lignes}
           defaultConditionsPaiement={profil?.conditions_paiement_default}
+        />
+      )}
+
+      {!isLocked && facture.statut !== "brouillon" && (
+        <FacturePaiements
+          factureId={facture.id}
+          summary={paiementsSummary}
         />
       )}
     </div>
