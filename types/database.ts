@@ -285,6 +285,9 @@ export type Database = {
           date_prestation_fin: string | null;
           date_annulation: string | null;
           motif_annulation: string | null;
+          type_facture: string;
+          facture_parent_id: string | null;
+          pourcentage_acompte: number | null;
           email_envoye_le: string | null;
           equipement_info: Json;
           id: string;
@@ -308,6 +311,9 @@ export type Database = {
           date_prestation_fin?: string | null;
           date_annulation?: string | null;
           motif_annulation?: string | null;
+          type_facture?: string;
+          facture_parent_id?: string | null;
+          pourcentage_acompte?: number | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
           id?: string;
@@ -331,6 +337,9 @@ export type Database = {
           date_prestation_fin?: string | null;
           date_annulation?: string | null;
           motif_annulation?: string | null;
+          type_facture?: string;
+          facture_parent_id?: string | null;
+          pourcentage_acompte?: number | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
           id?: string;

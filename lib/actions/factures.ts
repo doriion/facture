@@ -423,6 +423,222 @@ export async function duplicateFactureAction(
   return { ok: true, data: { factureId: facture.id, numero: facture.numero } };
 }
 
+/**
+ * Crée une facture d'acompte (type='acompte') liée à une facture parent.
+ * - Si pourcentage : montant = total parent × pct
+ * - Sinon : montant = montantOverride
+ * Le brouillon généré contient une seule ligne « Acompte de X% sur F-XXX ».
+ */
+export async function createAcompteAction(
+  parentId: string,
+  options: { pourcentage?: number; montant?: number },
+): Promise<ActionResult<{ factureId: string; numero: string }>> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { data: parent } = await supabase
+    .from("factures")
+    .select("*")
+    .eq("id", parentId)
+    .maybeSingle();
+  if (!parent) return { ok: false, error: "Facture parent introuvable." };
+  if (parent.type_facture !== "normale") {
+    return {
+      ok: false,
+      error: "Un acompte ne peut être créé que depuis une facture normale.",
+    };
+  }
+
+  let montant: number;
+  let pct: number | null = null;
+  if (options.pourcentage !== undefined) {
+    if (options.pourcentage <= 0 || options.pourcentage > 100) {
+      return { ok: false, error: "Pourcentage entre 0 et 100." };
+    }
+    pct = options.pourcentage;
+    montant =
+      Math.round(Number(parent.total_ht) * (options.pourcentage / 100) * 100) /
+      100;
+  } else if (options.montant !== undefined) {
+    if (options.montant <= 0 || options.montant >= Number(parent.total_ht)) {
+      return { ok: false, error: "Montant invalide (doit être < total parent)." };
+    }
+    montant = Math.round(options.montant * 100) / 100;
+  } else {
+    return { ok: false, error: "Pourcentage ou montant requis." };
+  }
+
+  // Numéro
+  const { data: numero, error: numeroErr } = await supabase.rpc(
+    "next_document_number",
+    { p_type: "facture" },
+  );
+  if (numeroErr || !numero) {
+    return { ok: false, error: numeroErr?.message ?? "Échec numérotation." };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: facture, error: insertErr } = await supabase
+    .from("factures")
+    .insert({
+      user_id: user.id,
+      numero,
+      client_id: parent.client_id,
+      date_emission: today,
+      date_echeance: echeance,
+      type_activite: parent.type_activite,
+      statut: "brouillon",
+      total_ht: montant,
+      type_facture: "acompte",
+      facture_parent_id: parent.id,
+      pourcentage_acompte: pct,
+      conditions_paiement: parent.conditions_paiement,
+      equipement_info: parent.equipement_info,
+      aides_financieres: parent.aides_financieres,
+    })
+    .select("id, numero")
+    .single();
+
+  if (insertErr || !facture) {
+    return { ok: false, error: insertErr?.message ?? "Échec création." };
+  }
+
+  const designation = pct
+    ? `Acompte de ${pct}% sur facture ${parent.numero}`
+    : `Acompte sur facture ${parent.numero}`;
+  await supabase.from("factures_lignes").insert({
+    user_id: user.id,
+    facture_id: facture.id,
+    ordre: 0,
+    designation,
+    quantite: 1,
+    prix_unitaire_ht: montant,
+    total_ht: montant,
+  });
+
+  revalidatePath("/factures");
+  revalidatePath(`/factures/${parentId}`);
+  return { ok: true, data: { factureId: facture.id, numero: facture.numero } };
+}
+
+/**
+ * Crée la facture de solde liée à un parent. Calcule auto le reste à
+ * facturer = total parent − somme des acomptes (factures enfants de
+ * type 'acompte' non annulées).
+ */
+export async function createSoldeAction(
+  parentId: string,
+): Promise<ActionResult<{ factureId: string; numero: string }>> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { data: parent } = await supabase
+    .from("factures")
+    .select("*")
+    .eq("id", parentId)
+    .maybeSingle();
+  if (!parent) return { ok: false, error: "Facture parent introuvable." };
+  if (parent.type_facture !== "normale") {
+    return {
+      ok: false,
+      error: "Le solde ne peut être créé que depuis une facture normale.",
+    };
+  }
+
+  // Acomptes existants (non annulés)
+  const { data: acomptes } = await supabase
+    .from("factures")
+    .select("total_ht, numero, statut, type_facture")
+    .eq("facture_parent_id", parentId)
+    .neq("statut", "annulee");
+  const totalAcomptes = (acomptes ?? [])
+    .filter((a) => a.type_facture === "acompte")
+    .reduce((s, a) => s + Number(a.total_ht), 0);
+
+  const reste =
+    Math.round((Number(parent.total_ht) - totalAcomptes) * 100) / 100;
+  if (reste <= 0) {
+    return {
+      ok: false,
+      error: "Aucun reste à facturer (acomptes ≥ total parent).",
+    };
+  }
+
+  const { data: numero, error: numeroErr } = await supabase.rpc(
+    "next_document_number",
+    { p_type: "facture" },
+  );
+  if (numeroErr || !numero) {
+    return { ok: false, error: numeroErr?.message ?? "Échec numérotation." };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: facture, error: insertErr } = await supabase
+    .from("factures")
+    .insert({
+      user_id: user.id,
+      numero,
+      client_id: parent.client_id,
+      date_emission: today,
+      date_echeance: echeance,
+      type_activite: parent.type_activite,
+      statut: "brouillon",
+      total_ht: reste,
+      type_facture: "solde",
+      facture_parent_id: parent.id,
+      conditions_paiement: parent.conditions_paiement,
+      equipement_info: parent.equipement_info,
+      aides_financieres: parent.aides_financieres,
+    })
+    .select("id, numero")
+    .single();
+
+  if (insertErr || !facture) {
+    return { ok: false, error: insertErr?.message ?? "Échec création." };
+  }
+
+  await supabase.from("factures_lignes").insert({
+    user_id: user.id,
+    facture_id: facture.id,
+    ordre: 0,
+    designation: `Solde sur facture ${parent.numero} — déduction des acomptes`,
+    quantite: 1,
+    prix_unitaire_ht: reste,
+    total_ht: reste,
+  });
+
+  revalidatePath("/factures");
+  revalidatePath(`/factures/${parentId}`);
+  return { ok: true, data: { factureId: facture.id, numero: facture.numero } };
+}
+
+/**
+ * Liste les factures enfants (acomptes + solde) d'une facture donnée.
+ */
+export async function listFactureEnfants(parentId: string) {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("factures")
+    .select("id, numero, type_facture, statut, total_ht, date_emission, pourcentage_acompte")
+    .eq("facture_parent_id", parentId)
+    .order("date_emission", { ascending: true });
+  return data ?? [];
+}
+
 export async function deleteFactureAction(id: string): Promise<ActionResult> {
   const supabase = createClient();
   const { data: existing } = await supabase
