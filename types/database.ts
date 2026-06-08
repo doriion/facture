@@ -397,6 +397,47 @@ export type Database = {
           },
         ];
       };
+      intervention_photos: {
+        Row: {
+          id: string;
+          user_id: string;
+          intervention_id: string;
+          storage_path: string;
+          legende: string | null;
+          moment: string | null;
+          ordre: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          intervention_id: string;
+          storage_path: string;
+          legende?: string | null;
+          moment?: string | null;
+          ordre?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          intervention_id?: string;
+          storage_path?: string;
+          legende?: string | null;
+          moment?: string | null;
+          ordre?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "intervention_photos_intervention_id_fkey";
+            columns: ["intervention_id"];
+            isOneToOne: false;
+            referencedRelation: "interventions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       interventions: {
         Row: {
           client_id: string;

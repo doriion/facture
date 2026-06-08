@@ -4,7 +4,9 @@ import { ArrowLeft } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { getIntervention } from "@/lib/actions/interventions";
+import { listInterventionPhotos } from "@/lib/actions/intervention-photos";
 import { InterventionForm } from "@/components/interventions/intervention-form";
+import { InterventionPhotos } from "@/components/interventions/intervention-photos";
 import { InterventionDeleteButton } from "@/components/interventions/intervention-delete-button";
 import { Button } from "@/components/ui/button";
 import { formatDateFr } from "@/lib/format";
@@ -20,7 +22,10 @@ export default async function EditInterventionPage({
   const { intervention, client } = await getIntervention(params.id);
   if (!intervention) notFound();
 
-  const clients = await listClients();
+  const [clients, photos] = await Promise.all([
+    listClients(),
+    listInterventionPhotos(params.id),
+  ]);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -62,6 +67,8 @@ export default async function EditInterventionPage({
       </div>
 
       <InterventionForm clients={clients} intervention={intervention} />
+
+      <InterventionPhotos interventionId={intervention.id} photos={photos} />
     </div>
   );
 }
