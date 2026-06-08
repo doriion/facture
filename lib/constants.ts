@@ -12,6 +12,7 @@ import {
   Wrench,
   CalendarClock,
   CalendarDays,
+  FileSpreadsheet,
   Settings,
 } from "lucide-react";
 
@@ -70,6 +71,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Maintenance",
     icon: CalendarClock,
     description: "Contrats récurrents",
+  },
+  {
+    href: "/exports",
+    label: "Export URSSAF",
+    icon: FileSpreadsheet,
+    description: "CSV trimestriel pour déclaration",
   },
   {
     href: "/parametres",
