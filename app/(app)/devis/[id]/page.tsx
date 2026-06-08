@@ -63,6 +63,8 @@ export default async function EditDevisPage({
             numero={devis.numero}
             statut={statutAffiche}
             factureId={devis.facture_id}
+            clientEmail={client?.email ?? null}
+            clientNom={client?.nom ?? "le client"}
           />
         </div>
       </div>

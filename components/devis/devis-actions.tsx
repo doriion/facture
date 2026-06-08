@@ -22,6 +22,7 @@ import {
   setDevisStatutAction,
 } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
+import { EmailDocumentButton } from "@/components/email-document-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,11 +43,15 @@ export function DevisActions({
   numero,
   statut,
   factureId,
+  clientEmail,
+  clientNom,
 }: {
   devisId: string;
   numero: string;
   statut: string;
   factureId: string | null;
+  clientEmail?: string | null;
+  clientNom?: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
@@ -114,6 +119,16 @@ export function DevisActions({
           Télécharger PDF
         </a>
       </Button>
+
+      {statut !== "refuse" && (
+        <EmailDocumentButton
+          documentId={devisId}
+          type="devis"
+          destinataireEmail={clientEmail ?? null}
+          destinataireNom={clientNom ?? "le client"}
+          variant="outline"
+        />
+      )}
 
       <Button
         variant="outline"

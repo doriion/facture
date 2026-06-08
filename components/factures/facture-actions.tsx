@@ -42,6 +42,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { StatutFacture } from "@/lib/validations/facture";
+import { EmailDocumentButton } from "@/components/email-document-button";
 
 /**
  * Boutons d'action contextuels selon le statut courant de la facture.
@@ -51,10 +52,14 @@ export function FactureActions({
   factureId,
   numero,
   statut,
+  clientEmail,
+  clientNom,
 }: {
   factureId: string;
   numero: string;
   statut: StatutFacture | string;
+  clientEmail?: string | null;
+  clientNom?: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
@@ -123,6 +128,16 @@ export function FactureActions({
           Télécharger PDF
         </a>
       </Button>
+
+      {statut !== "annulee" && (
+        <EmailDocumentButton
+          documentId={factureId}
+          type="facture"
+          destinataireEmail={clientEmail ?? null}
+          destinataireNom={clientNom ?? "le client"}
+          variant="outline"
+        />
+      )}
 
       <Button
         variant="outline"

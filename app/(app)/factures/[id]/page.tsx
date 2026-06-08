@@ -65,6 +65,8 @@ export default async function EditFacturePage({
             factureId={facture.id}
             numero={facture.numero}
             statut={facture.statut as StatutFacture}
+            clientEmail={client?.email ?? null}
+            clientNom={client?.nom ?? "le client"}
           />
         </div>
       </div>
