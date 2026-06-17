@@ -4,46 +4,15 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { parseMoneyInput } from "@/lib/format";
+import {
+  MODES_PAIEMENT,
+  type ModePaiement,
+  type FacturePaiementsSummary,
+} from "@/lib/paiements-constants";
 
 type ActionResult<T = void> =
   | { ok: true; data: T }
   | { ok: false; error: string };
-
-export const MODES_PAIEMENT = [
-  "virement",
-  "cheque",
-  "especes",
-  "carte",
-  "lien_paiement",
-  "autre",
-] as const;
-export type ModePaiement = (typeof MODES_PAIEMENT)[number];
-
-export const LABELS_MODE_PAIEMENT: Record<ModePaiement, string> = {
-  virement: "Virement",
-  cheque: "Chèque",
-  especes: "Espèces",
-  carte: "Carte bancaire",
-  lien_paiement: "Lien de paiement",
-  autre: "Autre",
-};
-
-export type Paiement = {
-  id: string;
-  facture_id: string;
-  date_paiement: string;
-  montant: number;
-  mode: string;
-  reference: string | null;
-  notes: string | null;
-};
-
-export type FacturePaiementsSummary = {
-  total_facture: number;
-  total_encaisse: number;
-  reste_du: number;
-  paiements: Paiement[];
-};
 
 /**
  * Liste les paiements d'une facture + résumé encaissé/reste.

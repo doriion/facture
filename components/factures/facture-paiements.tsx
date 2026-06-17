@@ -8,11 +8,13 @@ import { toast } from "sonner";
 import {
   addPaiementAction,
   deletePaiementAction,
+} from "@/lib/actions/paiements";
+import {
   LABELS_MODE_PAIEMENT,
   MODES_PAIEMENT,
   type FacturePaiementsSummary,
   type ModePaiement,
-} from "@/lib/actions/paiements";
+} from "@/lib/paiements-constants";
 import { formatDateFr, formatEuros } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {

@@ -1,10 +1,8 @@
 import { type NextRequest } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
-import {
-  buildCsv,
-  buildExportUrssaf,
-} from "@/lib/actions/export-urssaf";
+import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
+import { buildCsv } from "@/lib/exports/urssaf-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

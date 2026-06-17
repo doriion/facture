@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { Download } from "lucide-react";
 
-import {
-  type ExportPeriode,
-  type ExportSummary,
-} from "@/lib/actions/export-urssaf";
+import type {
+  ExportPeriode,
+  ExportSummary,
+} from "@/lib/exports/urssaf-helpers";
 import { formatDateFr, formatEuros } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {

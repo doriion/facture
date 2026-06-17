@@ -1,7 +1,5 @@
-import {
-  buildExportUrssaf,
-  getExportPeriodes,
-} from "@/lib/actions/export-urssaf";
+import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
+import { getExportPeriodes } from "@/lib/exports/urssaf-helpers";
 import { ExportUrssafTable } from "@/components/exports/export-urssaf-table";
 import {
   Card,
