@@ -8,6 +8,7 @@ import { listInterventionPhotos } from "@/lib/actions/intervention-photos";
 import { InterventionForm } from "@/components/interventions/intervention-form";
 import { InterventionPhotos } from "@/components/interventions/intervention-photos";
 import { InterventionDeleteButton } from "@/components/interventions/intervention-delete-button";
+import { FacturerInterventionButton } from "@/components/interventions/facturer-intervention-button";
 import { Button } from "@/components/ui/button";
 import { formatDateFr } from "@/lib/format";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
@@ -62,7 +63,13 @@ export default async function EditInterventionPage({
               )}
             </p>
           </div>
-          <InterventionDeleteButton id={intervention.id} />
+          <div className="flex flex-wrap items-center gap-2">
+            <FacturerInterventionButton
+              interventionId={intervention.id}
+              factureId={intervention.facture_id}
+            />
+            <InterventionDeleteButton id={intervention.id} />
+          </div>
         </div>
       </div>
 

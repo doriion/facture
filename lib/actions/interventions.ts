@@ -5,9 +5,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {
   interventionSchema,
+  LABELS_TYPE_INTERVENTION,
   type InterventionFormValues,
 } from "@/lib/validations/intervention";
-import type { Database } from "@/types/database";
+import type { Database, Json } from "@/types/database";
 
 type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -186,6 +187,130 @@ export async function updateInterventionAction(
   return { ok: true, data: undefined };
 }
 
+/**
+ * Crée une facture brouillon pré-remplie à partir d'une intervention puis
+ * relie les deux via `interventions.facture_id`. L'intervention bascule
+ * alors de « à facturer » à « facturée » dans l'agenda.
+ *
+ * La facture reprend le client, la période de prestation, l'équipement et
+ * une ligne pré-remplie (prix à 0, à compléter). Refuse si l'intervention
+ * est déjà rattachée à une facture.
+ */
+export async function facturerInterventionAction(
+  interventionId: string,
+): Promise<ActionResult<{ factureId: string; numero: string }>> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { data: intervention } = await supabase
+    .from("interventions")
+    .select("*")
+    .eq("id", interventionId)
+    .maybeSingle();
+  if (!intervention) return { ok: false, error: "Intervention introuvable." };
+  if (intervention.facture_id) {
+    return {
+      ok: false,
+      error: "Cette intervention est déjà rattachée à une facture.",
+    };
+  }
+
+  // Numérotation atomique (même RPC que la création directe de facture)
+  const { data: numero, error: numeroErr } = await supabase.rpc(
+    "next_document_number",
+    { p_type: "facture" },
+  );
+  if (numeroErr || !numero) {
+    return {
+      ok: false,
+      error: numeroErr?.message ?? "Échec de la génération du numéro.",
+    };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  // Équipement repris de l'intervention (JSONB facture)
+  const equipement: Record<string, string> = {};
+  if (intervention.equipement_marque)
+    equipement.marque = intervention.equipement_marque;
+  if (intervention.equipement_modele)
+    equipement.modele = intervention.equipement_modele;
+  if (intervention.equipement_num_serie)
+    equipement.num_serie = intervention.equipement_num_serie;
+  if (intervention.fluide_frigo_type)
+    equipement.fluide_frigo_type = intervention.fluide_frigo_type;
+
+  const { data: facture, error: insertErr } = await supabase
+    .from("factures")
+    .insert({
+      user_id: user.id,
+      numero,
+      client_id: intervention.client_id,
+      date_emission: today,
+      date_echeance: echeance,
+      date_prestation: intervention.date_intervention,
+      date_prestation_fin: intervention.date_fin,
+      type_activite: factureTypeFromIntervention(intervention.type),
+      statut: "brouillon",
+      total_ht: 0,
+      notes: `Facturation de l'intervention du ${intervention.date_intervention}.`,
+      equipement_info: equipement as Json,
+    })
+    .select("id, numero")
+    .single();
+
+  if (insertErr || !facture) {
+    return {
+      ok: false,
+      error: insertErr?.message ?? "Échec de la création de la facture.",
+    };
+  }
+
+  // Ligne pré-remplie : reprend la description (ou le type), prix à compléter.
+  const designation =
+    intervention.description?.trim() ||
+    LABELS_TYPE_INTERVENTION[
+      intervention.type as keyof typeof LABELS_TYPE_INTERVENTION
+    ] ||
+    "Prestation";
+  const { error: ligneErr } = await supabase.from("factures_lignes").insert({
+    user_id: user.id,
+    facture_id: facture.id,
+    ordre: 0,
+    designation,
+    quantite: 1,
+    prix_unitaire_ht: 0,
+    total_ht: 0,
+  });
+  if (ligneErr) {
+    // Rollback best-effort de la facture orpheline
+    await supabase.from("factures").delete().eq("id", facture.id);
+    return { ok: false, error: ligneErr.message };
+  }
+
+  // Lien intervention → facture (passe l'intervention en « facturée »)
+  const { error: linkErr } = await supabase
+    .from("interventions")
+    .update({ facture_id: facture.id })
+    .eq("id", interventionId);
+  if (linkErr) {
+    await supabase.from("factures").delete().eq("id", facture.id);
+    return { ok: false, error: linkErr.message };
+  }
+
+  revalidatePath("/interventions");
+  revalidatePath(`/interventions/${interventionId}`);
+  revalidatePath("/agenda");
+  revalidatePath("/factures");
+  return { ok: true, data: { factureId: facture.id, numero: facture.numero } };
+}
+
 export async function deleteInterventionAction(
   id: string,
 ): Promise<ActionResult> {
@@ -234,4 +359,20 @@ export async function quickEditInterventionAction(
   revalidatePath(`/interventions/${id}`);
   revalidatePath("/agenda");
   return { ok: true, data: undefined };
+}
+
+/**
+ * Traduit le type d'intervention vers le `type_activite` des factures
+ * (jeux de valeurs distincts). Les types sans correspondance directe
+ * (installation…) retombent sur « autre ».
+ */
+function factureTypeFromIntervention(type: string): string {
+  switch (type) {
+    case "depannage":
+      return "depannage";
+    case "entretien":
+      return "entretien";
+    default:
+      return "autre";
+  }
 }
