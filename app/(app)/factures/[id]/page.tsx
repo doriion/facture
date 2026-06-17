@@ -7,9 +7,14 @@ import { listProduits } from "@/lib/actions/produits";
 import { getFacture, listFactureEnfants } from "@/lib/actions/factures";
 import { getProfil } from "@/lib/actions/profil";
 import { getFacturePaiements } from "@/lib/actions/paiements";
+import {
+  getAvailableEventsForFacture,
+  getFactureCoveredEvents,
+} from "@/lib/actions/facture-events-couverts";
 import { FactureForm } from "@/components/factures/facture-form";
 import { FacturePaiements } from "@/components/factures/facture-paiements";
 import { FactureAcompteSolde } from "@/components/factures/facture-acompte-solde";
+import { FactureEventsCouverts } from "@/components/factures/facture-events-couverts";
 import { FactureActions } from "@/components/factures/facture-actions";
 import { StatutBadge } from "@/components/factures/statut-badge";
 import { Button } from "@/components/ui/button";
@@ -26,12 +31,25 @@ export default async function EditFacturePage({
   const { facture, lignes, client } = await getFacture(params.id);
   if (!facture) notFound();
 
-  const [clients, produits, profil, paiementsSummary, enfants] = await Promise.all([
+  const [
+    clients,
+    produits,
+    profil,
+    paiementsSummary,
+    enfants,
+    available,
+    coveredCurrent,
+  ] = await Promise.all([
     listClients(),
     listProduits({ inclureInactifs: false }),
     getProfil(),
     getFacturePaiements(params.id),
     listFactureEnfants(params.id),
+    getAvailableEventsForFacture({
+      factureId: params.id,
+      centerDate: facture.date_emission,
+    }),
+    getFactureCoveredEvents(params.id),
   ]);
 
   const isLocked = facture.statut === "annulee";
@@ -138,6 +156,16 @@ export default async function EditFacturePage({
             enfants={enfants}
           />
         )}
+
+      {!isLocked && (
+        <FactureEventsCouverts
+          factureId={facture.id}
+          interventions={available.interventions}
+          externals={available.externals}
+          initialInterventionIds={coveredCurrent.interventionIds}
+          initialExternalUids={coveredCurrent.externalUids}
+        />
+      )}
     </div>
   );
 }

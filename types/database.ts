@@ -406,6 +406,53 @@ export type Database = {
           },
         ];
       };
+      facture_external_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          facture_id: string;
+          source: string;
+          external_uid: string;
+          fallback_key: string | null;
+          snapshot_title: string | null;
+          snapshot_date_start: string | null;
+          snapshot_date_end: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          facture_id: string;
+          source?: string;
+          external_uid: string;
+          fallback_key?: string | null;
+          snapshot_title?: string | null;
+          snapshot_date_start?: string | null;
+          snapshot_date_end?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          facture_id?: string;
+          source?: string;
+          external_uid?: string;
+          fallback_key?: string | null;
+          snapshot_title?: string | null;
+          snapshot_date_start?: string | null;
+          snapshot_date_end?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "facture_external_events_facture_id_fkey";
+            columns: ["facture_id"];
+            isOneToOne: false;
+            referencedRelation: "factures";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       intervention_photos: {
         Row: {
           id: string;

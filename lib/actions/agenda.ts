@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { parseIcal } from "@/lib/ical-parser";
+import { computeExternalEventKey } from "@/lib/external-event-key";
 
 export type AgendaEventKind =
   | "intervention"
@@ -46,6 +47,8 @@ export type AgendaData = {
     nbDevis: number;
     nbVisites: number;
     nbExternal: number;
+    /** RDV iPhone du mois encore à facturer (non liés à une facture) */
+    nbExternalAFacturer: number;
   };
   /** True si l'utilisateur a un calendrier externe configuré */
   hasExternalCalendar: boolean;
@@ -91,6 +94,7 @@ export async function getAgendaEvents(
     devisRes,
     contratsRes,
     externalEventsRes,
+    externalLinksRes,
   ] = await Promise.all([
     supabase
       .from("interventions")
@@ -130,6 +134,13 @@ export async function getAgendaEvents(
       .lte("prochaine_visite", we)
       .order("prochaine_visite", { ascending: true }),
     fetchExternalCalendar(externalUrl),
+    // Liens RDV iPhone → factures (fenêtre du mois ±, on filtre côté code
+    // par UID au moment du merge).
+    supabase
+      .from("facture_external_events")
+      .select("external_uid, facture_id, factures:factures(numero)")
+      .gte("snapshot_date_start", new Date(new Date(ws).getTime() - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10))
+      .lte("snapshot_date_start", new Date(new Date(we).getTime() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10)),
   ]);
 
   const events: AgendaEvent[] = [];
@@ -258,11 +269,40 @@ export async function getAgendaEvents(
   }
 
   // Évènements externes (calendrier iCloud / Google publié)
+  // Construction d'une map UID → facture liée pour le match O(1).
+  type LinkRow = {
+    external_uid: string;
+    facture_id: string;
+    factures: { numero: string } | { numero: string }[] | null;
+  };
+  const externalLinkByUid = new Map<
+    string,
+    { facture_id: string; numero: string }
+  >();
+  for (const link of (externalLinksRes.data ?? []) as LinkRow[]) {
+    const factureRel = Array.isArray(link.factures)
+      ? link.factures[0]
+      : link.factures;
+    externalLinkByUid.set(link.external_uid, {
+      facture_id: link.facture_id,
+      numero: factureRel?.numero ?? "",
+    });
+  }
+
   for (const ext of externalEventsRes.events) {
     // Ne garde que ceux dans la fenêtre du mois (élargie)
     if (ext.date_end < ws || ext.date_start > we) continue;
+    // Calcule la clé canonique (UID iCal ou fallback hash). C'est cette
+    // clé qu'on a stockée si l'utilisateur a déjà coché l'event dans une
+    // facture — donc c'est elle qu'on cherche dans la map.
+    const key = computeExternalEventKey({
+      uid: ext.uid,
+      date_start: ext.date_start,
+      title: ext.summary,
+    });
+    const linked = externalLinkByUid.get(key.external_uid);
     events.push({
-      id: ext.uid,
+      id: key.external_uid,
       kind: "external",
       date_start: ext.date_start,
       date_end: ext.date_end,
@@ -272,9 +312,11 @@ export async function getAgendaEvents(
       client_id: null,
       heure_debut: ext.time_start ? ext.time_start + ":00" : null,
       heure_fin: ext.time_end ? ext.time_end + ":00" : null,
-      // Pas de fiche associée — on garde le lien vers /agenda lui-même
-      // (clic = no-op équivalent, juste un visuel non cliquable).
-      href: "#",
+      facture_emise: Boolean(linked),
+      numero: linked?.numero ?? null,
+      // Si facturé → href vers la facture liée pour navigation rapide ;
+      // sinon le pill reste non-cliquable (vue read-only).
+      href: linked ? `/factures/${linked.facture_id}` : "#",
     });
   }
 
@@ -286,6 +328,9 @@ export async function getAgendaEvents(
 
   const interventionsInMonth = events.filter(
     (e) => e.kind === "intervention" && inMonth(e),
+  );
+  const externalInMonth = events.filter(
+    (e) => e.kind === "external" && inMonth(e),
   );
   const stats = {
     nbInterventions: interventionsInMonth.length,
@@ -300,7 +345,8 @@ export async function getAgendaEvents(
     nbVisites: events.filter(
       (e) => e.kind === "visite_maintenance" && inMonth(e),
     ).length,
-    nbExternal: events.filter((e) => e.kind === "external" && inMonth(e))
+    nbExternal: externalInMonth.length,
+    nbExternalAFacturer: externalInMonth.filter((e) => !e.facture_emise)
       .length,
   };
 

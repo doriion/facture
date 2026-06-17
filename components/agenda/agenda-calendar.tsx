@@ -85,7 +85,13 @@ function eventColorClasses(e: AgendaEvent, couleurs: AgendaCouleurs): string {
     return getColorClasses(couleurs.devis);
   }
   if (e.kind === "external") {
-    return getColorClasses(couleurs.external);
+    // RDV iPhone facturé = vert (mêmes classes que les interventions
+    // facturées) ; sinon couleur "à facturer" choisie par l'utilisateur.
+    return getColorClasses(
+      e.facture_emise
+        ? couleurs.intervention_facturee
+        : couleurs.external,
+    );
   }
   // visite_maintenance
   return getColorClasses(couleurs.maintenance);
@@ -205,14 +211,14 @@ export function AgendaCalendar({
       <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
         <StatCard
           label="À facturer"
-          value={stats.nbInterventionsAFacturer + stats.nbExternal}
+          value={stats.nbInterventionsAFacturer + stats.nbExternalAFacturer}
           hint={
-            stats.nbExternal > 0
-              ? `${stats.nbInterventionsAFacturer} intervention(s) + ${stats.nbExternal} RDV iPhone`
+            stats.nbExternalAFacturer > 0
+              ? `${stats.nbInterventionsAFacturer} intervention(s) + ${stats.nbExternalAFacturer} RDV iPhone`
               : `${stats.nbInterventions} intervention(s) ce mois`
           }
           tone={
-            stats.nbInterventionsAFacturer + stats.nbExternal > 0
+            stats.nbInterventionsAFacturer + stats.nbExternalAFacturer > 0
               ? "warning"
               : "default"
           }
@@ -290,7 +296,7 @@ export function AgendaCalendar({
       )}
 
       {/* Alerte : choses à facturer (interventions + RDV iPhone importés) */}
-      {stats.nbInterventionsAFacturer + stats.nbExternal > 0 && (
+      {stats.nbInterventionsAFacturer + stats.nbExternalAFacturer > 0 && (
         <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <div className="space-y-1">
@@ -303,16 +309,17 @@ export function AgendaCalendar({
                 {stats.nbInterventionsAFacturer > 1 ? "s" : ""}.
               </p>
             )}
-            {stats.nbExternal > 0 && (
+            {stats.nbExternalAFacturer > 0 && (
               <p className="font-medium">
-                {stats.nbExternal} RDV noté{stats.nbExternal > 1 ? "s" : ""} sur
-                votre iPhone ce mois — pensez à créer la facture pour
-                ceux qui sont terminés.
+                {stats.nbExternalAFacturer} RDV noté
+                {stats.nbExternalAFacturer > 1 ? "s" : ""} sur votre iPhone
+                ce mois — pensez à les rattacher à une facture (section
+                « Évènements couverts » sur la fiche facture).
               </p>
             )}
             <p className="text-xs opacity-80">
-              Tout est repérable en orange dans le calendrier ci-dessous (les
-              📱 viennent de l'iPhone, les autres de l'app).
+              Repérables en orange dans le calendrier ci-dessous (préfixe ⚠︎📱
+              pour les RDV iPhone ; ✓📱 = déjà facturés).
             </p>
           </div>
         </div>
@@ -438,19 +445,36 @@ export function AgendaCalendar({
                           </button>
                         );
                       }
-                      // Évènements externes (calendrier iPhone) : non
-                      // cliquables. Préfixe ⚠ pour rappeler qu'ils sont
-                      // « à facturer » tant qu'aucune facture côté site
-                      // n'a été émise pour ce RDV.
+                      // Évènements externes (calendrier iPhone) :
+                      // - Non facturé : pill non cliquable, préfixe ⚠︎📱
+                      // - Facturé : pill cliquable (lien vers la facture
+                      //   rattachée), préfixe ✓📱
                       if (e.kind === "external") {
+                        const prefix = e.facture_emise ? "✓📱" : "⚠︎📱";
+                        const tooltip = e.facture_emise
+                          ? `${e.title}${e.description ? "\n" + e.description : ""}\n📱 RDV iPhone — déjà facturé (${e.numero ?? "facture liée"}). Cliquer pour ouvrir la facture.`
+                          : `${e.title}${e.description ? "\n" + e.description : ""}\n📱 Noté sur votre iPhone — pensez à créer la facture si c'est terminé`;
+                        if (e.facture_emise && e.href !== "#") {
+                          return (
+                            <Link
+                              key={`${e.kind}-${e.id}-${ymd}`}
+                              href={e.href}
+                              onClick={(ev) => ev.stopPropagation()}
+                              className={commonClass}
+                              title={tooltip}
+                            >
+                              {prefix} {eventShortLabel(e)}
+                            </Link>
+                          );
+                        }
                         return (
                           <div
                             key={`${e.kind}-${e.id}-${ymd}`}
                             onClick={(ev) => ev.stopPropagation()}
                             className={cn(commonClass, "cursor-default")}
-                            title={`${e.title}${e.description ? "\n" + e.description : ""}\n📱 Noté sur votre iPhone — pensez à créer la facture si c'est terminé`}
+                            title={tooltip}
                           >
-                            ⚠︎📱 {eventShortLabel(e)}
+                            {prefix} {eventShortLabel(e)}
                           </div>
                         );
                       }
