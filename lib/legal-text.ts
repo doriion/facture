@@ -17,10 +17,20 @@ export const MENTION_TVA_FRANCHISE =
 export const MENTION_AUTO_ENTREPRENEUR = "Auto-entrepreneur — Entreprise individuelle";
 
 export const MENTION_INDEMNITE_RECOUVREMENT =
-  "Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40€ (art. D441-5 du Code de commerce).";
+  "Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € (art. D441-5 du Code de commerce).";
 
+/**
+ * Mention par défaut adaptée aux clients professionnels (B2B) :
+ * - Taux supplétif L441-10 = 3× le taux d'intérêt légal si rien n'est
+ *   stipulé au contrat.
+ * - Indemnité forfaitaire 40 € pour frais de recouvrement.
+ *
+ * Pour les clients particuliers, l'utilisateur peut éditer ce texte
+ * dans Paramètres → Profil pour mettre simplement « taux d'intérêt
+ * légal » au lieu de « 3 fois le taux d'intérêt légal ».
+ */
 export const MENTION_PENALITES_RETARD_DEFAULT =
-  "En cas de retard de paiement, des pénalités calculées au taux d'intérêt légal en vigueur seront exigibles (art. L441-10 du Code de commerce), ainsi qu'une indemnité forfaitaire de 40€ pour frais de recouvrement (art. D441-5).";
+  "En cas de retard de paiement, application de pénalités au taux de 3 fois le taux d'intérêt légal, ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 € (art. L441-10 et D441-5 du Code de commerce).";
 
 export const MENTION_ESCOMPTE_DEFAULT = "Pas d'escompte pour règlement anticipé.";
 

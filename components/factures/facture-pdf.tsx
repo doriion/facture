@@ -17,7 +17,7 @@ import {
 import {
   LABELS_TYPE_ACTIVITE,
   MENTION_AUTO_ENTREPRENEUR,
-  MENTION_INDEMNITE_RECOUVREMENT,
+  MENTION_PENALITES_RETARD_DEFAULT,
   MENTION_TVA_FRANCHISE,
   mentionDecennale,
   mentionFluidesFrigo,
@@ -492,14 +492,15 @@ export function FacturePdf({
           </View>
         )}
 
-        {/* Pied de page : mentions légales */}
+        {/* Pied de page : mentions légales.
+            Mention pénalités + indemnité 40 € obligatoires entre pros
+            (B2B) — fallback sur le texte par défaut si le profil n'est
+            pas renseigné. Le texte par défaut consolide les deux
+            mentions (L441-10 + D441-5) pour éviter une double ligne. */}
         <View style={styles.footer} fixed>
-          {profil?.penalites_retard_text && (
-            <Text style={styles.footerLine}>
-              {profil.penalites_retard_text}
-            </Text>
-          )}
-          <Text style={styles.footerLine}>{MENTION_INDEMNITE_RECOUVREMENT}</Text>
+          <Text style={styles.footerLine}>
+            {profil?.penalites_retard_text || MENTION_PENALITES_RETARD_DEFAULT}
+          </Text>
           {profil?.escompte_text && (
             <Text style={styles.footerLine}>{profil.escompte_text}</Text>
           )}

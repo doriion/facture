@@ -4,6 +4,14 @@
 
 /**
  * Formate un montant en euros au format FR (avec espace milliers, virgule décimale).
+ *
+ * Important : on remplace les espaces insécables (U+00A0 et surtout
+ * U+202F = espace fine insécable que produit Intl côté Node récent)
+ * par un espace normal U+0020. Raison : les polices Helvetica utilisées
+ * par défaut par @react-pdf/renderer ne contiennent PAS ces glyphes,
+ * et les affichent comme un slash (« 6/000,00 € » au lieu de
+ * « 6 000,00 € »). Le rendu HTML reste identique côté navigateur
+ * (les deux espaces s'affichent à l'écran de la même façon).
  */
 export function formatEuros(amount: number, options?: { withSymbol?: boolean }) {
   const formatter = new Intl.NumberFormat("fr-FR", {
@@ -12,7 +20,7 @@ export function formatEuros(amount: number, options?: { withSymbol?: boolean }) 
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return formatter.format(amount);
+  return formatter.format(amount).replace(/[  ]/g, " ");
 }
 
 /**
