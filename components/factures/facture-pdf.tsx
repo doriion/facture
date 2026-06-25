@@ -52,7 +52,16 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottom: `1pt solid ${BORDER}`,
   },
-  brand: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  brand: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start",
+    // Compense la lineHeight serrée du titre FACTURE à droite : sans
+    // ça, la baseline du "Nathan Geneve" (13pt, lineHeight 1.4) est
+    // visuellement plus basse que celle du titre 22pt à droite. Avec
+    // ce paddingTop, les deux blocs commencent au même niveau.
+    paddingTop: 2,
+  },
   logo: { width: 56, height: 56, objectFit: "contain" },
   entrepriseBlock: { fontSize: 9 },
   entrepriseNom: { fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 2 },
@@ -63,9 +72,17 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     color: PRIMARY,
     letterSpacing: 1.5,
+    // lineHeight 1 = la boîte du titre fait pile la hauteur du glyphe
+    // (au lieu de gaspiller ~9pt avec le 1.4 hérité de la page).
+    lineHeight: 1,
+    // ≈10pt d'espace entre la base du titre et le numéro en dessous,
+    // dans la fourchette 8–12 px demandée.
+    marginBottom: 10,
   },
-  factureNumero: { fontSize: 12, fontWeight: 700, marginTop: 4 },
-  factureDate: { fontSize: 9, color: MUTED, marginTop: 2 },
+  factureNumero: { fontSize: 12, fontWeight: 700 },
+  // marginTop: 3 entre chaque ligne de date pour aérer (Émise /
+  // Prestation / Échéance) sans pousser tout le bloc trop bas.
+  factureDate: { fontSize: 9, color: MUTED, marginTop: 3 },
 
   rowBetween: {
     flexDirection: "row",

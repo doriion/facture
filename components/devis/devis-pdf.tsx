@@ -52,7 +52,14 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottom: `1pt solid ${BORDER}`,
   },
-  brand: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  brand: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start",
+    // Compense la lineHeight serrée du titre DEVIS à droite pour
+    // aligner les baselines des deux blocs (cf. facture-pdf.tsx).
+    paddingTop: 2,
+  },
   logo: { width: 56, height: 56, objectFit: "contain" },
   entrepriseBlock: { fontSize: 9 },
   entrepriseNom: { fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 2 },
@@ -63,9 +70,11 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     color: PRIMARY,
     letterSpacing: 1.5,
+    lineHeight: 1,
+    marginBottom: 10,
   },
-  docNumero: { fontSize: 12, fontWeight: 700, marginTop: 4 },
-  docDate: { fontSize: 9, color: MUTED, marginTop: 2 },
+  docNumero: { fontSize: 12, fontWeight: 700 },
+  docDate: { fontSize: 9, color: MUTED, marginTop: 3 },
 
   rowBetween: {
     flexDirection: "row",
