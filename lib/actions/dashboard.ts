@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
-import { SEUILS_FRANCHISE_TVA } from "@/lib/constants";
+import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
 
 export type DashboardData = {
   annee: number;
@@ -14,10 +14,9 @@ export type DashboardData = {
   montantImpaye: number;
   nbDevisEnAttente: number;
   tauxConversionDevis: number; // % accepté / (accepté + envoyé + refusé)
-  // Suivi seuil TVA
-  seuilTva: number;
-  caCalendrierAnnee: number; // CA toutes factures non annulées (pour seuil)
-  pourcentageSeuilTva: number;
+  // Suivi seuils micro (jauges) — CA ENCAISSÉ de l'année (base URSSAF),
+  // les seuils eux-mêmes sont des constantes (lib/seuils-micro.ts)
+  caEncaisseAnnee: number;
   // Graphes
   caParMois: Array<{
     mois: string;
@@ -107,7 +106,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   // Récupération en parallèle
   const [
     facturesAnneeRes,
-    facturesCalendrierRes,
+    exportUrssafAnnee,
     facturesEnvoyeesRes,
     devisEnvoyesRes,
     devisStatutsRes,
@@ -122,13 +121,11 @@ export async function getDashboardData(): Promise<DashboardData> {
       .gte("date_emission", start12moisAgo)
       .lt("date_emission", startOfNextYear)
       .neq("statut", "annulee"),
-    // Factures du calendrier de l'année (pour seuil TVA)
-    supabase
-      .from("factures")
-      .select("total_ht")
-      .gte("date_emission", startOfYear)
-      .lt("date_emission", startOfNextYear)
-      .neq("statut", "annulee"),
+    // CA ENCAISSÉ de l'année pour les jauges de seuils micro — on
+    // réutilise le calcul de l'export URSSAF (somme des paiements,
+    // factures annulées exclues) pour avoir exactement le même chiffre
+    // que la page Exports.
+    buildExportUrssaf(startOfYear, startOfNextYear),
     // Factures envoyées (= impayées) tous statuts
     supabase
       .from("factures")
@@ -205,14 +202,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     )
     .reduce((sum, f) => sum + Number(f.total_ht), 0);
 
-  // CA calendrier (pour seuil franchise TVA — même base que ci-dessus,
-  // mais on prend la requête dédiée qui inclut potentiellement plus de précision)
-  const caCalendrierAnnee = (facturesCalendrierRes.data ?? []).reduce(
-    (sum, f) => sum + Number(f.total_ht),
-    0,
-  );
-  const seuilTva = SEUILS_FRANCHISE_TVA.services;
-  const pourcentageSeuilTva = Math.round((caCalendrierAnnee / seuilTva) * 100);
+  // CA encaissé de l'année (base URSSAF) pour les jauges de seuils micro.
+  const caEncaisseAnnee = exportUrssafAnnee.total_encaisse;
 
   // Factures impayées
   const facturesEnvoyees = (facturesEnvoyeesRes.data ?? []) as Array<{
@@ -458,9 +449,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     montantImpaye,
     nbDevisEnAttente,
     tauxConversionDevis,
-    seuilTva,
-    caCalendrierAnnee,
-    pourcentageSeuilTva,
+    caEncaisseAnnee,
     caParMois,
     caParActivite,
     topClients,

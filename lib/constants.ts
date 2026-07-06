@@ -85,11 +85,6 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-/**
- * Seuils de franchise TVA en auto-entrepreneur (régime micro).
- * Source : article L.223-3 du CIBS (ex-art. 293 B du CGI).
- */
-export const SEUILS_FRANCHISE_TVA = {
-  services: 37500,
-  ventes: 91900,
-} as const;
+// Les seuils micro-entreprise (franchise TVA, plafond micro) sont
+// désormais centralisés dans lib/seuils-micro.ts — à vérifier chaque
+// année en loi de finances.
