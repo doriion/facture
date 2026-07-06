@@ -2,9 +2,11 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 
 import { listFactures } from "@/lib/actions/factures";
+import { getFacturesEnRetard } from "@/lib/actions/relances";
 import { Button } from "@/components/ui/button";
 import { FacturesTable } from "@/components/factures/factures-table";
 import { FacturesToolbar } from "@/components/factures/factures-toolbar";
+import { RelancesSection } from "@/components/factures/relances-section";
 
 export const metadata = { title: "Factures — Facture AE" };
 
@@ -17,7 +19,10 @@ export default async function FacturesPage({
   const statut = searchParams.statut ?? "";
   const type = searchParams.type ?? "";
 
-  const factures = await listFactures({ search, statut, type });
+  const [factures, enRetard] = await Promise.all([
+    listFactures({ search, statut, type }),
+    getFacturesEnRetard(),
+  ]);
 
   // Total brut sur la liste filtrée (à titre indicatif)
   const totalAffiche = factures.reduce(
@@ -46,6 +51,8 @@ export default async function FacturesPage({
           </Link>
         </Button>
       </div>
+
+      <RelancesSection factures={enRetard.factures} />
 
       <FacturesToolbar
         initialSearch={search}

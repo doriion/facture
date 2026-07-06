@@ -11,6 +11,7 @@ import {
   sendEmail,
 } from "@/lib/email";
 import { formatDateFr, formatEuros } from "@/lib/format";
+import { joursDeRetard } from "@/lib/relances-helpers";
 import { FacturePdf } from "@/components/factures/facture-pdf";
 import { DevisPdf } from "@/components/devis/devis-pdf";
 import { getFacture } from "@/lib/actions/factures";
@@ -210,7 +211,10 @@ export async function envoyerDevisParEmailAction(
 }
 
 /**
- * Envoie une relance sur une facture en retard.
+ * Envoie une relance sur une facture en retard, avec le PDF de la
+ * facture en pièce jointe, puis trace l'envoi dans la table `relances`
+ * (best-effort : l'email part même si le traçage échoue).
+ * Envoi MANUEL uniquement — déclenché par l'utilisateur.
  */
 export async function envoyerRelanceFactureAction(
   factureId: string,
@@ -218,13 +222,24 @@ export async function envoyerRelanceFactureAction(
   if (!isEmailConfigured()) {
     return {
       ok: false,
-      error: "Resend non configuré.",
+      error:
+        "Resend non configuré. Ajoutez RESEND_API_KEY et RESEND_FROM dans Vercel.",
     };
   }
-  const { facture, client } = await getFacture(factureId);
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { facture, lignes, client } = await getFacture(factureId);
   if (!facture) return { ok: false, error: "Facture introuvable." };
   if (!client?.email) {
-    return { ok: false, error: "Email du client manquant." };
+    return {
+      ok: false,
+      error: "Le client n'a pas d'adresse email — renseignez-la sur sa fiche.",
+    };
   }
   if (facture.statut !== "envoyee") {
     return { ok: false, error: "Seules les factures envoyées peuvent être relancées." };
@@ -233,16 +248,26 @@ export async function envoyerRelanceFactureAction(
   if (facture.date_echeance >= today) {
     return { ok: false, error: "Échéance pas encore dépassée." };
   }
-  const joursRetard = Math.floor(
-    (new Date(today).getTime() - new Date(facture.date_echeance).getTime()) /
-      (24 * 3600 * 1000),
-  );
+  const joursRetard = joursDeRetard(facture.date_echeance, today);
 
   const profil = await getProfil();
   const expediteurNom =
     profil?.nom_commercial ||
     [profil?.prenom, profil?.nom].filter(Boolean).join(" ") ||
     "Auto-entrepreneur";
+
+  // PDF de la facture joint à la relance (le client retrouve tout de suite
+  // le document concerné).
+  const logoUrl = profil?.logo_url ? await getLogoUrl(profil.logo_url) : null;
+  const pdfBuffer = await renderToBuffer(
+    FacturePdf({
+      facture,
+      lignes,
+      client,
+      profil,
+      logoData: logoUrl,
+    }),
+  );
 
   const email = buildRelanceEmail({
     numero: facture.numero,
@@ -259,8 +284,27 @@ export async function envoyerRelanceFactureAction(
     html: email.html,
     text: email.text,
     replyTo: profil?.email_pro ?? undefined,
+    attachments: [
+      {
+        filename: `${facture.numero}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
   });
 
   if (!res.ok) return { ok: false, error: res.error };
+
+  // Traçage de la relance. Best-effort : si la table n'existe pas encore
+  // (migration non appliquée), l'envoi reste considéré comme réussi.
+  await supabase.from("relances").insert({
+    user_id: user.id,
+    facture_id: factureId,
+    destinataire: client.email,
+    jours_retard: joursRetard,
+  });
+
+  revalidatePath("/factures");
+  revalidatePath(`/factures/${factureId}`);
   return { ok: true, data: undefined };
 }

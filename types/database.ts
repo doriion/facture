@@ -688,6 +688,44 @@ export type Database = {
         };
         Relationships: [];
       };
+      relances: {
+        Row: {
+          created_at: string;
+          destinataire: string;
+          envoyee_le: string;
+          facture_id: string;
+          id: string;
+          jours_retard: number;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          destinataire: string;
+          envoyee_le?: string;
+          facture_id: string;
+          id?: string;
+          jours_retard: number;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          destinataire?: string;
+          envoyee_le?: string;
+          facture_id?: string;
+          id?: string;
+          jours_retard?: number;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "relances_facture_id_fkey";
+            columns: ["facture_id"];
+            isOneToOne: false;
+            referencedRelation: "factures";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profil_entreprise: {
         Row: {
           adresse_ligne1: string | null;
