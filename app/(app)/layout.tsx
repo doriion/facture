@@ -7,8 +7,9 @@ import { Topbar } from "@/components/topbar";
 /**
  * Layout pour toutes les routes authentifiées (sous le groupe `(app)`).
  * Garantit côté serveur qu'un utilisateur est connecté ; sinon redirect.
- * (Le middleware fait déjà ce contrôle, mais on double-check ici en cas
- * de matcher contourné.)
+ * (Le middleware — middleware.ts à la racine — fait déjà ce contrôle et
+ * rafraîchit la session ; on garde ce double check en défense en
+ * profondeur au cas où le matcher serait contourné.)
  */
 export default async function AppLayout({
   children,

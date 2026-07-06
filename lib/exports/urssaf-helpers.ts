@@ -42,6 +42,78 @@ export type ExportSummary = {
 };
 
 /**
+ * Ligne de paiement telle que renvoyée par la requête Supabase de la
+ * server action (paiements + facture/client joints).
+ */
+export type PaiementExportInput = {
+  date_paiement: string;
+  montant: number;
+  mode: string;
+  reference: string | null;
+  facture: {
+    id: string;
+    numero: string;
+    date_emission: string;
+    total_ht: number;
+    type_activite: string;
+    statut: string;
+    client: { nom: string } | null;
+  } | null;
+};
+
+/**
+ * Agrège les paiements d'une période en lignes d'export + totaux.
+ *
+ * Base URSSAF = somme des ENCAISSEMENTS (date de paiement), et non des
+ * factures émises — c'est la règle micro-entreprise. Les paiements de
+ * factures annulées ou orphelins (facture supprimée) sont exclus.
+ */
+export function summarizeEncaissements(paiements: PaiementExportInput[]): {
+  rows: ExportRow[];
+  total_encaisse: number;
+  nb_factures: number;
+} {
+  const facturesAffected = new Set<string>();
+  const rows: ExportRow[] = [];
+  let totalEncaisse = 0;
+
+  for (const p of paiements) {
+    if (!p.facture) continue;
+    if (p.facture.statut === "annulee") continue;
+    facturesAffected.add(p.facture.id);
+    totalEncaisse += Number(p.montant);
+    rows.push({
+      numero_facture: p.facture.numero,
+      date_facture: p.facture.date_emission,
+      client: p.facture.client?.nom ?? "(client supprimé)",
+      type_activite: p.facture.type_activite,
+      total_facture: Number(p.facture.total_ht),
+      date_encaissement: p.date_paiement,
+      mode_paiement: p.mode,
+      reference_paiement: p.reference,
+      montant_encaisse: Number(p.montant),
+    });
+  }
+
+  return {
+    rows,
+    total_encaisse: Math.round(totalEncaisse * 100) / 100,
+    nb_factures: facturesAffected.size,
+  };
+}
+
+/**
+ * Total HT des factures émises sur la période (info complémentaire de
+ * l'export, hors base URSSAF).
+ */
+export function totalFacturesEmises(
+  factures: Array<{ total_ht: number }>,
+): number {
+  const total = factures.reduce((s, f) => s + Number(f.total_ht), 0);
+  return Math.round(total * 100) / 100;
+}
+
+/**
  * Calcule les périodes (trimestres + année) disponibles pour l'export.
  * On retourne uniquement les périodes utiles : année en cours + 4
  * trimestres en cours + année précédente complète.
