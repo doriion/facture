@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 
 /**
  * Génère et streame le PDF d'une facture.
- * Le middleware d'auth gère déjà le 401 — ici on vérifie aussi la propriété
- * (RLS Supabase la garantit, mais on remonte un 404 propre si la facture
- * n'est pas accessible à l'utilisateur).
+ * Le middleware (middleware.ts) renvoie déjà 401 sur /api si non
+ * authentifié ; on regarde ici aussi en double sécurité, et on vérifie
+ * la propriété (la RLS Supabase la garantit, mais on remonte un 404
+ * propre si la facture n'est pas accessible à l'utilisateur).
  */
 export async function GET(
   _req: NextRequest,
