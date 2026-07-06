@@ -10,7 +10,7 @@ import {
 } from "./urssaf-helpers";
 
 function paiement(
-  overrides: Partial<PaiementExportInput> & {
+  overrides: Omit<Partial<PaiementExportInput>, "facture"> & {
     facture?: Partial<NonNullable<PaiementExportInput["facture"]>> | null;
   } = {},
 ): PaiementExportInput {
