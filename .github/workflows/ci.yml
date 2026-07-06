@@ -1,0 +1,37 @@
+# CI : lint + tests + build sur chaque push et pull request.
+#
+# Le build Next.js n'a besoin d'aucune connexion réelle à Supabase :
+# les NEXT_PUBLIC_* sont seulement inlinées dans le bundle. On fournit
+# donc des valeurs factices (le code exige leur présence depuis la
+# suppression des fallbacks hardcodés).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests unitaires
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ci_placeholder

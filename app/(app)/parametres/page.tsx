@@ -4,6 +4,7 @@ import { CalendarSyncCard } from "@/components/parametres/calendar-sync-card";
 import { AgendaCouleursCard } from "@/components/parametres/agenda-couleurs-card";
 import { ExternalCalendarCard } from "@/components/parametres/external-calendar-card";
 import { ResetNumerotationCard } from "@/components/parametres/reset-numerotation-card";
+import { ExportDonneesCard } from "@/components/parametres/export-donnees-card";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import {
   Card,
@@ -57,6 +58,8 @@ export default async function ParametresPage() {
       />
 
       <ProfilForm profil={profil} />
+
+      <ExportDonneesCard />
 
       <ResetNumerotationCard />
     </div>

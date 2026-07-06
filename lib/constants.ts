@@ -85,17 +85,6 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-/**
- * Seuils de franchise TVA en auto-entrepreneur (régime micro).
- * Source : article 293 B du CGI.
- */
-export const SEUILS_FRANCHISE_TVA = {
-  services: 37500,
-  ventes: 91900,
-} as const;
-
-/**
- * Mention légale obligatoire sur les factures d'un auto-entrepreneur
- * en franchise de TVA.
- */
-export const MENTION_TVA_AE = "TVA non applicable, art. 293 B du CGI";
+// Les seuils micro-entreprise (franchise TVA, plafond micro) sont
+// désormais centralisés dans lib/seuils-micro.ts — à vérifier chaque
+// année en loi de finances.

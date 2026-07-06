@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeNextPath } from "@/lib/safe-next";
 
 type SignInResult = { ok: false; error: string };
 
@@ -18,11 +19,16 @@ type SignInResult = { ok: false; error: string };
  * `router.push` (la navigation se déclenche avant que les cookies
  * soient lus par le layout serveur).
  *
+ * `next` = page demandée avant la redirection vers /login (posée par
+ * le middleware). Validée par sanitizeNextPath : chemin interne
+ * uniquement, sinon /dashboard.
+ *
  * En cas d'erreur, renvoie un objet sérialisable. Sinon redirige.
  */
 export async function signInAction(
   email: string,
   password: string,
+  next?: string,
 ): Promise<SignInResult | void> {
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -33,7 +39,7 @@ export async function signInAction(
 
   // Force le re-render de toutes les pages (le user est maintenant connecté).
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect(sanitizeNextPath(next));
 }
 
 /**

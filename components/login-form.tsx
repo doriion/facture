@@ -26,7 +26,7 @@ const schema = z.object({
 
 type LoginValues = z.infer<typeof schema>;
 
-export function LoginForm() {
+export function LoginForm({ nextPath }: { nextPath?: string }) {
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -42,7 +42,7 @@ export function LoginForm() {
     setSubmitting(true);
     // signInAction redirige côté serveur en cas de succès, donc on ne
     // récupère un retour QUE si erreur (sinon le navigateur a déjà bougé).
-    const result = await signInAction(values.email, values.password);
+    const result = await signInAction(values.email, values.password, nextPath);
     setSubmitting(false);
 
     if (result && !result.ok) {

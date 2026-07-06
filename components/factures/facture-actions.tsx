@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Ban,
-  Check,
   Copy,
   Download,
   Loader2,
@@ -19,6 +18,12 @@ import {
   duplicateFactureAction,
   setFactureStatutAction,
 } from "@/lib/actions/factures";
+import {
+  getFacturePaiements,
+  repasserEnvoyeeAction,
+} from "@/lib/actions/paiements";
+import { formatEuros } from "@/lib/format";
+import { MarquerPayeeButton } from "@/components/factures/marquer-payee-button";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -65,6 +70,43 @@ export function FactureActions({
   const [pending, setPending] = useState<string | null>(null);
   const [annulerOpen, setAnnulerOpen] = useState(false);
   const [motif, setMotif] = useState("");
+
+  // Flux inverse « payée → envoyée » : proposer de supprimer les
+  // paiements associés (sinon le CA encaissé resterait gonflé alors
+  // que la facture redevient impayée).
+  const [annulerPaiementOpen, setAnnulerPaiementOpen] = useState(false);
+  const [nbPaiements, setNbPaiements] = useState(0);
+  const [totalEncaisse, setTotalEncaisse] = useState(0);
+  const [supprimerPaiements, setSupprimerPaiements] = useState(true);
+
+  useEffect(() => {
+    if (!annulerPaiementOpen) return;
+    getFacturePaiements(factureId).then((summary) => {
+      setNbPaiements(summary.paiements.length);
+      setTotalEncaisse(summary.total_encaisse);
+      setSupprimerPaiements(summary.paiements.length > 0);
+    });
+  }, [annulerPaiementOpen, factureId]);
+
+  async function confirmAnnulerPaiement() {
+    setPending("envoyee");
+    const result = await repasserEnvoyeeAction(
+      factureId,
+      supprimerPaiements && nbPaiements > 0,
+    );
+    setPending(null);
+    setAnnulerPaiementOpen(false);
+    if (result.ok) {
+      toast.success(
+        supprimerPaiements && nbPaiements > 0
+          ? "Facture repassée en envoyée — paiements supprimés"
+          : "Facture repassée en envoyée",
+      );
+      router.refresh();
+    } else {
+      toast.error("Erreur", { description: result.error });
+    }
+  }
 
   async function changeStatut(
     next: "brouillon" | "envoyee" | "payee" | "annulee",
@@ -205,17 +247,7 @@ export function FactureActions({
 
       {statut === "envoyee" && (
         <>
-          <Button
-            onClick={() => changeStatut("payee", "Facture marquée payée")}
-            disabled={pending === "payee"}
-          >
-            {pending === "payee" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Check className="size-4" />
-            )}
-            Marquer payée
-          </Button>
+          <MarquerPayeeButton factureId={factureId} />
           <Button
             variant="outline"
             onClick={() => changeStatut("brouillon", "Repassée en brouillon")}
@@ -243,7 +275,7 @@ export function FactureActions({
       {statut === "payee" && (
         <Button
           variant="outline"
-          onClick={() => changeStatut("envoyee", "Repassée en envoyée")}
+          onClick={() => setAnnulerPaiementOpen(true)}
           disabled={pending === "envoyee"}
         >
           <Undo2 className="size-4" />
@@ -311,6 +343,72 @@ export function FactureActions({
           </AlertDialog>
         </>
       )}
+
+      <Dialog
+        open={annulerPaiementOpen}
+        onOpenChange={setAnnulerPaiementOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Repasser {numero} en « envoyée » ?</DialogTitle>
+            <DialogDescription>
+              {nbPaiements > 0 ? (
+                <>
+                  Cette facture a {nbPaiements} paiement
+                  {nbPaiements > 1 ? "s" : ""} enregistré
+                  {nbPaiements > 1 ? "s" : ""} pour un total de{" "}
+                  <strong>{formatEuros(totalEncaisse)}</strong>. Sans
+                  suppression, ce montant continuerait de compter dans le CA
+                  encaissé (jauges, export URSSAF) alors que la facture
+                  redevient impayée.
+                </>
+              ) : (
+                "Aucun paiement n'est enregistré sur cette facture — seul le statut sera modifié."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {nbPaiements > 0 && (
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={supprimerPaiements}
+                onChange={(e) => setSupprimerPaiements(e.target.checked)}
+                className="mt-0.5 size-4 accent-primary"
+              />
+              <span>
+                Supprimer {nbPaiements > 1 ? "les" : "le"} {nbPaiements}{" "}
+                paiement{nbPaiements > 1 ? "s" : ""} associé
+                {nbPaiements > 1 ? "s" : ""} ({formatEuros(totalEncaisse)})
+              </span>
+            </label>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAnnulerPaiementOpen(false)}
+              disabled={pending === "envoyee"}
+            >
+              Retour
+            </Button>
+            <Button
+              variant={supprimerPaiements && nbPaiements > 0 ? "destructive" : "default"}
+              onClick={confirmAnnulerPaiement}
+              disabled={pending === "envoyee"}
+            >
+              {pending === "envoyee" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Undo2 className="size-4" />
+              )}
+              {supprimerPaiements && nbPaiements > 0
+                ? "Repasser en envoyée et supprimer"
+                : "Repasser en envoyée"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={annulerOpen} onOpenChange={setAnnulerOpen}>
         <DialogContent>

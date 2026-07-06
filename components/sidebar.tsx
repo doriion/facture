@@ -46,7 +46,7 @@ export function Sidebar() {
       </nav>
       <div className="border-t p-3 text-xs text-muted-foreground">
         <p>Auto-entrepreneur BTP</p>
-        <p className="mt-0.5">Franchise TVA — art. 293 B CGI</p>
+        <p className="mt-0.5">Franchise TVA — art. L.223-3 CIBS</p>
       </div>
     </aside>
   );

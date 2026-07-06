@@ -57,8 +57,14 @@ export async function middleware(request: NextRequest) {
       return new NextResponse("Non authentifié", { status: 401 });
     }
     const url = request.nextUrl.clone();
+    const nextPath = path + request.nextUrl.search;
     url.pathname = "/login";
     url.search = "";
+    // Mémorise la page demandée pour y revenir après connexion
+    // (validé côté login par sanitizeNextPath — chemin interne only).
+    if (nextPath !== "/" && nextPath !== "/dashboard") {
+      url.searchParams.set("next", nextPath);
+    }
     return NextResponse.redirect(url);
   }
 

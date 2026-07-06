@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatutBadge } from "@/components/factures/statut-badge";
-import { MarkAsPaidButton } from "@/components/factures/mark-as-paid-button";
+import { MarquerPayeeButton } from "@/components/factures/marquer-payee-button";
 import { formatDateFr, formatEuros } from "@/lib/format";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 
@@ -93,7 +93,9 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
                   {formatEuros(Number(f.total_ht))}
                 </TableCell>
                 <TableCell className="text-right">
-                  {canMarkPaid && <MarkAsPaidButton factureId={f.id} />}
+                  {canMarkPaid && (
+                    <MarquerPayeeButton factureId={f.id} compact />
+                  )}
                 </TableCell>
               </TableRow>
             );

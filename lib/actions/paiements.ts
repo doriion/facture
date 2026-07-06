@@ -5,6 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseMoneyInput } from "@/lib/format";
 import {
+  montantRestant,
+  statutApresEncaissement,
+  statutApresSuppressionPaiement,
+} from "@/lib/paiements-helpers";
+import {
   MODES_PAIEMENT,
   type ModePaiement,
   type FacturePaiementsSummary,
@@ -45,7 +50,7 @@ export async function getFacturePaiements(
     notes: p.notes,
   }));
   const total_encaisse = paiements.reduce((s, p) => s + p.montant, 0);
-  const reste_du = Math.max(0, total_facture - total_encaisse);
+  const reste_du = montantRestant(total_facture, total_encaisse);
 
   return { total_facture, total_encaisse, reste_du, paiements };
 }
@@ -120,21 +125,24 @@ export async function deletePaiementAction(
     .eq("id", paiementId);
   if (error) return { ok: false, error: error.message };
 
-  // Si la facture était passée auto à "payee" et qu'on retire un paiement,
-  // on la repasse à "envoyee" (resp. on laisse en "payee" si pas auto).
-  // Heuristique simple : si reste_du > 0 et statut = "payee", on repasse
-  // en "envoyee".
+  // Si la facture était « payée » et que le reste dû redevient positif
+  // après suppression, elle repasse « envoyée » (logique testée dans
+  // lib/paiements-helpers).
   const { data: facture } = await supabase
     .from("factures")
     .select("statut")
     .eq("id", p.facture_id)
     .maybeSingle();
-  if (facture?.statut === "payee") {
+  if (facture) {
     const summary = await getFacturePaiements(p.facture_id);
-    if (summary.reste_du > 0.005) {
+    const nouveau = statutApresSuppressionPaiement(
+      facture.statut,
+      summary.reste_du,
+    );
+    if (nouveau !== facture.statut) {
       await supabase
         .from("factures")
-        .update({ statut: "envoyee" })
+        .update({ statut: nouveau })
         .eq("id", p.facture_id);
     }
   }
@@ -144,9 +152,57 @@ export async function deletePaiementAction(
   return { ok: true, data: undefined };
 }
 
+/**
+ * Repasse une facture « payée » en « envoyée », en proposant de
+ * supprimer les paiements enregistrés (flux inverse de « Marquer
+ * payée » : sans cette suppression, le CA encaissé — jauges, export
+ * URSSAF — continuerait de compter des paiements d'une facture
+ * redevenue impayée).
+ */
+export async function repasserEnvoyeeAction(
+  factureId: string,
+  supprimerPaiements: boolean,
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { data: facture } = await supabase
+    .from("factures")
+    .select("statut")
+    .eq("id", factureId)
+    .maybeSingle();
+  if (!facture) return { ok: false, error: "Facture introuvable." };
+  if (facture.statut !== "payee") {
+    return {
+      ok: false,
+      error: "Seule une facture payée peut être repassée en envoyée.",
+    };
+  }
+
+  if (supprimerPaiements) {
+    const { error: delErr } = await supabase
+      .from("paiements")
+      .delete()
+      .eq("facture_id", factureId);
+    if (delErr) return { ok: false, error: delErr.message };
+  }
+
+  const { error } = await supabase
+    .from("factures")
+    .update({ statut: "envoyee" })
+    .eq("id", factureId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/factures/${factureId}`);
+  revalidatePath("/factures");
+  return { ok: true, data: undefined };
+}
+
 async function maybeMarkFacturePaid(factureId: string) {
   const summary = await getFacturePaiements(factureId);
-  if (summary.reste_du > 0.005) return; // pas tout payé
   const supabase = createClient();
   const { data: facture } = await supabase
     .from("factures")
@@ -154,10 +210,12 @@ async function maybeMarkFacturePaid(factureId: string) {
     .eq("id", factureId)
     .maybeSingle();
   if (!facture) return;
-  if (facture.statut === "envoyee" || facture.statut === "brouillon") {
+  // Statut dérivé des encaissements (logique testée dans lib/paiements-helpers)
+  const nouveau = statutApresEncaissement(facture.statut, summary.reste_du);
+  if (nouveau !== facture.statut) {
     await supabase
       .from("factures")
-      .update({ statut: "payee" })
+      .update({ statut: nouveau })
       .eq("id", factureId);
   }
 }

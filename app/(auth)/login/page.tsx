@@ -7,8 +7,15 @@ export const metadata = {
 /**
  * Page de connexion. Application mono-utilisateur : pas de signup public.
  * Le compte unique est créé manuellement côté Supabase.
+ *
+ * `?next=` (posé par le middleware) = page à rouvrir après connexion ;
+ * transmis au formulaire puis validé côté serveur (sanitizeNextPath).
  */
-export default function LoginPage() {
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: { next?: string };
+}) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-md">
@@ -20,7 +27,7 @@ export default function LoginPage() {
             Gestion factures &amp; devis — Auto-entrepreneur BTP
           </p>
         </div>
-        <LoginForm />
+        <LoginForm nextPath={searchParams.next} />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { getDashboardData } from "@/lib/actions/dashboard";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
-import { SeuilTvaCard } from "@/components/dashboard/seuil-tva-card";
+import { SeuilsMicroCard } from "@/components/dashboard/seuils-micro-card";
 import { CaMensuelChart } from "@/components/dashboard/ca-mensuel-chart";
 import { RepartitionActiviteChart } from "@/components/dashboard/repartition-activite-chart";
 import { AlertesSection } from "@/components/dashboard/alertes-section";
@@ -35,10 +35,8 @@ export default async function DashboardPage() {
         annee={data.annee}
       />
 
-      <SeuilTvaCard
-        caCalendrierAnnee={data.caCalendrierAnnee}
-        seuilTva={data.seuilTva}
-        pourcentageSeuilTva={data.pourcentageSeuilTva}
+      <SeuilsMicroCard
+        caEncaisseAnnee={data.caEncaisseAnnee}
         annee={data.annee}
       />
 
