@@ -12,7 +12,7 @@ auto-entrepreneur BTP français (plomberie + climatisation/PAC).
 ## Fonctionnalités
 
 - **Factures** numérotées chronologiquement avec mentions légales BTP
-  (franchise TVA art. 293 B CGI, assurance décennale, médiateur conso…)
+  (franchise TVA art. L.223-3 CIBS, assurance décennale, médiateur conso…)
 - **Devis** avec performances énergétiques COP/SCOP/SEER, aides MaPrimeRénov'/CEE
 - **Section équipement clim/PAC** avec traçabilité fluides frigorigènes (F-Gas)
 - **PDF auto-générés** conformes aux exigences légales françaises

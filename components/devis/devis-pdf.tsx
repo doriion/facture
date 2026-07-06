@@ -18,7 +18,7 @@ import {
   LABELS_TYPE_ACTIVITE,
   MENTION_AUTO_ENTREPRENEUR,
   MENTION_DEVIS_GRATUIT,
-  MENTION_TVA_FRANCHISE,
+  mentionTvaFranchise,
   mentionDecennale,
   mentionFluidesFrigo,
   mentionMediateur,
@@ -366,7 +366,7 @@ export function DevisPdf({
             {sirenComputed && <Text>SIREN : {sirenComputed}</Text>}
             {profil?.code_ape && <Text>Code APE : {profil.code_ape}</Text>}
             <Text>{MENTION_AUTO_ENTREPRENEUR}</Text>
-            <Text>{MENTION_TVA_FRANCHISE}</Text>
+            <Text>{mentionTvaFranchise(devis.date_emission)}</Text>
           </View>
           <View style={styles.block}>
             <Text style={styles.blockTitle}>Devis pour</Text>

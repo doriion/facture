@@ -83,7 +83,7 @@ export function SeuilTvaCard({
               Seuil de franchise TVA — {annee}
             </CardTitle>
             <CardDescription>
-              Article 293 B du CGI · services à la personne et BTP
+              Article L.223-3 du CIBS · prestations de services et BTP
             </CardDescription>
           </div>
         </div>
