@@ -23,6 +23,22 @@ export async function buildExportUrssaf(
 ): Promise<ExportSummary> {
   const supabase = createClient();
 
+  // Garde d'auth explicite : la RLS protège déjà les données (requêtes
+  // vides si non connecté), mais on court-circuite proprement plutôt
+  // que de renvoyer un export silencieusement vide.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      periode: { label: "", start, end },
+      total_encaisse: 0,
+      total_facture_emis: 0,
+      nb_factures: 0,
+      rows: [],
+    };
+  }
+
   // Paiements de la période (date_paiement >= start, < end), avec
   // les infos facture/client jointes.
   const { data: paiements } = await supabase

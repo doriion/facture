@@ -70,6 +70,31 @@ export async function getAgendaEvents(
 ): Promise<AgendaData> {
   const supabase = createClient();
 
+  // Garde d'auth explicite : la RLS protège déjà les données, mais on
+  // évite de requêter (et de fetcher le calendrier externe) pour rien,
+  // et on renvoie un résultat vide propre plutôt qu'un état silencieux.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      year,
+      month,
+      events: [],
+      stats: {
+        nbInterventions: 0,
+        nbInterventionsAFacturer: 0,
+        nbFactures: 0,
+        nbDevis: 0,
+        nbVisites: 0,
+        nbExternal: 0,
+        nbExternalAFacturer: 0,
+      },
+      hasExternalCalendar: false,
+      externalCalendarError: "Non authentifié.",
+    };
+  }
+
   // Fenêtre élargie : 7 jours avant le 1er du mois → 7 jours après le dernier.
   const firstOfMonth = new Date(Date.UTC(year, month - 1, 1));
   const lastOfMonth = new Date(Date.UTC(year, month, 0));
