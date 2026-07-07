@@ -25,6 +25,7 @@ type InterventionRow = {
   fluide_frigo_kg_ajoute: number | null;
   fluide_frigo_kg_recupere: number | null;
   client: { id: string; nom: string; type: string } | null;
+  facture: { id: string; numero: string } | null;
 };
 
 const variantByType: Record<
@@ -61,6 +62,7 @@ export function InterventionsTable({
             <TableHead>Client</TableHead>
             <TableHead>Équipement</TableHead>
             <TableHead className="text-right">Fluide (kg ajoutés/récup.)</TableHead>
+            <TableHead>Facturation</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -126,6 +128,24 @@ export function InterventionsTable({
                   </>
                 ) : (
                   <span className="text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {i.facture ? (
+                  <Link
+                    href={`/factures/${i.facture.id}`}
+                    className="inline-flex"
+                    title={`Voir la facture ${i.facture.numero}`}
+                  >
+                    <Badge variant="success">{i.facture.numero}</Badge>
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/factures/nouvelle?intervention=${i.id}`}
+                    className="whitespace-nowrap text-xs font-medium text-primary hover:underline"
+                  >
+                    Créer la facture
+                  </Link>
                 )}
               </TableCell>
             </TableRow>
