@@ -16,6 +16,7 @@ const source: DevisRow = {
   date_debut_travaux: "2026-04-01",
   date_signature: null,
   duree_estimee_jours: 3,
+  est_modele: false,
   type_activite: "installation_clim",
   statut: "accepte",
   total_ht: 4500,

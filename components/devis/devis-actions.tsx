@@ -4,9 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Bookmark,
+  BookmarkMinus,
   Check,
   Copy,
   Download,
+  FilePlus2,
   FileText,
   Loader2,
   Send,
@@ -19,6 +22,7 @@ import { toast } from "sonner";
 import {
   convertirDevisEnFactureAction,
   deleteDevisAction,
+  setDevisModeleAction,
   setDevisStatutAction,
 } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
@@ -45,6 +49,7 @@ export function DevisActions({
   factureId,
   clientEmail,
   clientNom,
+  estModele = false,
 }: {
   devisId: string;
   numero: string;
@@ -52,9 +57,31 @@ export function DevisActions({
   factureId: string | null;
   clientEmail?: string | null;
   clientNom?: string;
+  estModele?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
+
+  async function onToggleModele(next: boolean) {
+    setPending("modele");
+    const result = await setDevisModeleAction(devisId, next);
+    setPending(null);
+    if (result.ok) {
+      toast.success(
+        next
+          ? `${numero} enregistré comme modèle`
+          : `${numero} retiré des modèles`,
+        {
+          description: next
+            ? "Il n'apparaît plus dans la liste des devis ni dans les stats."
+            : "Il réapparaît dans la liste des devis.",
+        },
+      );
+      router.refresh();
+    } else {
+      toast.error("Erreur", { description: result.error });
+    }
+  }
 
   async function changeStatut(
     next: "brouillon" | "envoye" | "accepte" | "refuse",
@@ -97,6 +124,39 @@ export function DevisActions({
     }
   }
 
+  // Vue « modèle » : actions réduites — un modèle ne s'envoie pas, ne se
+  // convertit pas et ne change pas de statut ; il sert à créer des devis.
+  if (estModele) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild>
+          <Link href={`/devis/nouveau?source=${devisId}`}>
+            <FilePlus2 className="size-4" />
+            Utiliser ce modèle
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <a href={`/api/devis/${devisId}/pdf`} download>
+            <Download className="size-4" />
+            Télécharger PDF
+          </a>
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => onToggleModele(false)}
+          disabled={pending === "modele"}
+        >
+          {pending === "modele" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <BookmarkMinus className="size-4" />
+          )}
+          Retirer des modèles
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" asChild>
@@ -124,6 +184,19 @@ export function DevisActions({
           <Copy className="size-4" />
           Dupliquer
         </Link>
+      </Button>
+
+      <Button
+        variant="outline"
+        onClick={() => onToggleModele(true)}
+        disabled={pending === "modele"}
+      >
+        {pending === "modele" ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Bookmark className="size-4" />
+        )}
+        Enregistrer comme modèle
       </Button>
 
       {factureId && (

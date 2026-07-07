@@ -19,6 +19,8 @@ type Ligne = Database["public"]["Tables"]["devis_lignes"]["Row"];
 
 /**
  * Liste des devis avec filtres + calcul du statut affiché (expiré).
+ * Les modèles (est_modele = true) sont toujours exclus : ils ont leur
+ * propre liste (listModelesDevis) et ne comptent dans aucune stat.
  */
 export async function listDevis(params?: {
   search?: string;
@@ -30,6 +32,7 @@ export async function listDevis(params?: {
   let query = supabase
     .from("devis")
     .select("*, client:clients(id, nom, type)")
+    .eq("est_modele", false)
     .order("date_emission", { ascending: false })
     .order("numero", { ascending: false });
 
@@ -55,6 +58,42 @@ export async function listDevis(params?: {
     return { ...d, statut_affichage: isExpired ? "expire" : d.statut };
   });
   return result;
+}
+
+/**
+ * Liste des devis marqués comme modèles, pour la section « Modèles »
+ * et le choix « Nouveau devis depuis un modèle ».
+ */
+export async function listModelesDevis() {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("devis")
+    .select("id, numero, type_activite, total_ht, notes, updated_at")
+    .eq("est_modele", true)
+    .order("updated_at", { ascending: false });
+  return data ?? [];
+}
+
+/**
+ * Marque / démarque un devis comme modèle réutilisable. Réversible et
+ * sans effet sur le contenu : le devis garde son numéro et ses lignes,
+ * il est simplement déplacé entre la liste normale et la section
+ * Modèles (exclu des stats et compteurs quand est_modele = true).
+ */
+export async function setDevisModeleAction(
+  id: string,
+  estModele: boolean,
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("devis")
+    .update({ est_modele: estModele })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/devis");
+  revalidatePath(`/devis/${id}`);
+  revalidatePath("/dashboard");
+  return { ok: true, data: undefined };
 }
 
 /**
