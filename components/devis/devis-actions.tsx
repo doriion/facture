@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Check,
@@ -18,7 +19,6 @@ import { toast } from "sonner";
 import {
   convertirDevisEnFactureAction,
   deleteDevisAction,
-  duplicateDevisAction,
   setDevisStatutAction,
 } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
@@ -97,20 +97,6 @@ export function DevisActions({
     }
   }
 
-  async function onDuplicate() {
-    setPending("duplicate");
-    const result = await duplicateDevisAction(devisId);
-    setPending(null);
-    if (result.ok) {
-      toast.success(`Devis ${result.data.numero} créé`, {
-        description: "Brouillon dupliqué — modifiez avant envoi.",
-      });
-      router.push(`/devis/${result.data.devisId}`);
-    } else {
-      toast.error("Erreur", { description: result.error });
-    }
-  }
-
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" asChild>
@@ -130,17 +116,14 @@ export function DevisActions({
         />
       )}
 
-      <Button
-        variant="outline"
-        onClick={onDuplicate}
-        disabled={pending === "duplicate"}
-      >
-        {pending === "duplicate" ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
+      {/* Ouvre le formulaire de nouveau devis pré-rempli depuis celui-ci
+          (sans client, dates du jour). Aucun numéro consommé avant la
+          validation. */}
+      <Button variant="outline" asChild>
+        <Link href={`/devis/nouveau?source=${devisId}`}>
           <Copy className="size-4" />
-        )}
-        Dupliquer
+          Dupliquer
+        </Link>
       </Button>
 
       {factureId && (
