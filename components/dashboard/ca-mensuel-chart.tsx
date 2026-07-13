@@ -66,6 +66,11 @@ export function CaMensuelChart({ data }: { data: Bucket[] }) {
                 tick={{ fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
+                // Sur 380px de large, les 12 étiquettes de mois se
+                // chevauchent : on laisse recharts en sauter (écart
+                // mini 12px) plutôt que de compresser.
+                minTickGap={12}
+                interval="preserveStartEnd"
               />
               <YAxis
                 tick={{ fontSize: 11 }}

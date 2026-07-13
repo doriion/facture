@@ -164,8 +164,17 @@ export function FactureActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {/* target=_blank : sur iOS (surtout en PWA installée), l'attribut
+          download seul échoue silencieusement — le nouvel onglet ouvre
+          le visualiseur PDF natif (partage/impression). Sur desktop,
+          download continue de télécharger directement. */}
       <Button variant="outline" asChild>
-        <a href={`/api/factures/${factureId}/pdf`} download>
+        <a
+          href={`/api/factures/${factureId}/pdf`}
+          download
+          target="_blank"
+          rel="noopener"
+        >
           <Download className="size-4" />
           Télécharger PDF
         </a>
