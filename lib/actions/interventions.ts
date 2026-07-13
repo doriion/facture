@@ -26,7 +26,7 @@ export async function listInterventions(params?: {
   const supabase = createClient();
   let query = supabase
     .from("interventions")
-    .select("*, client:clients(id, nom, type)")
+    .select("*, client:clients(id, nom, type), facture:factures(id, numero)")
     .order("date_intervention", { ascending: false });
 
   if (params?.search) {
@@ -49,21 +49,23 @@ export async function listInterventions(params?: {
 export async function getIntervention(id: string): Promise<{
   intervention: Intervention | null;
   client: Database["public"]["Tables"]["clients"]["Row"] | null;
+  facture: { id: string; numero: string; statut: string } | null;
 }> {
   const supabase = createClient();
   const { data } = await supabase
     .from("interventions")
-    .select("*, client:clients(*)")
+    .select("*, client:clients(*), facture:factures(id, numero, statut)")
     .eq("id", id)
     .maybeSingle();
 
-  if (!data) return { intervention: null, client: null };
+  if (!data) return { intervention: null, client: null, facture: null };
 
-  type WithClient = NonNullable<typeof data> & {
+  type WithJoins = NonNullable<typeof data> & {
     client: Database["public"]["Tables"]["clients"]["Row"] | null;
+    facture: { id: string; numero: string; statut: string } | null;
   };
-  const { client, ...intervention } = data as WithClient;
-  return { intervention, client };
+  const { client, facture, ...intervention } = data as WithJoins;
+  return { intervention, client, facture };
 }
 
 /**

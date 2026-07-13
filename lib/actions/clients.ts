@@ -58,6 +58,9 @@ export async function getClient(id: string): Promise<{
       .from("devis")
       .select("*")
       .eq("client_id", id)
+      // Les modèles gardent leur client d'origine mais ne doivent pas
+      // apparaître dans l'historique du client.
+      .eq("est_modele", false)
       .order("date_emission", { ascending: false }),
   ]);
 

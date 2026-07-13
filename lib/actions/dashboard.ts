@@ -131,13 +131,14 @@ export async function getDashboardData(): Promise<DashboardData> {
       .from("factures")
       .select("id,numero,date_echeance,total_ht,client_id,client:clients(id,nom)")
       .eq("statut", "envoyee"),
-    // Devis envoyés (en attente)
+    // Devis envoyés (en attente) — modèles exclus
     supabase
       .from("devis")
       .select("id,date_validite")
-      .eq("statut", "envoye"),
-    // Stats devis pour taux de conversion
-    supabase.from("devis").select("statut"),
+      .eq("statut", "envoye")
+      .eq("est_modele", false),
+    // Stats devis pour taux de conversion — modèles exclus
+    supabase.from("devis").select("statut").eq("est_modele", false),
     // 5 factures les plus récentes
     supabase
       .from("factures")
@@ -145,10 +146,11 @@ export async function getDashboardData(): Promise<DashboardData> {
       .order("date_emission", { ascending: false })
       .order("numero", { ascending: false })
       .limit(5),
-    // 5 devis les plus récents
+    // 5 devis les plus récents — modèles exclus
     supabase
       .from("devis")
       .select("id,numero,date_emission,date_validite,total_ht,statut,client:clients(nom)")
+      .eq("est_modele", false)
       .order("date_emission", { ascending: false })
       .order("numero", { ascending: false })
       .limit(5),

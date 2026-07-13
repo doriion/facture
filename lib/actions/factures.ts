@@ -118,9 +118,14 @@ export async function getFacture(id: string): Promise<{
 /**
  * Crée une nouvelle facture (brouillon par défaut). Numérotation atomique
  * via la RPC `next_document_number`. Insère les lignes en transaction logique.
+ *
+ * `options.interventionId` : lie l'intervention d'origine à la facture
+ * créée (flux « Créer la facture » depuis une intervention). Le lien
+ * n'est posé que si l'intervention n'est pas déjà facturée.
  */
 export async function createFactureAction(
   values: FactureFormValues,
+  options?: { interventionId?: string },
 ): Promise<ActionResult<{ id: string; numero: string }>> {
   const parsed = factureSchema.safeParse(values);
   if (!parsed.success) {
@@ -197,6 +202,19 @@ export async function createFactureAction(
     // Best-effort rollback : supprimer la facture qu'on vient de créer
     await supabase.from("factures").delete().eq("id", facture.id);
     return { ok: false, error: lignesErr.message };
+  }
+
+  if (options?.interventionId) {
+    // `.is("facture_id", null)` : ne jamais écraser un lien existant
+    // (protection contre la double facturation d'une intervention).
+    await supabase
+      .from("interventions")
+      .update({ facture_id: facture.id })
+      .eq("id", options.interventionId)
+      .is("facture_id", null);
+    revalidatePath("/interventions");
+    revalidatePath(`/interventions/${options.interventionId}`);
+    revalidatePath("/agenda");
   }
 
   revalidatePath("/factures");

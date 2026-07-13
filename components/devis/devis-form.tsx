@@ -48,6 +48,10 @@ type Ligne = Database["public"]["Tables"]["devis_lignes"]["Row"];
 /**
  * Formulaire complet de devis (création ou édition).
  * Contient en plus du facture form : section travaux + performances énergétiques.
+ *
+ * `prefill` : valeurs initiales en mode création (duplication d'un
+ * devis existant ou création depuis un modèle) — rien n'est créé en
+ * base tant que l'utilisateur ne valide pas.
  */
 export function DevisForm({
   clients,
@@ -55,25 +59,50 @@ export function DevisForm({
   devis,
   lignes,
   defaultConditions,
+  prefill,
 }: {
   clients: Client[];
   produits: Produit[];
   devis?: Devis;
   lignes?: Ligne[];
   defaultConditions?: string | null;
+  prefill?: {
+    devis: Partial<Devis>;
+    lignes: Array<{
+      designation: string;
+      quantite: number;
+      prix_unitaire_ht: number;
+    }>;
+  };
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const isEdit = !!devis;
+
+  // En édition, le devis existant prime ; en création, le prefill
+  // éventuel (copie / modèle) fournit les valeurs initiales.
+  const base = devis ?? (prefill?.devis as Devis | undefined);
+  const baseLignes = devis
+    ? (lignes ?? []).map((l) => ({
+        id: l.id,
+        designation: l.designation,
+        quantite: Number(l.quantite),
+        prix_unitaire_ht: Number(l.prix_unitaire_ht),
+      }))
+    : (prefill?.lignes ?? []).map((l) => ({
+        designation: l.designation,
+        quantite: l.quantite,
+        prix_unitaire_ht: l.prix_unitaire_ht,
+      }));
 
   const today = new Date().toISOString().slice(0, 10);
   const inThreeMonths = new Date(Date.now() + 90 * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);
 
-  const equip = (devis?.equipement_info ?? {}) as Record<string, unknown>;
-  const perfs = (devis?.performances_energetiques ?? {}) as Record<string, unknown>;
-  const aides = (devis?.aides_financieres ?? {}) as Record<string, unknown>;
+  const equip = (base?.equipement_info ?? {}) as Record<string, unknown>;
+  const perfs = (base?.performances_energetiques ?? {}) as Record<string, unknown>;
+  const aides = (base?.aides_financieres ?? {}) as Record<string, unknown>;
 
   const {
     register,
@@ -85,22 +114,17 @@ export function DevisForm({
   } = useForm<DevisFormInput, unknown, DevisFormValues>({
     resolver: zodResolver(devisSchema),
     defaultValues: {
-      client_id: devis?.client_id ?? "",
+      client_id: base?.client_id ?? "",
       type_activite:
-        (devis?.type_activite as DevisFormInput["type_activite"]) ??
+        (base?.type_activite as DevisFormInput["type_activite"]) ??
         "plomberie",
-      date_emission: devis?.date_emission ?? today,
-      date_validite: devis?.date_validite ?? inThreeMonths,
-      date_debut_travaux: devis?.date_debut_travaux ?? "",
-      duree_estimee_jours: devis?.duree_estimee_jours ?? null,
-      conditions: devis?.conditions ?? defaultConditions ?? "",
-      notes: devis?.notes ?? "",
-      lignes: (lignes ?? []).map((l) => ({
-        id: l.id,
-        designation: l.designation,
-        quantite: Number(l.quantite),
-        prix_unitaire_ht: Number(l.prix_unitaire_ht),
-      })),
+      date_emission: base?.date_emission ?? today,
+      date_validite: base?.date_validite ?? inThreeMonths,
+      date_debut_travaux: base?.date_debut_travaux ?? "",
+      duree_estimee_jours: base?.duree_estimee_jours ?? null,
+      conditions: base?.conditions ?? defaultConditions ?? "",
+      notes: base?.notes ?? "",
+      lignes: baseLignes,
       equipement: {
         marque: (equip.marque as string) ?? "",
         modele: (equip.modele as string) ?? "",

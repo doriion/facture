@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Bookmark, FilePlus2, Plus } from "lucide-react";
 
-import { listDevis } from "@/lib/actions/devis";
+import { listDevis, listModelesDevis } from "@/lib/actions/devis";
+import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
+import { formatEuros } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DevisTable } from "@/components/devis/devis-table";
 import { DevisToolbar } from "@/components/devis/devis-toolbar";
 
@@ -17,7 +20,10 @@ export default async function DevisPage({
   const statut = searchParams.statut ?? "";
   const type = searchParams.type ?? "";
 
-  const devis = await listDevis({ search, statut, type });
+  const [devis, modeles] = await Promise.all([
+    listDevis({ search, statut, type }),
+    listModelesDevis(),
+  ]);
 
   const totalAffiche = devis.reduce((sum, d) => sum + Number(d.total_ht), 0);
   const accepted = devis.filter((d) => d.statut === "accepte").length;
@@ -52,6 +58,58 @@ export default async function DevisPage({
           </Link>
         </Button>
       </div>
+
+      {modeles.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bookmark className="size-4 text-primary" />
+              Modèles de devis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {modeles.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex flex-col justify-between gap-3 rounded-md border bg-muted/30 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <Link
+                      href={`/devis/${m.id}`}
+                      className="font-mono text-sm font-medium hover:underline"
+                    >
+                      {m.numero}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      {LABELS_TYPE_ACTIVITE[
+                        m.type_activite as keyof typeof LABELS_TYPE_ACTIVITE
+                      ] ?? m.type_activite}{" "}
+                      · {formatEuros(Number(m.total_ht))} HT
+                    </p>
+                    {m.notes && (
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        {m.notes}
+                      </p>
+                    )}
+                  </div>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/devis/nouveau?source=${m.id}`}>
+                      <FilePlus2 className="size-4" />
+                      Nouveau devis depuis ce modèle
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Les modèles n&apos;apparaissent ni dans la liste ci-dessous, ni
+              dans les statistiques. Pour créer un modèle : ouvrez un devis
+              puis « Enregistrer comme modèle ».
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <DevisToolbar
         initialSearch={search}

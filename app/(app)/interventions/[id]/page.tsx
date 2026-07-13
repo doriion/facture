@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText, Receipt } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { getIntervention } from "@/lib/actions/interventions";
@@ -8,6 +8,7 @@ import { listInterventionPhotos } from "@/lib/actions/intervention-photos";
 import { InterventionForm } from "@/components/interventions/intervention-form";
 import { InterventionPhotos } from "@/components/interventions/intervention-photos";
 import { InterventionDeleteButton } from "@/components/interventions/intervention-delete-button";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr } from "@/lib/format";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
@@ -19,7 +20,7 @@ export default async function EditInterventionPage({
 }: {
   params: { id: string };
 }) {
-  const { intervention, client } = await getIntervention(params.id);
+  const { intervention, client, facture } = await getIntervention(params.id);
   if (!intervention) notFound();
 
   const [clients, photos] = await Promise.all([
@@ -61,8 +62,36 @@ export default async function EditInterventionPage({
                 </>
               )}
             </p>
+            {facture && (
+              <div className="mt-2 flex items-center gap-2">
+                <Badge variant="success">Facturée</Badge>
+                <Link
+                  href={`/factures/${facture.id}`}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Voir la facture {facture.numero}
+                </Link>
+              </div>
+            )}
           </div>
-          <InterventionDeleteButton id={intervention.id} />
+          <div className="flex flex-wrap items-center gap-2">
+            {facture ? (
+              <Button variant="outline" asChild>
+                <Link href={`/factures/${facture.id}`}>
+                  <FileText className="size-4" />
+                  Voir la facture
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild>
+                <Link href={`/factures/nouvelle?intervention=${intervention.id}`}>
+                  <Receipt className="size-4" />
+                  Créer la facture
+                </Link>
+              </Button>
+            )}
+            <InterventionDeleteButton id={intervention.id} />
+          </div>
         </div>
       </div>
 

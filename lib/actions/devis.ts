@@ -19,6 +19,8 @@ type Ligne = Database["public"]["Tables"]["devis_lignes"]["Row"];
 
 /**
  * Liste des devis avec filtres + calcul du statut affiché (expiré).
+ * Les modèles (est_modele = true) sont toujours exclus : ils ont leur
+ * propre liste (listModelesDevis) et ne comptent dans aucune stat.
  */
 export async function listDevis(params?: {
   search?: string;
@@ -30,6 +32,7 @@ export async function listDevis(params?: {
   let query = supabase
     .from("devis")
     .select("*, client:clients(id, nom, type)")
+    .eq("est_modele", false)
     .order("date_emission", { ascending: false })
     .order("numero", { ascending: false });
 
@@ -55,6 +58,42 @@ export async function listDevis(params?: {
     return { ...d, statut_affichage: isExpired ? "expire" : d.statut };
   });
   return result;
+}
+
+/**
+ * Liste des devis marqués comme modèles, pour la section « Modèles »
+ * et le choix « Nouveau devis depuis un modèle ».
+ */
+export async function listModelesDevis() {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("devis")
+    .select("id, numero, type_activite, total_ht, notes, updated_at")
+    .eq("est_modele", true)
+    .order("updated_at", { ascending: false });
+  return data ?? [];
+}
+
+/**
+ * Marque / démarque un devis comme modèle réutilisable. Réversible et
+ * sans effet sur le contenu : le devis garde son numéro et ses lignes,
+ * il est simplement déplacé entre la liste normale et la section
+ * Modèles (exclu des stats et compteurs quand est_modele = true).
+ */
+export async function setDevisModeleAction(
+  id: string,
+  estModele: boolean,
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("devis")
+    .update({ est_modele: estModele })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/devis");
+  revalidatePath(`/devis/${id}`);
+  revalidatePath("/dashboard");
+  return { ok: true, data: undefined };
 }
 
 /**
@@ -298,106 +337,14 @@ export async function setDevisStatutAction(
   return { ok: true, data: undefined };
 }
 
+// NB : la duplication de devis ne passe plus par une server action —
+// le bouton « Dupliquer » ouvre /devis/nouveau?source=<id> avec le
+// formulaire pré-rempli (voir lib/devis-prefill.ts). Aucun numéro
+// n'est consommé tant que l'utilisateur ne valide pas.
+
 /**
  * Supprime un devis (uniquement les brouillons).
  */
-/**
- * Duplique un devis existant. La copie est créée en brouillon avec un
- * nouveau numéro, date d'émission = aujourd'hui, validité + 3 mois.
- * Le lien éventuel vers une facture (devis converti) n'est pas recopié.
- */
-export async function duplicateDevisAction(
-  id: string,
-): Promise<ActionResult<{ devisId: string; numero: string }>> {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Non authentifié." };
-
-  const { data: source } = await supabase
-    .from("devis")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (!source) return { ok: false, error: "Devis introuvable." };
-
-  const { data: lignes } = await supabase
-    .from("devis_lignes")
-    .select("*")
-    .eq("devis_id", id)
-    .order("ordre");
-
-  // Nouveau numéro
-  const { data: numero, error: numeroErr } = await supabase.rpc(
-    "next_document_number",
-    { p_type: "devis" },
-  );
-  if (numeroErr || !numero) {
-    return {
-      ok: false,
-      error: numeroErr?.message ?? "Échec de la numérotation.",
-    };
-  }
-
-  const today = new Date().toISOString().slice(0, 10);
-  const validite = new Date(Date.now() + 90 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
-
-  const { data: devis, error: insertErr } = await supabase
-    .from("devis")
-    .insert({
-      user_id: user.id,
-      numero,
-      client_id: source.client_id,
-      date_emission: today,
-      date_validite: validite,
-      date_debut_travaux: null,
-      duree_estimee_jours: source.duree_estimee_jours,
-      type_activite: source.type_activite,
-      statut: "brouillon",
-      total_ht: source.total_ht,
-      conditions: source.conditions,
-      notes: `Dupliqué depuis le devis ${source.numero}.`,
-      equipement_info: source.equipement_info,
-      performances_energetiques: source.performances_energetiques,
-      aides_financieres: source.aides_financieres,
-      facture_id: null,
-    })
-    .select("id, numero")
-    .single();
-
-  if (insertErr || !devis) {
-    return {
-      ok: false,
-      error: insertErr?.message ?? "Échec de la duplication.",
-    };
-  }
-
-  if (lignes && lignes.length > 0) {
-    const lignesPayload = lignes.map((l, idx) => ({
-      user_id: user.id,
-      devis_id: devis.id,
-      ordre: idx,
-      designation: l.designation,
-      quantite: Number(l.quantite),
-      prix_unitaire_ht: Number(l.prix_unitaire_ht),
-      total_ht: Number(l.total_ht),
-    }));
-    const { error: lignesErr } = await supabase
-      .from("devis_lignes")
-      .insert(lignesPayload);
-    if (lignesErr) {
-      await supabase.from("devis").delete().eq("id", devis.id);
-      return { ok: false, error: lignesErr.message };
-    }
-  }
-
-  revalidatePath("/devis");
-  return { ok: true, data: { devisId: devis.id, numero: devis.numero } };
-}
-
 export async function deleteDevisAction(id: string): Promise<ActionResult> {
   const supabase = createClient();
   const { data: existing } = await supabase

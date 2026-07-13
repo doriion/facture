@@ -50,6 +50,10 @@ type Ligne = Database["public"]["Tables"]["factures_lignes"]["Row"];
  * Formulaire complet de facture (création ou édition).
  * Utilise react-hook-form + Zod avec les types entrée/sortie distincts
  * pour gérer la coercion (string → number) sur les champs numériques.
+ *
+ * `prefill` : valeurs initiales en mode création (facture pré-remplie
+ * depuis une intervention). `interventionId` : lie l'intervention à la
+ * facture au moment de la création.
  */
 export function FactureForm({
   clients,
@@ -57,24 +61,51 @@ export function FactureForm({
   facture,
   lignes,
   defaultConditionsPaiement,
+  prefill,
+  interventionId,
 }: {
   clients: Client[];
   produits: Produit[];
   facture?: Facture;
   lignes?: Ligne[];
   defaultConditionsPaiement?: string | null;
+  prefill?: {
+    facture: Partial<Facture>;
+    lignes: Array<{
+      designation: string;
+      quantite: number;
+      prix_unitaire_ht: number;
+    }>;
+  };
+  interventionId?: string;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const isEdit = !!facture;
+
+  // En édition, la facture existante prime ; en création, le prefill
+  // éventuel (intervention) fournit les valeurs initiales.
+  const base = facture ?? (prefill?.facture as Facture | undefined);
+  const baseLignes = facture
+    ? (lignes ?? []).map((l) => ({
+        id: l.id,
+        designation: l.designation,
+        quantite: Number(l.quantite),
+        prix_unitaire_ht: Number(l.prix_unitaire_ht),
+      }))
+    : (prefill?.lignes ?? []).map((l) => ({
+        designation: l.designation,
+        quantite: l.quantite,
+        prix_unitaire_ht: l.prix_unitaire_ht,
+      }));
 
   const today = new Date().toISOString().slice(0, 10);
   const inThirtyDays = new Date(Date.now() + 30 * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);
 
-  const equip = (facture?.equipement_info ?? {}) as Record<string, unknown>;
-  const aides = (facture?.aides_financieres ?? {}) as Record<string, unknown>;
+  const equip = (base?.equipement_info ?? {}) as Record<string, unknown>;
+  const aides = (base?.aides_financieres ?? {}) as Record<string, unknown>;
 
   const {
     register,
@@ -86,23 +117,18 @@ export function FactureForm({
   } = useForm<FactureFormInput, unknown, FactureFormValues>({
     resolver: zodResolver(factureSchema),
     defaultValues: {
-      client_id: facture?.client_id ?? "",
+      client_id: base?.client_id ?? "",
       type_activite:
-        (facture?.type_activite as FactureFormInput["type_activite"]) ??
+        (base?.type_activite as FactureFormInput["type_activite"]) ??
         "plomberie",
-      date_emission: facture?.date_emission ?? today,
-      date_echeance: facture?.date_echeance ?? inThirtyDays,
-      date_prestation: facture?.date_prestation ?? "",
-      date_prestation_fin: facture?.date_prestation_fin ?? "",
+      date_emission: base?.date_emission ?? today,
+      date_echeance: base?.date_echeance ?? inThirtyDays,
+      date_prestation: base?.date_prestation ?? "",
+      date_prestation_fin: base?.date_prestation_fin ?? "",
       conditions_paiement:
-        facture?.conditions_paiement ?? defaultConditionsPaiement ?? "",
-      notes: facture?.notes ?? "",
-      lignes: (lignes ?? []).map((l) => ({
-        id: l.id,
-        designation: l.designation,
-        quantite: Number(l.quantite),
-        prix_unitaire_ht: Number(l.prix_unitaire_ht),
-      })),
+        base?.conditions_paiement ?? defaultConditionsPaiement ?? "",
+      notes: base?.notes ?? "",
+      lignes: baseLignes,
       equipement: {
         marque: (equip.marque as string) ?? "",
         modele: (equip.modele as string) ?? "",
@@ -137,7 +163,10 @@ export function FactureForm({
         toast.error("Erreur", { description: result.error });
       }
     } else {
-      const result = await createFactureAction(values);
+      const result = await createFactureAction(
+        values,
+        interventionId ? { interventionId } : undefined,
+      );
       setSubmitting(false);
       if (result.ok) {
         toast.success(`Facture ${result.data.numero} créée`);

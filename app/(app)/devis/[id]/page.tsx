@@ -10,6 +10,7 @@ import { statutAffichageDevis } from "@/lib/validations/devis";
 import { DevisForm } from "@/components/devis/devis-form";
 import { DevisActions } from "@/components/devis/devis-actions";
 import { StatutBadgeDevis } from "@/components/devis/statut-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr, formatEuros } from "@/lib/format";
 
@@ -47,7 +48,11 @@ export default async function EditDevisPage({
               <h1 className="font-mono text-2xl font-bold tracking-tight">
                 {devis.numero}
               </h1>
-              <StatutBadgeDevis statut={statutAffiche} />
+              {devis.est_modele ? (
+                <Badge variant="secondary">Modèle</Badge>
+              ) : (
+                <StatutBadgeDevis statut={statutAffiche} />
+              )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Émis le {formatDateFr(devis.date_emission)} — valide jusqu'au{" "}
@@ -65,6 +70,7 @@ export default async function EditDevisPage({
             factureId={devis.facture_id}
             clientEmail={client?.email ?? null}
             clientNom={client?.nom ?? "le client"}
+            estModele={devis.est_modele}
           />
         </div>
       </div>

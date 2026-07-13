@@ -149,6 +149,7 @@ export type Database = {
           duree_estimee_jours: number | null;
           email_envoye_le: string | null;
           equipement_info: Json;
+          est_modele: boolean;
           facture_id: string | null;
           id: string;
           notes: string | null;
@@ -174,6 +175,7 @@ export type Database = {
           duree_estimee_jours?: number | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
+          est_modele?: boolean;
           facture_id?: string | null;
           id?: string;
           notes?: string | null;
@@ -199,6 +201,7 @@ export type Database = {
           duree_estimee_jours?: number | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
+          est_modele?: boolean;
           facture_id?: string | null;
           id?: string;
           notes?: string | null;

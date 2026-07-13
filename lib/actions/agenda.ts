@@ -146,6 +146,7 @@ export async function getAgendaEvents(
       .select(
         "id, numero, statut, date_debut_travaux, duree_estimee_jours, type_activite, client:clients(nom)",
       )
+      .eq("est_modele", false)
       .not("date_debut_travaux", "is", null)
       .gte("date_debut_travaux", ws)
       .lte("date_debut_travaux", we)
