@@ -229,7 +229,12 @@ export function ClientFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="telephone">Téléphone</Label>
-            <Input id="telephone" {...register("telephone")} />
+            <Input
+              id="telephone"
+              type="tel"
+              autoComplete="tel"
+              {...register("telephone")}
+            />
             {errors.telephone && (
               <p className="text-xs text-destructive">
                 {errors.telephone.message}

@@ -211,6 +211,7 @@ export function ProduitFormDialog({
                 step="0.1"
                 min="0"
                 max="100"
+                inputMode="decimal"
                 placeholder="—"
                 className="pr-10"
                 {...register("tva_taux_suggere")}
