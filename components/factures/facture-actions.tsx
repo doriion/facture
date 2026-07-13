@@ -209,7 +209,12 @@ export function FactureActions({
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" className="text-destructive">
+              {/* Sur mobile : ligne à part, éloignée des actions
+                  courantes pour éviter les taps accidentels. */}
+              <Button
+                variant="outline"
+                className="text-destructive max-sm:mt-1 max-sm:w-full"
+              >
                 <Trash2 className="size-4" />
                 Supprimer
               </Button>
@@ -262,7 +267,7 @@ export function FactureActions({
           </Button>
           <Button
             variant="outline"
-            className="text-destructive"
+            className="text-destructive max-sm:mt-1 max-sm:w-full"
             onClick={() => setAnnulerOpen(true)}
             disabled={pending === "annulee"}
           >
@@ -295,7 +300,11 @@ export function FactureActions({
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-destructive">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive max-sm:mt-1 max-sm:w-full"
+              >
                 <Trash2 className="size-4" />
                 Supprimer (test)
               </Button>

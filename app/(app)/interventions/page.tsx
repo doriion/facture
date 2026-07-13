@@ -5,6 +5,7 @@ import { bilanFluidesFrigo, listInterventions } from "@/lib/actions/intervention
 import { Button } from "@/components/ui/button";
 import { InterventionsTable } from "@/components/interventions/interventions-table";
 import { InterventionsToolbar } from "@/components/interventions/interventions-toolbar";
+import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata = { title: "Interventions — Facture AE" };
@@ -34,7 +35,7 @@ export default async function InterventionsPage({
             frigorigènes sont consignés pour la déclaration F-Gas.
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="max-md:hidden">
           <Link href="/interventions/nouvelle">
             <Plus className="size-4" />
             Nouvelle intervention
@@ -82,6 +83,15 @@ export default async function InterventionsPage({
 
       <InterventionsToolbar initialSearch={search} initialType={type} />
       <InterventionsTable interventions={interventions} />
+
+      <MobileActionBar>
+        <Button asChild size="lg">
+          <Link href="/interventions/nouvelle">
+            <Plus className="size-4" />
+            Nouvelle intervention
+          </Link>
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }

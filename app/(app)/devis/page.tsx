@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DevisTable } from "@/components/devis/devis-table";
 import { DevisToolbar } from "@/components/devis/devis-toolbar";
+import { MobileActionBar } from "@/components/mobile-action-bar";
 
 export const metadata = { title: "Devis — Facture AE" };
 
@@ -51,7 +52,7 @@ export default async function DevisPage({
             )}
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="max-md:hidden">
           <Link href="/devis/nouveau">
             <Plus className="size-4" />
             Nouveau devis
@@ -118,6 +119,15 @@ export default async function DevisPage({
       />
 
       <DevisTable devis={devis} />
+
+      <MobileActionBar>
+        <Button asChild size="lg">
+          <Link href="/devis/nouveau">
+            <Plus className="size-4" />
+            Nouveau devis
+          </Link>
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }

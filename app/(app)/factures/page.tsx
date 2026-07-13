@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FacturesTable } from "@/components/factures/factures-table";
 import { FacturesToolbar } from "@/components/factures/factures-toolbar";
 import { RelancesSection } from "@/components/factures/relances-section";
+import { MobileActionBar } from "@/components/mobile-action-bar";
 
 export const metadata = { title: "Factures — Facture AE" };
 
@@ -44,7 +45,8 @@ export default async function FacturesPage({
             HT cumulés
           </p>
         </div>
-        <Button asChild>
+        {/* Desktop : CTA en haut à droite. Mobile : barre fixe en bas. */}
+        <Button asChild className="max-md:hidden">
           <Link href="/factures/nouvelle">
             <Plus className="size-4" />
             Nouvelle facture
@@ -61,6 +63,15 @@ export default async function FacturesPage({
       />
 
       <FacturesTable factures={factures} />
+
+      <MobileActionBar>
+        <Button asChild size="lg">
+          <Link href="/factures/nouvelle">
+            <Plus className="size-4" />
+            Nouvelle facture
+          </Link>
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }

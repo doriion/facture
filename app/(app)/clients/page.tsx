@@ -1,7 +1,11 @@
+import { Plus } from "lucide-react";
+
 import { listClients } from "@/lib/actions/clients";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { ClientsTable } from "@/components/clients/clients-table";
 import { ClientsToolbar } from "@/components/clients/clients-toolbar";
+import { MobileActionBar } from "@/components/mobile-action-bar";
+import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Clients — Facture AE" };
 
@@ -28,12 +32,25 @@ export default async function ClientsPage({
             {clients.length > 1 ? "s" : ""}.
           </p>
         </div>
-        <ClientFormDialog />
+        <div className="max-md:hidden">
+          <ClientFormDialog />
+        </div>
       </div>
 
       <ClientsToolbar initialSearch={search} initialType={type} />
 
       <ClientsTable clients={clients} />
+
+      <MobileActionBar>
+        <ClientFormDialog
+          trigger={
+            <Button size="lg" className="w-full">
+              <Plus className="size-4" />
+              Nouveau client
+            </Button>
+          }
+        />
+      </MobileActionBar>
     </div>
   );
 }
