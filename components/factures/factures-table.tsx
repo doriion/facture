@@ -35,7 +35,56 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
   }
 
   return (
-    <div className="rounded-lg border bg-card">
+    <>
+      {/* Mobile (< md) : cartes verticales entièrement tapables.
+          Le lien « étiré » (absolute inset-0) couvre la carte ; les
+          actions secondaires repassent au-dessus avec z-10. */}
+      <div className="space-y-2 md:hidden">
+        {factures.map((f) => {
+          const canMarkPaid =
+            f.statut === "envoyee" || f.statut_affichage === "retard";
+          return (
+            <div
+              key={f.id}
+              className="relative rounded-lg border bg-card p-4 transition-colors active:bg-accent/50"
+            >
+              <Link
+                href={`/factures/${f.id}`}
+                className="absolute inset-0"
+                aria-label={`Ouvrir la facture ${f.numero}`}
+              />
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-sm font-semibold">{f.numero}</p>
+                  <p className="mt-0.5 truncate text-sm">
+                    {f.client?.nom ?? (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </p>
+                </div>
+                <StatutBadge statut={f.statut_affichage} />
+              </div>
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <div className="text-xs text-muted-foreground">
+                  <p>Émise le {formatDateFr(f.date_emission)}</p>
+                  <p>Échéance le {formatDateFr(f.date_echeance)}</p>
+                </div>
+                <p className="text-lg font-bold tabular-nums">
+                  {formatEuros(Number(f.total_ht))}
+                </p>
+              </div>
+              {canMarkPaid && (
+                <div className="relative z-10 mt-3 border-t pt-3">
+                  <MarquerPayeeButton factureId={f.id} compact />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop (>= md) : tableau complet inchangé */}
+      <div className="hidden rounded-lg border bg-card md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -102,6 +151,7 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
           })}
         </TableBody>
       </Table>
-    </div>
+      </div>
+    </>
   );
 }

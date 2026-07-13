@@ -36,7 +36,61 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
   }
 
   return (
-    <div className="rounded-lg border bg-card">
+    <>
+      {/* Mobile (< md) : cartes tapables ; les actions (éditer /
+          supprimer) restent de vrais boutons au-dessus du lien étiré,
+          espacés pour éviter les taps accidentels. */}
+      <div className="space-y-2 md:hidden">
+        {clients.map((c) => (
+          <div
+            key={c.id}
+            className="relative rounded-lg border bg-card p-4 transition-colors active:bg-accent/50"
+          >
+            <Link
+              href={`/clients/${c.id}`}
+              className="absolute inset-0"
+              aria-label={`Ouvrir la fiche de ${c.nom}`}
+            />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{c.nom}</p>
+                {c.raison_sociale && (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {c.raison_sociale}
+                  </p>
+                )}
+              </div>
+              <Badge variant={typeVariant[c.type] ?? "default"}>
+                {TYPES_CLIENT[c.type as keyof typeof TYPES_CLIENT] ?? c.type}
+              </Badge>
+            </div>
+            <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+              {(c.code_postal || c.ville) && (
+                <p>
+                  {c.code_postal} {c.ville}
+                </p>
+              )}
+              {c.email && <p className="truncate">{c.email}</p>}
+              {c.telephone && <p>{c.telephone}</p>}
+            </div>
+            <div className="relative z-10 mt-3 flex items-center justify-between border-t pt-2">
+              <ClientFormDialog
+                client={c}
+                trigger={
+                  <Button variant="ghost" size="sm">
+                    <Pencil className="size-4" />
+                    Modifier
+                  </Button>
+                }
+              />
+              <DeleteClientDialog clientId={c.id} clientNom={c.nom} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop (>= md) : tableau complet inchangé */}
+      <div className="hidden rounded-lg border bg-card md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -102,6 +156,7 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
           ))}
         </TableBody>
       </Table>
-    </div>
+      </div>
+    </>
   );
 }
