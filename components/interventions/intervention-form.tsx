@@ -40,6 +40,12 @@ import {
   DureeBadge,
   computeDureeJours,
 } from "@/components/agenda/duree-badge";
+import {
+  equivalentCo2Tonnes,
+  formatEquivalentCo2,
+  periodiciteControleMois,
+  prgFluide,
+} from "@/lib/fluides";
 
 import type { Database } from "@/types/database";
 
@@ -86,6 +92,15 @@ export function InterventionForm({
       fluide_frigo_type: intervention?.fluide_frigo_type ?? "",
       fluide_frigo_kg_ajoute: intervention?.fluide_frigo_kg_ajoute ?? null,
       fluide_frigo_kg_recupere: intervention?.fluide_frigo_kg_recupere ?? null,
+      fluide_charge_totale_kg: intervention?.fluide_charge_totale_kg ?? null,
+      etancheite_controle: intervention?.etancheite_controle ?? null,
+      etancheite_detecteur: intervention?.etancheite_detecteur ?? "",
+      etancheite_detecteur_controle_le:
+        intervention?.etancheite_detecteur_controle_le ?? "",
+      etancheite_fuite: intervention?.etancheite_fuite ?? null,
+      etancheite_fuite_localisation:
+        intervention?.etancheite_fuite_localisation ?? "",
+      fluide_observations: intervention?.fluide_observations ?? "",
       duree_minutes: intervention?.duree_minutes ?? null,
       facture_id: intervention?.facture_id ?? null,
       notes: intervention?.notes ?? "",
@@ -280,43 +295,202 @@ export function InterventionForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Fluides frigorigènes (F-Gas)</CardTitle>
+          <CardTitle>Manipulation de fluide (F-Gas)</CardTitle>
           <CardDescription>
-            Bilan obligatoire pour les contrôles réglementaires : type de
-            fluide, kg ajoutés et kg récupérés sur cette intervention.
+            Traçabilité réglementaire : quantités manipulées, charge de
+            l&apos;équipement (→ éq. CO2) et contrôle d&apos;étanchéité.
+            Ces données pré-remplissent le CERFA 15497.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="fluide_type">Type de fluide</Label>
-            <Input
-              id="fluide_type"
-              placeholder="R32, R454B, R290…"
-              {...register("fluide_frigo_type")}
-            />
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="fluide_type">Type de fluide</Label>
+              <Input
+                id="fluide_type"
+                placeholder="R32, R410A, R454B, R290…"
+                {...register("fluide_frigo_type")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="charge_totale">
+                Charge totale de l&apos;équipement (kg)
+              </Label>
+              <Input
+                id="charge_totale"
+                type="number"
+                step="0.001"
+                min="0"
+                inputMode="decimal"
+                placeholder="2.400"
+                {...register("fluide_charge_totale_kg")}
+              />
+              {(() => {
+                const fluide = watch("fluide_frigo_type") as string;
+                const chargeRaw = watch("fluide_charge_totale_kg");
+                const charge =
+                  chargeRaw === null || chargeRaw === undefined || chargeRaw === ""
+                    ? null
+                    : Number(chargeRaw);
+                const prg = prgFluide(fluide);
+                const teq = equivalentCo2Tonnes(fluide, charge);
+                const periodicite = periodiciteControleMois(charge);
+                if (prg === null) {
+                  return fluide?.trim() ? (
+                    <p className="text-xs text-muted-foreground">
+                      Fluide inconnu de la table PRG — éq. CO2 non calculé.
+                    </p>
+                  ) : null;
+                }
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    PRG {prg}
+                    {teq !== null && (
+                      <>
+                        {" "}
+                        · <strong>{formatEquivalentCo2(teq)}</strong>
+                      </>
+                    )}
+                    {periodicite !== null && (
+                      <> · contrôle d&apos;étanchéité tous les {periodicite} mois</>
+                    )}
+                  </p>
+                );
+              })()}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="kg_ajoute">Kg ajoutés (chargés)</Label>
+              <Input
+                id="kg_ajoute"
+                type="number"
+                step="0.001"
+                min="0"
+                inputMode="decimal"
+                placeholder="0.000"
+                {...register("fluide_frigo_kg_ajoute")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="kg_recupere">Kg récupérés</Label>
+              <Input
+                id="kg_recupere"
+                type="number"
+                step="0.001"
+                min="0"
+                inputMode="decimal"
+                placeholder="0.000"
+                {...register("fluide_frigo_kg_recupere")}
+              />
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="kg_ajoute">Kg ajoutés</Label>
-            <Input
-              id="kg_ajoute"
-              type="number"
-              step="0.001"
-              min="0"
-              inputMode="decimal"
-              placeholder="0.000"
-              {...register("fluide_frigo_kg_ajoute")}
-            />
+
+          {/* Contrôle d'étanchéité (cadres 5 et 10 du CERFA 15497) */}
+          <div className="rounded-md border bg-muted/20 p-4">
+            <p className="mb-3 text-sm font-medium">Contrôle d&apos;étanchéité</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Contrôle effectué</Label>
+                <Select
+                  value={
+                    watch("etancheite_controle") === true
+                      ? "oui"
+                      : watch("etancheite_controle") === false
+                        ? "non"
+                        : "nr"
+                  }
+                  onValueChange={(v) =>
+                    setValue(
+                      "etancheite_controle",
+                      v === "oui" ? true : v === "non" ? false : null,
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nr">Non renseigné</SelectItem>
+                    <SelectItem value="oui">Oui</SelectItem>
+                    <SelectItem value="non">Non</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {watch("etancheite_controle") === true && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="detecteur">
+                      Détecteur utilisé (n° de série / repère)
+                    </Label>
+                    <Input
+                      id="detecteur"
+                      placeholder="Ex : Inficon D-TEK — SN 12345"
+                      {...register("etancheite_detecteur")}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="detecteur_controle">
+                      Dernier contrôle du détecteur
+                    </Label>
+                    <Input
+                      id="detecteur_controle"
+                      type="date"
+                      {...register("etancheite_detecteur_controle_le")}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Vérification annuelle obligatoire (seuil ≤ 5 g/an).
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Fuite constatée</Label>
+                    <Select
+                      value={
+                        watch("etancheite_fuite") === true
+                          ? "oui"
+                          : watch("etancheite_fuite") === false
+                            ? "non"
+                            : "nr"
+                      }
+                      onValueChange={(v) =>
+                        setValue(
+                          "etancheite_fuite",
+                          v === "oui" ? true : v === "non" ? false : null,
+                        )
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nr">Non renseigné</SelectItem>
+                        <SelectItem value="non">Non — conforme</SelectItem>
+                        <SelectItem value="oui">Oui — fuite détectée</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {watch("etancheite_fuite") === true && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="fuite_loc">
+                        Localisation de la fuite / réparation
+                      </Label>
+                      <Input
+                        id="fuite_loc"
+                        placeholder="Ex : raccord flare UI, réparé et re-testé"
+                        {...register("etancheite_fuite_localisation")}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
+
           <div className="space-y-1.5">
-            <Label htmlFor="kg_recupere">Kg récupérés</Label>
-            <Input
-              id="kg_recupere"
-              type="number"
-              step="0.001"
-              min="0"
-              inputMode="decimal"
-              placeholder="0.000"
-              {...register("fluide_frigo_kg_recupere")}
+            <Label htmlFor="fluide_obs">Observations</Label>
+            <Textarea
+              id="fluide_obs"
+              rows={2}
+              placeholder="Remarques sur la manipulation (reprises sur le CERFA)"
+              {...register("fluide_observations")}
             />
           </div>
         </CardContent>
