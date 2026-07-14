@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Loader2, Trash2 } from "lucide-react";
+import { Camera, Images, Loader2, ScanText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -10,6 +10,7 @@ import {
   deleteInterventionPhotoAction,
   type InterventionPhoto,
 } from "@/lib/actions/intervention-photos";
+import { compressImage } from "@/lib/image-compress";
 import {
   Card,
   CardContent,
@@ -61,7 +62,8 @@ export function InterventionPhotos({
   photos: InterventionPhoto[];
 }) {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [moment, setMoment] = useState<string>("apres");
   const [legende, setLegende] = useState("");
@@ -74,8 +76,11 @@ export function InterventionPhotos({
     let success = 0;
     let failed = 0;
     for (const file of Array.from(files)) {
+      // Compression côté client (max ~1600 px, JPEG) : une photo de
+      // téléphone passe de plusieurs Mo à quelques centaines de Ko.
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", compressed);
       fd.append("moment", moment);
       fd.append("legende", legende);
       const res = await uploadInterventionPhotoAction(interventionId, fd);
@@ -159,28 +164,65 @@ export function InterventionPhotos({
           </div>
         </div>
 
+        {/* Caméra (une photo, capture directe) et galerie (multiple)
+            séparées : sur mobile, « Prendre une photo » ouvre
+            directement l'appareil, « Galerie » le sélecteur. */}
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
           type="file"
           accept="image/*"
           capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            handleFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
           multiple
           className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
+          onChange={(e) => {
+            handleFiles(e.target.files);
+            e.target.value = "";
+          }}
         />
-        <Button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="w-full sm:w-auto"
-        >
-          {uploading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Camera className="size-4" />
-          )}
-          {uploading ? "Envoi en cours…" : "Prendre / Choisir des photos"}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Camera className="size-4" />
+            )}
+            {uploading ? "Envoi en cours…" : "Prendre une photo"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => galleryInputRef.current?.click()}
+            disabled={uploading}
+          >
+            <Images className="size-4" />
+            Galerie
+          </Button>
+          {/* Emplacement réservé : lecture de la plaque signalétique
+              (OCR) — fonctionnalité à venir, volontairement inactive. */}
+          <Button
+            type="button"
+            variant="outline"
+            disabled
+            title="Bientôt : lire marque, modèle et n° de série depuis une photo de la plaque"
+          >
+            <ScanText className="size-4" />
+            Lire la plaque (bientôt)
+          </Button>
+        </div>
 
         {/* Galerie */}
         {photos.length === 0 ? (
