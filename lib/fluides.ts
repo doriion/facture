@@ -22,7 +22,19 @@
  * PRG (GWP-100, base IPCC AR4 pour les HFC — voir en-tête du fichier).
  * Mélanges : calcul annexe VI à partir des PRG AR4 des composants,
  * valeurs arrondies telles qu'utilisées par la profession (ATEE/Pôle
- * Cristal, Danfoss) et les déclarations françaises.
+ * Cristal, Danfoss, fiches fabricants) et les déclarations françaises.
+ *
+ * Nuance (vérifiée sur EUR-Lex/EFCTC/Tecumseh) : pour les mélanges
+ * contenant des HFO (R448A, R449A, R452B, R454B, R454C, R513A), le
+ * calcul STRICT de l'annexe VI du 2024/573 utilise les PRG AR6 de
+ * l'annexe II pour les HFO (R1234yf = 0,501…) et donne des valeurs
+ * ~1 % plus basses (ex. R454B 465 au lieu de 466, R454C 146 au lieu
+ * de 148). On retient les valeurs conventionnelles des fiches
+ * fabricants : plus élevées, donc CONSERVATRICES pour les seuils
+ * (5/50/500 t éq. CO2) — l'écart est sans impact réglementaire.
+ *
+ * R22 (HCFC) : suivi réglementaire en KG (règlement 2024/590), pas en
+ * t éq. CO2 — le PRG n'est fourni qu'à titre indicatif.
  */
 export const PRG_FLUIDES: Record<string, number> = {
   // HFC purs — annexe I section 1 du règlement (UE) 2024/573 (AR4)
