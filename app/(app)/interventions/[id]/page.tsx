@@ -5,8 +5,13 @@ import { ArrowLeft, FileText, Receipt } from "lucide-react";
 import { listClients } from "@/lib/actions/clients";
 import { getIntervention } from "@/lib/actions/interventions";
 import { listInterventionPhotos } from "@/lib/actions/intervention-photos";
+import { listInterventionSignatures } from "@/lib/actions/signatures";
+import { listCerfaDocuments } from "@/lib/actions/cerfa";
+import { getProfil } from "@/lib/actions/profil";
 import { InterventionForm } from "@/components/interventions/intervention-form";
 import { InterventionPhotos } from "@/components/interventions/intervention-photos";
+import { InterventionSignatures } from "@/components/interventions/intervention-signatures";
+import { InterventionCerfa } from "@/components/interventions/intervention-cerfa";
 import { InterventionDeleteButton } from "@/components/interventions/intervention-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,10 +28,16 @@ export default async function EditInterventionPage({
   const { intervention, client, facture } = await getIntervention(params.id);
   if (!intervention) notFound();
 
-  const [clients, photos] = await Promise.all([
+  const [clients, photos, signatures, cerfaDocs, profil] = await Promise.all([
     listClients(),
     listInterventionPhotos(params.id),
+    listInterventionSignatures(params.id),
+    listCerfaDocuments(params.id),
+    getProfil(),
   ]);
+
+  const operateurNom =
+    [profil?.prenom, profil?.nom].filter(Boolean).join(" ") || undefined;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -96,6 +107,19 @@ export default async function EditInterventionPage({
       </div>
 
       <InterventionForm clients={clients} intervention={intervention} />
+
+      <InterventionCerfa
+        intervention={intervention}
+        documents={cerfaDocs}
+        attestationManquante={!profil?.num_attestation_fluides_frigo}
+      />
+
+      <InterventionSignatures
+        interventionId={intervention.id}
+        operateur={signatures.operateur}
+        detenteur={signatures.detenteur}
+        operateurNom={operateurNom}
+      />
 
       <InterventionPhotos interventionId={intervention.id} photos={photos} />
     </div>
