@@ -334,7 +334,7 @@ export function InterventionForm({
                     : Number(chargeRaw);
                 const prg = prgFluide(fluide);
                 const teq = equivalentCo2Tonnes(fluide, charge);
-                const periodicite = periodiciteControleMois(charge);
+                const periodicite = periodiciteControleMois(fluide, charge);
                 if (prg === null) {
                   return fluide?.trim() ? (
                     <p className="text-xs text-muted-foreground">

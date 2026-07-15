@@ -53,7 +53,9 @@ export function InterventionDeleteButton({ id }: { id: string }) {
           <AlertDialogTitle>Supprimer cette intervention ?</AlertDialogTitle>
           <AlertDialogDescription>
             La traçabilité des fluides frigorigènes pour cette intervention
-            sera perdue. Cette action est irréversible.
+            sera perdue. Cette action est irréversible. Une intervention
+            comportant des signatures ou des fiches CERFA archivées ne peut
+            pas être supprimée (documents à conserver 5 ans).
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

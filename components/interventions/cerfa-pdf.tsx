@@ -355,14 +355,9 @@ export function CerfaPdf({
               <View style={styles.col}>
                 <Field
                   // Pas de glyphes <= / >= : Helvetica WinAnsi ne les couvre pas.
-                  label="Périodicité applicable (selon charge, sans détection permanente : 12 mois de 2 kg à moins de 30 kg · 6 mois de 30 kg à moins de 300 kg · 3 mois à partir de 300 kg)"
-                  value={
-                    data.periodiciteMois !== null
-                      ? `Tous les ${data.periodiciteMois} mois`
-                      : data.systemePermanentDetection
-                        ? "Selon système permanent de détection (cadre 9)"
-                        : "Non soumis (charge < 2 kg)"
-                  }
+                  // Seuils F-Gas en t éq. CO2 (art. 5, règlement UE 2024/573).
+                  label="Périodicité applicable (sans détection permanente : 12 mois de 5 à moins de 50 t éq. CO2 · 6 mois de 50 à moins de 500 · 3 mois à partir de 500 · R22 : seuils en kg 2/30/300)"
+                  value={data.periodiciteLabel}
                 />
               </View>
               <View style={styles.col}>

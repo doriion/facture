@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, FileCheck2, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -125,6 +125,26 @@ export function InterventionCerfa({
   const [dechetsBsff, setDechetsBsff] = useState("");
   const [dechetsDestNom, setDechetsDestNom] = useState("");
   const [dechetsDestAdresse, setDechetsDestAdresse] = useState("");
+
+  // Resynchronise à chaque ouverture les champs dérivés de
+  // l'intervention : les useState ne s'initialisent qu'au premier
+  // montage, or l'utilisateur peut modifier les kg / le contrôle
+  // d'étanchéité puis générer la fiche sans recharger la page
+  // (même pattern que quick-intervention-dialog).
+  useEffect(() => {
+    if (!open) return;
+    setNatures(naturesParDefaut(intervention));
+    setChargeVierge(
+      intervention.fluide_frigo_kg_ajoute !== null
+        ? String(intervention.fluide_frigo_kg_ajoute)
+        : "",
+    );
+    setRecupTraitement(
+      intervention.fluide_frigo_kg_recupere !== null
+        ? String(intervention.fluide_frigo_kg_recupere)
+        : "",
+    );
+  }, [open, intervention]);
 
   function toggleNature(nat: NatureIntervention) {
     setNatures((prev) =>

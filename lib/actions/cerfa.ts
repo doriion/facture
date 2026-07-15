@@ -30,7 +30,12 @@ export type CerfaDocument = {
 
 /** Nettoie les options venues du client (types + bornes). */
 function sanitizeOptions(raw: CerfaOptions): CerfaOptions {
+  // Champ vide/null → null (et PAS 0 : Number(null) vaut 0) : c'est ce
+  // null qui déclenche le fallback de buildCerfaData sur les kg de
+  // l'intervention en base.
   const kg = (v: unknown): number | null => {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "string" && v.trim() === "") return null;
     const x = typeof v === "string" ? Number(v.replace(",", ".")) : Number(v);
     return Number.isFinite(x) && x >= 0 && x <= 10000 ? x : null;
   };

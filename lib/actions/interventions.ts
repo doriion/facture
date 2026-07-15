@@ -208,6 +208,35 @@ export async function deleteInterventionAction(
   id: string,
 ): Promise<ActionResult> {
   const supabase = createClient();
+
+  // Une intervention signée est un document à valeur probante
+  // (conservation 5 ans) : la FK ON DELETE RESTRICT bloque de toute
+  // façon en base, mais on renvoie une erreur claire plutôt qu'une
+  // violation de contrainte brute.
+  const { count: nbSignatures } = await supabase
+    .from("intervention_signatures")
+    .select("id", { count: "exact", head: true })
+    .eq("intervention_id", id);
+  if (nbSignatures && nbSignatures > 0) {
+    return {
+      ok: false,
+      error:
+        "Impossible de supprimer : cette intervention comporte des signatures (fiche d'intervention fluides à conserver 5 ans).",
+    };
+  }
+
+  const { count: nbCerfa } = await supabase
+    .from("intervention_cerfa")
+    .select("id", { count: "exact", head: true })
+    .eq("intervention_id", id);
+  if (nbCerfa && nbCerfa > 0) {
+    return {
+      ok: false,
+      error:
+        "Impossible de supprimer : des fiches CERFA sont archivées pour cette intervention. Supprimez d'abord les fiches archivées si elles sont obsolètes.",
+    };
+  }
+
   const { error } = await supabase.from("interventions").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/interventions");

@@ -45,7 +45,10 @@ comment on column public.interventions.fluide_observations is
 create table if not exists public.intervention_signatures (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
-  intervention_id uuid not null references public.interventions (id) on delete cascade,
+  -- ON DELETE RESTRICT : sans quoi supprimer l'intervention détruirait
+  -- en cascade des signatures « immuables » (conservation 5 ans). La
+  -- suppression d'une intervention signée est refusée par la base.
+  intervention_id uuid not null references public.interventions (id) on delete restrict,
   role text not null check (role in ('operateur', 'detenteur')),
   signataire_nom text not null,
   signataire_qualite text,
@@ -75,7 +78,10 @@ create policy "intervention_signatures_owner_insert"
 create table if not exists public.intervention_cerfa (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
-  intervention_id uuid not null references public.interventions (id) on delete cascade,
+  -- RESTRICT également : le snapshot d'une fiche archivée n'est pas
+  -- régénérable après suppression de l'intervention. Supprimer d'abord
+  -- les fiches archivées (action delete dédiée), ensuite l'intervention.
+  intervention_id uuid not null references public.interventions (id) on delete restrict,
   storage_path text not null,
   donnees jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()

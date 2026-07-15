@@ -112,21 +112,45 @@ export function formatEquivalentCo2(tonnes: number | null): string {
 }
 
 /**
- * Périodicité réglementaire du contrôle d'étanchéité (cadre 8 du CERFA
- * 15497*04) pour un équipement SANS système permanent de détection des
- * fuites, selon la charge en kg :
- *   2 ≤ Q < 30 kg → 12 mois · 30 ≤ Q < 300 kg → 6 mois · Q ≥ 300 kg → 3 mois
- * En dessous de 2 kg (et < 5 t éq. CO2), pas de contrôle périodique
- * obligatoire → null.
+ * Périodicité réglementaire du contrôle d'étanchéité (cadres 8-9 du
+ * CERFA 15497*04) pour un équipement SANS système permanent de
+ * détection des fuites.
+ *
+ * - Fluides F-Gas (HFC/HFO, règlement UE 2024/573 art. 5) : seuils en
+ *   TONNES ÉQ. CO2 — ≥ 5 t → 12 mois · ≥ 50 t → 6 mois · ≥ 500 t → 3
+ *   mois ; en dessous de 5 t, pas de contrôle périodique obligatoire.
+ * - R22/HCFC (règlement UE 2024/590, art. R543-79-1 c. env.) : seuils
+ *   en KG — 2 ≤ Q < 30 kg → 12 mois · 30 ≤ Q < 300 kg → 6 mois ·
+ *   Q ≥ 300 kg → 3 mois.
+ * - Fluide inconnu de la table ou charge absente → null (« non
+ *   déterminable », à distinguer de « non soumis » à l'affichage).
+ * Les fluides naturels (R290, R600a, R744, R717) tombent naturellement
+ * sous le seuil des 5 t → null.
  */
 export function periodiciteControleMois(
+  fluide: string | null | undefined,
   chargeKg: number | null | undefined,
 ): number | null {
-  if (chargeKg === null || chargeKg === undefined || !Number.isFinite(chargeKg)) {
+  if (
+    chargeKg === null ||
+    chargeKg === undefined ||
+    !Number.isFinite(chargeKg)
+  ) {
     return null;
   }
-  if (chargeKg >= 300) return 3;
-  if (chargeKg >= 30) return 6;
-  if (chargeKg >= 2) return 12;
+
+  // HCFC : suivi en kg (hors F-Gas)
+  if (normalizeFluide(fluide) === "R22") {
+    if (chargeKg >= 300) return 3;
+    if (chargeKg >= 30) return 6;
+    if (chargeKg >= 2) return 12;
+    return null;
+  }
+
+  const teq = equivalentCo2Tonnes(fluide, chargeKg);
+  if (teq === null) return null;
+  if (teq >= 500) return 3;
+  if (teq >= 50) return 6;
+  if (teq >= 5) return 12;
   return null;
 }

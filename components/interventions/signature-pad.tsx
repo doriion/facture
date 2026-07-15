@@ -29,25 +29,69 @@ export function SignaturePad({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  // Un seul pointeur trace à la fois : la paume posée sur la tablette
+  // pendant la signature ne doit ni zébrer ni interrompre le tracé.
+  const activePointer = useRef<number | null>(null);
   const [hasInk, setHasInk] = useState(false);
+  const hasInkRef = useRef(false);
+
+  function setInk(v: boolean) {
+    hasInkRef.current = v;
+    setHasInk(v);
+    onInkChange?.(v);
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Dimensionne le bitmap sur la taille CSS réelle × DPR (net sur Retina)
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.scale(dpr, dpr);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, rect.width, rect.height);
-    ctx.strokeStyle = "#111318";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+
+    // Dimensionne le bitmap sur la taille CSS réelle × DPR (net sur
+    // Retina). setTransform (et non scale cumulatif) : idempotent si
+    // rappelé au resize.
+    const setup = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.strokeStyle = "#111318";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    };
+
+    setup();
+
+    // Rotation portrait/paysage, clavier virtuel, reflow des colonnes :
+    // sans re-setup, le trait se décale du doigt et « Effacer » laisse
+    // de l'encre résiduelle. Redimensionner déforme un tracé raster →
+    // on repart d'un pad vierge (l'utilisateur re-signe à la bonne
+    // taille), en prévenant le parent.
+    let lastW = canvas.getBoundingClientRect().width;
+    let lastH = canvas.getBoundingClientRect().height;
+    const observer = new ResizeObserver(() => {
+      const rect = canvas.getBoundingClientRect();
+      if (
+        Math.abs(rect.width - lastW) < 1 &&
+        Math.abs(rect.height - lastH) < 1
+      ) {
+        return;
+      }
+      lastW = rect.width;
+      lastH = rect.height;
+      drawing.current = false;
+      activePointer.current = null;
+      setup();
+      if (hasInkRef.current) setInk(false);
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -70,7 +114,10 @@ export function SignaturePad({
 
   function start(e: React.PointerEvent<HTMLCanvasElement>) {
     if (disabled) return;
+    // Deuxième pointeur (paume posée…) : ignoré, le premier garde la main.
+    if (activePointer.current !== null) return;
     e.preventDefault();
+    activePointer.current = e.pointerId;
     e.currentTarget.setPointerCapture(e.pointerId);
     drawing.current = true;
     const ctx = e.currentTarget.getContext("2d");
@@ -81,14 +128,12 @@ export function SignaturePad({
     // Un point seul doit marquer (initiales, croix…)
     ctx.lineTo(x + 0.1, y + 0.1);
     ctx.stroke();
-    if (!hasInk) {
-      setHasInk(true);
-      onInkChange?.(true);
-    }
+    if (!hasInk) setInk(true);
   }
 
   function move(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!drawing.current || disabled) return;
+    if (e.pointerId !== activePointer.current) return;
     e.preventDefault();
     const ctx = e.currentTarget.getContext("2d");
     if (!ctx) return;
@@ -98,6 +143,8 @@ export function SignaturePad({
   }
 
   function end(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (e.pointerId !== activePointer.current) return;
+    activePointer.current = null;
     drawing.current = false;
     e.currentTarget.releasePointerCapture?.(e.pointerId);
   }
@@ -109,8 +156,7 @@ export function SignaturePad({
     const rect = canvas.getBoundingClientRect();
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, rect.width, rect.height);
-    setHasInk(false);
-    onInkChange?.(false);
+    setInk(false);
   }
 
   return (

@@ -94,6 +94,24 @@ export const interventionSchema = z.object({
       message: "L'heure de fin doit être postérieure au début.",
     });
   }
+}).transform((val) => {
+  // Cohérence étanchéité : l'UI masque les champs conditionnels quand le
+  // contrôle repasse à « non », mais react-hook-form garde leurs valeurs.
+  // On les neutralise ici pour ne jamais persister un enregistrement
+  // contradictoire (controle=false + fuite=true), quel que soit l'UI.
+  if (val.etancheite_controle !== true) {
+    return {
+      ...val,
+      etancheite_detecteur: "",
+      etancheite_detecteur_controle_le: "",
+      etancheite_fuite: null,
+      etancheite_fuite_localisation: "",
+    };
+  }
+  if (val.etancheite_fuite !== true) {
+    return { ...val, etancheite_fuite_localisation: "" };
+  }
+  return val;
 });
 
 export type InterventionFormInput = z.input<typeof interventionSchema>;

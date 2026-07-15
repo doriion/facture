@@ -85,13 +85,37 @@ describe("formatEquivalentCo2", () => {
 });
 
 describe("periodiciteControleMois", () => {
-  it("suit les seuils du cadre 8 du CERFA 15497*04 (sans détection permanente)", () => {
-    expect(periodiciteControleMois(1)).toBeNull(); // < 2 kg
-    expect(periodiciteControleMois(2)).toBe(12);
-    expect(periodiciteControleMois(29.9)).toBe(12);
-    expect(periodiciteControleMois(30)).toBe(6);
-    expect(periodiciteControleMois(299)).toBe(6);
-    expect(periodiciteControleMois(300)).toBe(3);
-    expect(periodiciteControleMois(null)).toBeNull();
+  it("F-Gas : seuils en t éq. CO2 (art. 5 du règlement UE 2024/573)", () => {
+    // Split R32 2,4 kg → 1,62 t < 5 t → non soumis au contrôle périodique
+    expect(periodiciteControleMois("R32", 2.4)).toBeNull();
+    // R32 : 5 t ↔ 7,407 kg → 8 kg = 5,4 t → 12 mois
+    expect(periodiciteControleMois("R32", 8)).toBe(12);
+    // Chambre froide R404A 25 kg → 98,05 t → contrôle SEMESTRIEL
+    expect(periodiciteControleMois("R404A", 25)).toBe(6);
+    // R404A 130 kg → 509,9 t → trimestriel
+    expect(periodiciteControleMois("R404A", 130)).toBe(3);
+    // R410A 2 kg → 4,176 t < 5 t → non soumis
+    expect(periodiciteControleMois("R410A", 2)).toBeNull();
+    // R410A 3 kg → 6,26 t → 12 mois
+    expect(periodiciteControleMois("R410A", 3)).toBe(12);
+  });
+
+  it("fluides naturels : sous les 5 t éq. CO2 → non soumis", () => {
+    expect(periodiciteControleMois("R290", 10)).toBeNull();
+    expect(periodiciteControleMois("R744", 100)).toBeNull();
+  });
+
+  it("R22 (HCFC, règlement 2024/590) : seuils en kg", () => {
+    expect(periodiciteControleMois("R22", 1)).toBeNull();
+    expect(periodiciteControleMois("R22", 2)).toBe(12);
+    expect(periodiciteControleMois("R22", 25)).toBe(12);
+    expect(periodiciteControleMois("R22", 30)).toBe(6);
+    expect(periodiciteControleMois("R22", 300)).toBe(3);
+  });
+
+  it("fluide inconnu ou charge absente → null (non déterminable)", () => {
+    expect(periodiciteControleMois("R9999", 50)).toBeNull();
+    expect(periodiciteControleMois("R32", null)).toBeNull();
+    expect(periodiciteControleMois(null, 50)).toBeNull();
   });
 });

@@ -158,20 +158,48 @@ describe("buildCerfaData", () => {
     expect(d.fuite.constatee).toBeNull();
   });
 
-  it("périodicité depuis la charge si pas de détection permanente (cadre 8)", () => {
-    expect(data.periodiciteMois).toBe(12); // 2,4 kg → 12 mois
+  it("périodicité en t éq. CO2 (art. 5 du 2024/573) — cadres 8-9", () => {
+    // Fixture : R32 2,4 kg → 1,62 t éq. CO2 < 5 t → NON SOUMIS
+    expect(data.periodiciteMois).toBeNull();
+    expect(data.periodiciteLabel).toContain("Non soumis");
+
+    // Chambre froide R404A 25 kg → 98 t éq. CO2 → contrôle SEMESTRIEL
+    const chambreFroide = buildCerfaData(
+      intervention({ fluide_frigo_type: "R404A", fluide_charge_totale_kg: 25 }),
+      client,
+      profil,
+      baseOptions,
+    );
+    expect(chambreFroide.periodiciteMois).toBe(6);
+    expect(chambreFroide.periodiciteLabel).toBe("Tous les 6 mois");
+
+    // R22 : seuils en kg (règlement SAO 2024/590)
+    const r22 = buildCerfaData(
+      intervention({ fluide_frigo_type: "R22", fluide_charge_totale_kg: 25 }),
+      client,
+      profil,
+      baseOptions,
+    );
+    expect(r22.periodiciteMois).toBe(12);
+
     const avecSysteme = buildCerfaData(intervention(), client, profil, {
       ...baseOptions,
       systemePermanentDetection: true,
     });
     expect(avecSysteme.periodiciteMois).toBeNull();
-    const petiteCharge = buildCerfaData(
-      intervention({ fluide_charge_totale_kg: 1 }),
+    expect(avecSysteme.periodiciteLabel).toContain("système permanent");
+  });
+
+  it("charge totale non renseignée → « non déterminable », jamais « non soumis »", () => {
+    const sansCharge = buildCerfaData(
+      intervention({ fluide_charge_totale_kg: null }),
       client,
       profil,
       baseOptions,
     );
-    expect(petiteCharge.periodiciteMois).toBeNull(); // < 2 kg
+    expect(sansCharge.periodiciteMois).toBeNull();
+    expect(sansCharge.periodiciteLabel).toContain("non renseignée");
+    expect(sansCharge.periodiciteLabel).not.toContain("Non soumis");
   });
 
   it("numéro de fiche généré par défaut, ou repris des options", () => {

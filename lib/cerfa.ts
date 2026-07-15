@@ -93,6 +93,10 @@ export type CerfaData = {
   } | null;
   systemePermanentDetection: boolean;
   periodiciteMois: number | null;
+  /** Libellé prêt à imprimer pour les cadres 8-9 (distingue « non
+   *  renseigné » de « non soumis » — un null ambigu a déjà produit de
+   *  fausses affirmations réglementaires). */
+  periodiciteLabel: string;
   fuite: {
     constatee: boolean | null;
     localisation: string;
@@ -118,6 +122,31 @@ export type CerfaData = {
 
 function n(v: number | null | undefined): number {
   return v === null || v === undefined || !Number.isFinite(v) ? 0 : v;
+}
+
+/**
+ * Libellé des cadres 8-9 (périodicité du contrôle d'étanchéité).
+ * Seuils F-Gas en t éq. CO2 (art. 5 du règlement UE 2024/573) :
+ * 12 mois de 5 à moins de 50 t · 6 mois de 50 à moins de 500 t ·
+ * 3 mois à partir de 500 t (R22 : seuils en kg, cf. lib/fluides.ts).
+ */
+export function periodiciteLabel(
+  fluide: string | null | undefined,
+  chargeKg: number | null,
+  systemePermanentDetection: boolean,
+): string {
+  if (systemePermanentDetection) {
+    return "Selon système permanent de détection (périodicité doublée — cadre 9)";
+  }
+  if (chargeKg === null) {
+    return "Non déterminable (charge totale non renseignée)";
+  }
+  const mois = periodiciteControleMois(fluide, chargeKg);
+  if (mois !== null) return `Tous les ${mois} mois`;
+  if (prgFluide(fluide) === null) {
+    return "Non déterminable (fluide inconnu de l'application)";
+  }
+  return "Non soumis au contrôle d'étanchéité périodique (sous les seuils réglementaires)";
 }
 
 function round3(v: number): number {
@@ -257,7 +286,12 @@ export function buildCerfaData(
     systemePermanentDetection: options.systemePermanentDetection,
     periodiciteMois: options.systemePermanentDetection
       ? null
-      : periodiciteControleMois(chargeKg),
+      : periodiciteControleMois(fluide, chargeKg),
+    periodiciteLabel: periodiciteLabel(
+      fluide,
+      chargeKg,
+      options.systemePermanentDetection,
+    ),
     fuite: {
       constatee: intervention.etancheite_controle
         ? intervention.etancheite_fuite
