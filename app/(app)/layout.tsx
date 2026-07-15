@@ -26,11 +26,16 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    // h-dvh (hauteur dynamique) : suit la barre d'URL mobile, contrairement
+    // à h-screen. Les paddings env(safe-area-inset-*) gardent le contenu
+    // hors de l'encoche iPhone (viewport-fit=cover dans app/layout.tsx).
+    <div className="flex h-dvh overflow-hidden bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar email={user.email ?? ""} />
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

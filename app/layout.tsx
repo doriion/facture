@@ -39,6 +39,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: "#2A7D5B",
+  // Nécessaire pour que env(safe-area-inset-*) soit renseigné en PWA
+  // iPhone (encoche / barre home) — les paddings correspondants sont
+  // appliqués dans le layout (app) et les barres fixes.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

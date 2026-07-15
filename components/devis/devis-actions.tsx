@@ -135,8 +135,15 @@ export function DevisActions({
             Utiliser ce modèle
           </Link>
         </Button>
+        {/* target=_blank : sur iOS (PWA), download seul échoue — le
+            nouvel onglet ouvre le visualiseur PDF natif. */}
         <Button variant="outline" asChild>
-          <a href={`/api/devis/${devisId}/pdf`} download>
+          <a
+            href={`/api/devis/${devisId}/pdf`}
+            download
+            target="_blank"
+            rel="noopener"
+          >
             <Download className="size-4" />
             Télécharger PDF
           </a>
@@ -159,8 +166,15 @@ export function DevisActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {/* target=_blank : sur iOS (PWA), download seul échoue — le
+          nouvel onglet ouvre le visualiseur PDF natif. */}
       <Button variant="outline" asChild>
-        <a href={`/api/devis/${devisId}/pdf`} download>
+        <a
+          href={`/api/devis/${devisId}/pdf`}
+          download
+          target="_blank"
+          rel="noopener"
+        >
           <Download className="size-4" />
           Télécharger PDF
         </a>
@@ -223,7 +237,12 @@ export function DevisActions({
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" className="text-destructive">
+              {/* Sur mobile : ligne à part, éloignée des actions
+                  courantes pour éviter les taps accidentels. */}
+              <Button
+                variant="outline"
+                className="text-destructive max-sm:mt-1 max-sm:w-full"
+              >
                 <Trash2 className="size-4" />
                 Supprimer
               </Button>

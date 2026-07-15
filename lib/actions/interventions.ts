@@ -131,6 +131,14 @@ export async function createInterventionAction(
       fluide_frigo_type: v.fluide_frigo_type || null,
       fluide_frigo_kg_ajoute: v.fluide_frigo_kg_ajoute,
       fluide_frigo_kg_recupere: v.fluide_frigo_kg_recupere,
+      fluide_charge_totale_kg: v.fluide_charge_totale_kg,
+      etancheite_controle: v.etancheite_controle ?? null,
+      etancheite_detecteur: v.etancheite_detecteur || null,
+      etancheite_detecteur_controle_le:
+        v.etancheite_detecteur_controle_le || null,
+      etancheite_fuite: v.etancheite_fuite ?? null,
+      etancheite_fuite_localisation: v.etancheite_fuite_localisation || null,
+      fluide_observations: v.fluide_observations || null,
       duree_minutes: v.duree_minutes,
       facture_id: v.facture_id ?? null,
       notes: v.notes || null,
@@ -176,6 +184,14 @@ export async function updateInterventionAction(
       fluide_frigo_type: v.fluide_frigo_type || null,
       fluide_frigo_kg_ajoute: v.fluide_frigo_kg_ajoute,
       fluide_frigo_kg_recupere: v.fluide_frigo_kg_recupere,
+      fluide_charge_totale_kg: v.fluide_charge_totale_kg,
+      etancheite_controle: v.etancheite_controle ?? null,
+      etancheite_detecteur: v.etancheite_detecteur || null,
+      etancheite_detecteur_controle_le:
+        v.etancheite_detecteur_controle_le || null,
+      etancheite_fuite: v.etancheite_fuite ?? null,
+      etancheite_fuite_localisation: v.etancheite_fuite_localisation || null,
+      fluide_observations: v.fluide_observations || null,
       duree_minutes: v.duree_minutes,
       facture_id: v.facture_id ?? null,
       notes: v.notes || null,
@@ -192,6 +208,35 @@ export async function deleteInterventionAction(
   id: string,
 ): Promise<ActionResult> {
   const supabase = createClient();
+
+  // Une intervention signée est un document à valeur probante
+  // (conservation 5 ans) : la FK ON DELETE RESTRICT bloque de toute
+  // façon en base, mais on renvoie une erreur claire plutôt qu'une
+  // violation de contrainte brute.
+  const { count: nbSignatures } = await supabase
+    .from("intervention_signatures")
+    .select("id", { count: "exact", head: true })
+    .eq("intervention_id", id);
+  if (nbSignatures && nbSignatures > 0) {
+    return {
+      ok: false,
+      error:
+        "Impossible de supprimer : cette intervention comporte des signatures (fiche d'intervention fluides à conserver 5 ans).",
+    };
+  }
+
+  const { count: nbCerfa } = await supabase
+    .from("intervention_cerfa")
+    .select("id", { count: "exact", head: true })
+    .eq("intervention_id", id);
+  if (nbCerfa && nbCerfa > 0) {
+    return {
+      ok: false,
+      error:
+        "Impossible de supprimer : des fiches CERFA sont archivées pour cette intervention. Supprimez d'abord les fiches archivées si elles sont obsolètes.",
+    };
+  }
+
   const { error } = await supabase.from("interventions").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/interventions");

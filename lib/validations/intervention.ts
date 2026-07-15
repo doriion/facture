@@ -47,6 +47,24 @@ export const interventionSchema = z.object({
     (v) => (v === "" || v === null || v === undefined ? null : v),
     z.coerce.number().min(0).max(1000).nullable(),
   ),
+  // Charge totale de l'équipement (cadre 3 du CERFA 15497 — sert au
+  // calcul t éq. CO2 et à la périodicité du contrôle d'étanchéité)
+  fluide_charge_totale_kg: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : v),
+    z.coerce.number().min(0).max(10000).nullable(),
+  ),
+  // Contrôle d'étanchéité (cadres 5 et 10 du CERFA 15497)
+  etancheite_controle: z.boolean().nullable().optional(),
+  etancheite_detecteur: z.string().trim().max(200).optional().or(z.literal("")),
+  etancheite_detecteur_controle_le: z.string().optional().or(z.literal("")),
+  etancheite_fuite: z.boolean().nullable().optional(),
+  etancheite_fuite_localisation: z
+    .string()
+    .trim()
+    .max(500)
+    .optional()
+    .or(z.literal("")),
+  fluide_observations: z.string().trim().max(2000).optional().or(z.literal("")),
 
   duree_minutes: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? null : v),
@@ -76,6 +94,24 @@ export const interventionSchema = z.object({
       message: "L'heure de fin doit être postérieure au début.",
     });
   }
+}).transform((val) => {
+  // Cohérence étanchéité : l'UI masque les champs conditionnels quand le
+  // contrôle repasse à « non », mais react-hook-form garde leurs valeurs.
+  // On les neutralise ici pour ne jamais persister un enregistrement
+  // contradictoire (controle=false + fuite=true), quel que soit l'UI.
+  if (val.etancheite_controle !== true) {
+    return {
+      ...val,
+      etancheite_detecteur: "",
+      etancheite_detecteur_controle_le: "",
+      etancheite_fuite: null,
+      etancheite_fuite_localisation: "",
+    };
+  }
+  if (val.etancheite_fuite !== true) {
+    return { ...val, etancheite_fuite_localisation: "" };
+  }
+  return val;
 });
 
 export type InterventionFormInput = z.input<typeof interventionSchema>;

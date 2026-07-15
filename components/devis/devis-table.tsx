@@ -35,7 +35,48 @@ export function DevisTable({ devis }: { devis: DevisRow[] }) {
   }
 
   return (
-    <div className="rounded-lg border bg-card">
+    <>
+      {/* Mobile (< md) : cartes verticales entièrement tapables */}
+      <div className="space-y-2 md:hidden">
+        {devis.map((d) => (
+          <Link
+            key={d.id}
+            href={`/devis/${d.id}`}
+            className="block rounded-lg border bg-card p-4 transition-colors active:bg-accent/50"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-mono text-sm font-semibold">
+                  {d.numero}
+                  {d.facture_id && (
+                    <span className="ml-2 text-[10px] font-sans uppercase tracking-wide text-primary">
+                      Facturé
+                    </span>
+                  )}
+                </p>
+                <p className="mt-0.5 truncate text-sm">
+                  {d.client?.nom ?? (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </p>
+              </div>
+              <StatutBadgeDevis statut={d.statut_affichage} />
+            </div>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <div className="text-xs text-muted-foreground">
+                <p>Émis le {formatDateFr(d.date_emission)}</p>
+                <p>Valide jusqu&apos;au {formatDateFr(d.date_validite)}</p>
+              </div>
+              <p className="text-lg font-bold tabular-nums">
+                {formatEuros(Number(d.total_ht))}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Desktop (>= md) : tableau complet inchangé */}
+      <div className="hidden rounded-lg border bg-card md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -97,6 +138,7 @@ export function DevisTable({ devis }: { devis: DevisRow[] }) {
           ))}
         </TableBody>
       </Table>
-    </div>
+      </div>
+    </>
   );
 }

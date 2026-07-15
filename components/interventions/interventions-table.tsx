@@ -53,7 +53,73 @@ export function InterventionsTable({
   }
 
   return (
-    <div className="rounded-lg border bg-card">
+    <>
+      {/* Mobile (< md) : cartes tapables ; « Créer la facture » reste
+          un vrai lien au-dessus du lien étiré (z-10). */}
+      <div className="space-y-2 md:hidden">
+        {interventions.map((i) => (
+          <div
+            key={i.id}
+            className="relative rounded-lg border bg-card p-4 transition-colors active:bg-accent/50"
+          >
+            <Link
+              href={`/interventions/${i.id}`}
+              className="absolute inset-0"
+              aria-label="Ouvrir l'intervention"
+            />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">
+                  {i.date_fin && i.date_fin !== i.date_intervention
+                    ? `${formatDateFr(i.date_intervention)} → ${formatDateFr(i.date_fin)}`
+                    : formatDateFr(i.date_intervention)}
+                </p>
+                <p className="mt-0.5 truncate text-sm">
+                  {i.client?.nom ?? (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </p>
+              </div>
+              <Badge variant={variantByType[i.type] ?? "default"}>
+                {LABELS_TYPE_INTERVENTION[
+                  i.type as keyof typeof LABELS_TYPE_INTERVENTION
+                ] ?? i.type}
+              </Badge>
+            </div>
+            {(i.description || i.equipement_marque) && (
+              <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                {i.description ??
+                  `${i.equipement_marque ?? ""} ${i.equipement_modele ?? ""}`.trim()}
+              </p>
+            )}
+            <div className="relative z-10 mt-3 flex min-h-11 items-center justify-between border-t pt-2">
+              {i.facture ? (
+                <Link
+                  href={`/factures/${i.facture.id}`}
+                  className="inline-flex min-h-11 items-center"
+                >
+                  <Badge variant="success">Facturée · {i.facture.numero}</Badge>
+                </Link>
+              ) : (
+                <Link
+                  href={`/factures/nouvelle?intervention=${i.id}`}
+                  className="inline-flex min-h-11 items-center text-sm font-medium text-primary"
+                >
+                  Créer la facture
+                </Link>
+              )}
+              {i.fluide_frigo_type && (
+                <span className="font-mono text-xs text-muted-foreground">
+                  {i.fluide_frigo_type}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop (>= md) : tableau complet inchangé */}
+      <div className="hidden rounded-lg border bg-card md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -152,6 +218,7 @@ export function InterventionsTable({
           ))}
         </TableBody>
       </Table>
-    </div>
+      </div>
+    </>
   );
 }

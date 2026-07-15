@@ -497,6 +497,85 @@ export type Database = {
           },
         ];
       };
+      intervention_signatures: {
+        Row: {
+          id: string;
+          user_id: string;
+          intervention_id: string;
+          role: string;
+          signataire_nom: string;
+          signataire_qualite: string | null;
+          storage_path: string;
+          signe_le: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          intervention_id: string;
+          role: string;
+          signataire_nom: string;
+          signataire_qualite?: string | null;
+          storage_path: string;
+          signe_le?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          intervention_id?: string;
+          role?: string;
+          signataire_nom?: string;
+          signataire_qualite?: string | null;
+          storage_path?: string;
+          signe_le?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "intervention_signatures_intervention_id_fkey";
+            columns: ["intervention_id"];
+            isOneToOne: false;
+            referencedRelation: "interventions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      intervention_cerfa: {
+        Row: {
+          id: string;
+          user_id: string;
+          intervention_id: string;
+          storage_path: string;
+          donnees: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          intervention_id: string;
+          storage_path: string;
+          donnees?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          intervention_id?: string;
+          storage_path?: string;
+          donnees?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "intervention_cerfa_intervention_id_fkey";
+            columns: ["intervention_id"];
+            isOneToOne: false;
+            referencedRelation: "interventions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       interventions: {
         Row: {
           client_id: string;
@@ -510,10 +589,17 @@ export type Database = {
           equipement_marque: string | null;
           equipement_modele: string | null;
           equipement_num_serie: string | null;
+          etancheite_controle: boolean | null;
+          etancheite_detecteur: string | null;
+          etancheite_detecteur_controle_le: string | null;
+          etancheite_fuite: boolean | null;
+          etancheite_fuite_localisation: string | null;
           facture_id: string | null;
+          fluide_charge_totale_kg: number | null;
           fluide_frigo_kg_ajoute: number | null;
           fluide_frigo_kg_recupere: number | null;
           fluide_frigo_type: string | null;
+          fluide_observations: string | null;
           id: string;
           notes: string | null;
           type: string;
@@ -532,10 +618,17 @@ export type Database = {
           equipement_marque?: string | null;
           equipement_modele?: string | null;
           equipement_num_serie?: string | null;
+          etancheite_controle?: boolean | null;
+          etancheite_detecteur?: string | null;
+          etancheite_detecteur_controle_le?: string | null;
+          etancheite_fuite?: boolean | null;
+          etancheite_fuite_localisation?: string | null;
           facture_id?: string | null;
+          fluide_charge_totale_kg?: number | null;
           fluide_frigo_kg_ajoute?: number | null;
           fluide_frigo_kg_recupere?: number | null;
           fluide_frigo_type?: string | null;
+          fluide_observations?: string | null;
           id?: string;
           notes?: string | null;
           type?: string;
@@ -554,10 +647,17 @@ export type Database = {
           equipement_marque?: string | null;
           equipement_modele?: string | null;
           equipement_num_serie?: string | null;
+          etancheite_controle?: boolean | null;
+          etancheite_detecteur?: string | null;
+          etancheite_detecteur_controle_le?: string | null;
+          etancheite_fuite?: boolean | null;
+          etancheite_fuite_localisation?: string | null;
           facture_id?: string | null;
+          fluide_charge_totale_kg?: number | null;
           fluide_frigo_kg_ajoute?: number | null;
           fluide_frigo_kg_recupere?: number | null;
           fluide_frigo_type?: string | null;
+          fluide_observations?: string | null;
           id?: string;
           notes?: string | null;
           type?: string;

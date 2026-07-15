@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ContratsTable } from "@/components/maintenance/contrats-table";
+import { MobileActionBar } from "@/components/mobile-action-bar";
 import { formatDateFr } from "@/lib/format";
 
 export const metadata = { title: "Maintenance — Facture AE" };
@@ -44,7 +45,7 @@ export default async function MaintenancePage() {
             facture peut être générée à chaque visite en 1 clic.
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="max-md:hidden">
           <Link href="/maintenance/nouveau">
             <Plus className="size-4" />
             Nouveau contrat
@@ -107,6 +108,15 @@ export default async function MaintenancePage() {
       )}
 
       <ContratsTable contrats={contrats} />
+
+      <MobileActionBar>
+        <Button asChild size="lg">
+          <Link href="/maintenance/nouveau">
+            <Plus className="size-4" />
+            Nouveau contrat
+          </Link>
+        </Button>
+      </MobileActionBar>
     </div>
   );
 }

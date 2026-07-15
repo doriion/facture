@@ -334,7 +334,9 @@ export function ContratForm({
         </CardContent>
       </Card>
 
-      <div className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t bg-background/95 px-6 py-4 backdrop-blur">
+      {/* Barre d'enregistrement collante : alignée sur le padding du
+          layout (p-3 mobile / p-6 desktop), safe-area iPhone incluse. */}
+      <div className="sticky bottom-0 z-30 -mx-3 flex justify-end gap-2 border-t bg-background/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:-mx-6 sm:px-6 sm:py-4">
         <Button
           type="button"
           variant="outline"
@@ -342,7 +344,12 @@ export function ContratForm({
         >
           Annuler
         </Button>
-        <Button type="submit" disabled={submitting} size="lg">
+        <Button
+          type="submit"
+          disabled={submitting}
+          size="lg"
+          className="flex-1 sm:flex-initial"
+        >
           {submitting ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
