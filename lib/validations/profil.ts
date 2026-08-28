@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { REGEX } from "@/lib/format";
+import { isSiretValide, MESSAGE_SIRET_INVALIDE } from "@/lib/siret";
 
 /**
  * Schéma Zod pour le profil entreprise (auto-entrepreneur BTP).
@@ -16,14 +17,16 @@ export const profilSchema = z.object({
   prenom: z.string().trim().max(100).optional().or(z.literal("")),
   nom_commercial: z.string().trim().max(150).optional().or(z.literal("")),
 
-  // Identifiants légaux
+  // Identifiants légaux — format + clé de Luhn (le nouveau SIRET issu
+  // du changement d'adresse INPI sera saisi à la main : autant attraper
+  // la faute de frappe ici plutôt que sur une facture émise).
   siret: z
     .string()
     .trim()
     .optional()
     .or(z.literal(""))
-    .refine((v) => !v || REGEX.siret.test(v), {
-      message: "Le SIRET doit contenir exactement 14 chiffres.",
+    .refine((v) => !v || isSiretValide(v), {
+      message: MESSAGE_SIRET_INVALIDE,
     }),
   code_ape: z
     .string()
