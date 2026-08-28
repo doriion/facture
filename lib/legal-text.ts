@@ -3,8 +3,9 @@
  * Centralisées ici pour réutilisation dans les PDF (factures + devis).
  *
  * Sources :
- * - Article L.223-3 du CIBS (franchise TVA — ex-art. 293 B du CGI,
- *   recodifié par l'ordonnance 2025-1247 à compter du 01/09/2026)
+ * - Article L. 223-3 du CIBS (franchise TVA — ex-art. 293 B du CGI,
+ *   recodifié par l'ordonnance 2025-1247 ; bascule retenue au
+ *   01/01/2027, voir DATE_BASCULE_MENTION_CIBS)
  * - Article L441-10 et D441-5 du Code de commerce (pénalités de retard, indemnité 40€)
  * - Loi Hamon 2014 (médiateur de la consommation)
  * - Réglementation F-Gas (fluides frigorigènes)
@@ -13,24 +14,31 @@
  */
 
 /**
- * Date d'entrée en vigueur de la recodification TVA CGI → CIBS
- * (ordonnance n° 2025-1247). À partir de cette date, la mention de
- * franchise doit viser l'article L.223-3 du CIBS.
+ * Date de bascule CGI → CIBS retenue pour la mention de franchise.
+ *
+ * L'ordonnance n° 2025-1247 (17/12/2025) recodifie la TVA dans le CIBS
+ * avec entrée en vigueur initialement prévue au 01/09/2026, MAIS un
+ * report au 01/01/2027 est annoncé (ordonnance modificative attendue à
+ * l'automne 2026) et l'ancienne référence CGI reste TOLÉRÉE sur les
+ * factures jusqu'au 31/12/2027. On bascule donc au 01/01/2027 : choix
+ * valide dans les deux scénarios (vérifié le 28/08/2026 — sources :
+ * synapx.fr, cacomptepourmoi.fr, houjo.fr, kohenavocats.com).
+ * Re-vérifier à la parution de l'ordonnance modificative.
  */
-export const DATE_BASCULE_MENTION_CIBS = "2026-09-01";
+export const DATE_BASCULE_MENTION_CIBS = "2027-01-01";
 
 /**
- * Ancienne rédaction (art. 293 B du CGI) — conservée UNIQUEMENT pour
- * la réimpression fidèle des documents émis avant le 01/09/2026.
- * Ne pas utiliser pour de nouveaux documents : passer par
+ * Rédaction actuelle (art. 293 B du CGI) — utilisée pour les documents
+ * émis avant la bascule, et tolérée jusqu'au 31/12/2027.
+ * Ne pas utiliser directement : passer par
  * `mentionTvaFranchise(dateEmission)`.
  */
 export const MENTION_TVA_FRANCHISE_CGI =
   "TVA non applicable, art. 293 B du CGI";
 
-/** Nouvelle rédaction, applicable aux documents émis dès le 01/09/2026. */
+/** Nouvelle rédaction, applicable aux documents émis après la bascule. */
 export const MENTION_TVA_FRANCHISE_CIBS =
-  "TVA non applicable, article L.223-3 du Code des impositions sur les biens et les services (CIBS)";
+  "TVA non applicable, article L. 223-3 du Code des impositions sur les biens et les services (CIBS)";
 
 /**
  * Mention de franchise TVA à afficher sur un document, selon sa date
