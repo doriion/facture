@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
+import { computeTauxConversionDevis } from "@/lib/devis-stats";
 import {
   prochaineBascule,
   provisionCotisations,
@@ -329,18 +330,12 @@ export async function getDashboardData(): Promise<DashboardData> {
       .sort((a, b) => a.joursAvantExpiration - b.joursAvantExpiration);
   }
 
-  // Taux de conversion devis
+  // Taux de conversion devis — helper pur testé (null si aucun devis
+  // décidable, affiché « — » par la carte KPI).
   const devisStatuts = (devisStatutsRes.data ?? []) as Array<{
     statut: string;
   }>;
-  const nbAccepte = devisStatuts.filter((d) => d.statut === "accepte").length;
-  const nbRefuse = devisStatuts.filter((d) => d.statut === "refuse").length;
-  const nbEnvoye = devisStatuts.filter((d) => d.statut === "envoye").length;
-  const totalDecidables = nbAccepte + nbRefuse + nbEnvoye;
-  // null (affiché « — ») tant qu'aucun devis n'a été envoyé/tranché :
-  // un « 0 % » sans devis décidable est trompeur.
-  const tauxConversionDevis =
-    totalDecidables > 0 ? Math.round((nbAccepte / totalDecidables) * 100) : null;
+  const tauxConversionDevis = computeTauxConversionDevis(devisStatuts);
 
   // CA par mois (12 derniers) ventilé par type d'activité
   const caParMois: DashboardData["caParMois"] = [];
