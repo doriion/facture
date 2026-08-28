@@ -29,7 +29,7 @@ export function KpiCards({
   nbFacturesImpayees: number;
   montantImpaye: number;
   nbDevisEnAttente: number;
-  tauxConversionDevis: number;
+  tauxConversionDevis: number | null;
   annee: number;
 }) {
   const evolutionMois =
@@ -43,7 +43,7 @@ export function KpiCards({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
-            CA du mois
+            Facturé ce mois
           </CardTitle>
           <Euro className="size-4 text-muted-foreground" />
         </CardHeader>
@@ -72,7 +72,7 @@ export function KpiCards({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
-            CA cumulé {annee}
+            Facturé {annee}
           </CardTitle>
           <TrendingUp className="size-4 text-muted-foreground" />
         </CardHeader>
@@ -81,7 +81,7 @@ export function KpiCards({
             {formatEuros(caAnnee)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Toutes factures non annulées
+            Émis, hors annulées — l'URSSAF se déclare sur l'encaissé
           </p>
         </CardContent>
       </Card>
@@ -115,7 +115,10 @@ export function KpiCards({
             {nbDevisEnAttente}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Taux d'acceptation : <strong>{tauxConversionDevis}%</strong>
+            Taux d'acceptation :{" "}
+            <strong>
+              {tauxConversionDevis === null ? "—" : `${tauxConversionDevis}%`}
+            </strong>
           </p>
         </CardContent>
       </Card>

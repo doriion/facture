@@ -1,5 +1,6 @@
 import { getDashboardData } from "@/lib/actions/dashboard";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
+import { CotisationsCard } from "@/components/dashboard/cotisations-card";
 import { SeuilsMicroCard } from "@/components/dashboard/seuils-micro-card";
 import { CaMensuelChart } from "@/components/dashboard/ca-mensuel-chart";
 import { RepartitionActiviteChart } from "@/components/dashboard/repartition-activite-chart";
@@ -35,10 +36,13 @@ export default async function DashboardPage() {
         annee={data.annee}
       />
 
-      <SeuilsMicroCard
-        caEncaisseAnnee={data.caEncaisseAnnee}
-        annee={data.annee}
-      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SeuilsMicroCard
+          caEncaisseAnnee={data.caEncaisseAnnee}
+          annee={data.annee}
+        />
+        <CotisationsCard cotisations={data.cotisations} />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <CaMensuelChart data={data.caParMois} />

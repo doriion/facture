@@ -5,6 +5,7 @@ import { AgendaCouleursCard } from "@/components/parametres/agenda-couleurs-card
 import { ExternalCalendarCard } from "@/components/parametres/external-calendar-card";
 import { ResetNumerotationCard } from "@/components/parametres/reset-numerotation-card";
 import { ExportDonneesCard } from "@/components/parametres/export-donnees-card";
+import { TauxCotisationsCard } from "@/components/parametres/taux-cotisations-card";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import {
   Card,
@@ -14,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getLogoUrl, getProfil } from "@/lib/actions/profil";
+import { getBaremeCotisations } from "@/lib/actions/cotisations";
 
 export const metadata = { title: "Paramètres — Facture AE" };
 
@@ -24,6 +26,7 @@ export const metadata = { title: "Paramètres — Facture AE" };
 export default async function ParametresPage() {
   const profil = await getProfil();
   const logoUrl = await getLogoUrl(profil?.logo_url);
+  const bareme = await getBaremeCotisations();
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -58,6 +61,8 @@ export default async function ParametresPage() {
       />
 
       <ProfilForm profil={profil} />
+
+      <TauxCotisationsCard bareme={bareme} />
 
       <ExportDonneesCard />
 
