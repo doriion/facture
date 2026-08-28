@@ -17,6 +17,7 @@ import {
   type ProduitFormValues,
 } from "@/lib/validations/produit";
 import { CATEGORIES_PRESTATIONS, UNITES } from "@/lib/format";
+import { LABELS_NATURE_FISCALE, NATURES_FISCALES } from "@/lib/fiscal";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -68,6 +69,7 @@ export function ProduitFormDialog({
 
   const currentCategorie = watch("categorie");
   const currentUnite = watch("unite");
+  const currentNature = watch("nature_fiscale");
   const currentActif = watch("actif");
 
   function handleOpenChange(next: boolean) {
@@ -152,6 +154,35 @@ export function ProduitFormDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="nature_fiscale">Nature URSSAF</Label>
+            <Select
+              value={currentNature}
+              onValueChange={(v) =>
+                setValue(
+                  "nature_fiscale",
+                  v as ProduitFormValues["nature_fiscale"],
+                  { shouldValidate: true },
+                )
+              }
+            >
+              <SelectTrigger id="nature_fiscale">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {NATURES_FISCALES.map((n) => (
+                  <SelectItem key={n} value={n}>
+                    {LABELS_NATURE_FISCALE[n]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              « Ventes » uniquement pour la revente de matériel sans pose —
+              les fournitures posées restent des prestations.
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -276,6 +307,9 @@ function defaultValues(p?: Produit): ProduitFormInput {
     categorie:
       (p?.categorie as ProduitFormInput["categorie"]) ?? "plomberie",
     tva_taux_suggere: p?.tva_taux_suggere ?? null,
+    nature_fiscale:
+      (p?.nature_fiscale as ProduitFormInput["nature_fiscale"]) ??
+      "bic_prestations",
     actif: p?.actif ?? true,
   };
 }

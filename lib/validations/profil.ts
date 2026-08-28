@@ -79,6 +79,12 @@ export const profilSchema = z.object({
   // BTP - Décennale
   num_assurance_decennale: z.string().trim().max(100).optional().or(z.literal("")),
   assureur_decennale: z.string().trim().max(150).optional().or(z.literal("")),
+  assureur_decennale_adresse: z
+    .string()
+    .trim()
+    .max(300)
+    .optional()
+    .or(z.literal("")),
   zone_couverture_decennale: z.string().trim().max(200).optional().or(z.literal("")),
 
   // Clim/PAC

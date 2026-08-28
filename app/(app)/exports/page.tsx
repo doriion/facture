@@ -1,5 +1,7 @@
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
+import { getDeclaration } from "@/lib/actions/declarations";
 import { getExportPeriodes } from "@/lib/exports/urssaf-helpers";
+import { DeclarationUrssafCard } from "@/components/exports/declaration-urssaf-card";
 import { ExportUrssafTable } from "@/components/exports/export-urssaf-table";
 import {
   Card,
@@ -38,13 +40,16 @@ export default async function ExportsPage({
     return defaultPeriode;
   })();
 
-  const summary = await buildExportUrssaf(selected.start, selected.end);
+  const [summary, declaration] = await Promise.all([
+    buildExportUrssaf(selected.start, selected.end),
+    getDeclaration(selected.start, selected.end),
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-          Export comptable / URSSAF
+          Déclaration URSSAF / export comptable
         </h1>
         <p className="text-sm text-muted-foreground">
           Recettes encaissées sur la période — base de la déclaration de
@@ -54,11 +59,31 @@ export default async function ExportsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Période</CardTitle>
+          <CardTitle className="text-base">
+            Déclaration {selected.label || "de la période"}
+          </CardTitle>
           <CardDescription>
-            Sélectionnez le trimestre ou l'année à exporter. L'export se
-            base sur la <strong>date d'encaissement</strong> des paiements,
-            pas sur la date d'émission des factures (logique URSSAF).
+            Les montants à recopier dans les cases du formulaire, calculés
+            sur la <strong>date d'encaissement</strong> des paiements (pas
+            la date d'émission des factures).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DeclarationUrssafCard
+            periode={selected}
+            totalEncaisse={summary.total_encaisse}
+            ventilation={summary.ventilation}
+            declaration={declaration}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Détail et export</CardTitle>
+          <CardDescription>
+            Les encaissements comptés dans la période, pour vérification,
+            et le CSV à archiver ou transmettre.
           </CardDescription>
         </CardHeader>
         <CardContent>

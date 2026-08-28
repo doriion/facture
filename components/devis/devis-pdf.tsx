@@ -25,6 +25,7 @@ import {
   mentionRgeQualipac,
   mentionRm,
 } from "@/lib/legal-text";
+import { profilEffectif } from "@/lib/emetteur";
 import type { Database } from "@/types/database";
 
 type Devis = Database["public"]["Tables"]["devis"]["Row"];
@@ -240,7 +241,7 @@ export function DevisPdf({
   devis,
   lignes,
   client,
-  profil,
+  profil: profilCourant,
   logoData,
 }: {
   devis: Devis;
@@ -249,6 +250,9 @@ export function DevisPdf({
   profil: Profil | null;
   logoData?: string | null;
 }) {
+  // Devis émis : mentions émetteur FIGÉES au moment de l'émission
+  // (SIRET historisé) ; brouillon : profil courant.
+  const profil = profilEffectif(profilCourant, devis.emetteur);
   const equip = (devis.equipement_info ?? {}) as Record<string, unknown>;
   const perfs = (devis.performances_energetiques ?? {}) as Record<string, unknown>;
   const aides = (devis.aides_financieres ?? {}) as Record<string, unknown>;
@@ -273,6 +277,7 @@ export function DevisPdf({
     decennale: mentionDecennale({
       numero: profil?.num_assurance_decennale,
       assureur: profil?.assureur_decennale,
+      assureurAdresse: profil?.assureur_decennale_adresse,
       zone: profil?.zone_couverture_decennale,
     }),
     fluides: isClimPac

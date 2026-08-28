@@ -84,7 +84,42 @@ describe("summarizeEncaissements", () => {
 
   it("renvoie un résumé vide sans paiements", () => {
     const res = summarizeEncaissements([]);
-    expect(res).toEqual({ rows: [], total_encaisse: 0, nb_factures: 0 });
+    expect(res).toEqual({
+      rows: [],
+      total_encaisse: 0,
+      ventilation: { bic_prestations: 0, bic_ventes: 0, bnc: 0 },
+      nb_factures: 0,
+    });
+  });
+
+  it("ventile chaque encaissement dans les 3 cases URSSAF au prorata des lignes", () => {
+    const res = summarizeEncaissements([
+      // Facture mixte 1000 € (800 presta + 200 vente), acompte de 500 €
+      paiement({
+        montant: 500,
+        facture: {
+          id: "f1",
+          total_ht: 1000,
+          lignes: [
+            { total_ht: 800, nature_fiscale: "bic_prestations" },
+            { total_ht: 200, nature_fiscale: "bic_ventes" },
+          ],
+        },
+      }),
+      // Facture sans lignes chargées (rétrocompat) : tout en prestations
+      paiement({ montant: 100, facture: { id: "f2" } }),
+    ]);
+    expect(res.rows[0]!.ventilation).toEqual({
+      bic_prestations: 400,
+      bic_ventes: 100,
+      bnc: 0,
+    });
+    expect(res.ventilation).toEqual({
+      bic_prestations: 500,
+      bic_ventes: 100,
+      bnc: 0,
+    });
+    expect(res.total_encaisse).toBe(600);
   });
 });
 
@@ -135,6 +170,7 @@ describe("buildCsv", () => {
   const summary: ExportSummary = {
     periode: { label: "T2 2026", start: "2026-04-01", end: "2026-07-01" },
     total_encaisse: 1234.5,
+    ventilation: { bic_prestations: 1200, bic_ventes: 34.5, bnc: 0 },
     total_facture_emis: 2000,
     nb_factures: 1,
     rows: [
@@ -148,6 +184,7 @@ describe("buildCsv", () => {
         mode_paiement: "virement",
         reference_paiement: null,
         montant_encaisse: 1234.5,
+        ventilation: { bic_prestations: 1200, bic_ventes: 34.5, bnc: 0 },
       },
     ],
   };
@@ -173,8 +210,11 @@ describe("buildCsv", () => {
     expect(lines[1]).toContain("1234,50");
   });
 
-  it("termine par la ligne TOTAL ENCAISSÉ", () => {
+  it("termine par le total et la ventilation 3 cases", () => {
     expect(csv).toContain("TOTAL ENCAISSÉ;1234,50");
+    expect(csv).toContain("dont BIC prestations de services;1200,00");
+    expect(csv).toContain("dont BIC ventes de marchandises;34,50");
+    expect(csv).toContain("dont BNC;0,00");
     expect(csv.endsWith("\r\n")).toBe(true);
   });
 });

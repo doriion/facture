@@ -3,6 +3,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
+import { getBaremeCotisations } from "@/lib/actions/cotisations";
+import {
+  prochaineBascule,
+  provisionCotisations,
+  tauxTotalPct,
+  trimestreCourant,
+  type ProvisionCotisations,
+} from "@/lib/cotisations";
 
 export type DashboardData = {
   annee: number;
@@ -13,10 +21,22 @@ export type DashboardData = {
   nbFacturesImpayees: number;
   montantImpaye: number;
   nbDevisEnAttente: number;
-  tauxConversionDevis: number; // % accepté / (accepté + envoyé + refusé)
+  tauxConversionDevis: number | null; // % accepté / (accepté + envoyé + refusé), null si aucun
   // Suivi seuils micro (jauges) — CA ENCAISSÉ de l'année (base URSSAF),
   // les seuils eux-mêmes sont des constantes (lib/seuils-micro.ts)
   caEncaisseAnnee: number;
+  // Cotisations à provisionner sur l'encaissé du trimestre en cours
+  cotisations: {
+    trimestreLabel: string;
+    encaisseTrimestre: number;
+    provision: ProvisionCotisations | null;
+    /** Hausse de taux dans les 6 mois (fin d'ACRE) — pour l'avertissement */
+    bascule: {
+      date: string;
+      tauxAvantPct: number;
+      tauxApresPct: number;
+    } | null;
+  };
   // Graphes
   caParMois: Array<{
     mois: string;
@@ -103,10 +123,14 @@ export async function getDashboardData(): Promise<DashboardData> {
   date12moisAgo.setDate(1);
   const start12moisAgo = date12moisAgo.toISOString().slice(0, 10);
 
+  const trimestre = trimestreCourant(today);
+
   // Récupération en parallèle
   const [
     facturesAnneeRes,
     exportUrssafAnnee,
+    exportUrssafTrimestre,
+    bareme,
     facturesEnvoyeesRes,
     devisEnvoyesRes,
     devisStatutsRes,
@@ -126,6 +150,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     // factures annulées exclues) pour avoir exactement le même chiffre
     // que la page Exports.
     buildExportUrssaf(startOfYear, startOfNextYear),
+    // Encaissé du trimestre en cours + barème → provision de cotisations
+    buildExportUrssaf(trimestre.start, trimestre.end),
+    getBaremeCotisations(),
     // Factures envoyées (= impayées) tous statuts
     supabase
       .from("factures")
@@ -206,6 +233,25 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   // CA encaissé de l'année (base URSSAF) pour les jauges de seuils micro.
   const caEncaisseAnnee = exportUrssafAnnee.total_encaisse;
+
+  // Cotisations à provisionner sur l'encaissé du trimestre en cours,
+  // au barème applicable aujourd'hui (table taux_cotisations, ACRE puis
+  // taux plein). Avertissement si une hausse arrive dans les 6 mois.
+  const encaisseTrimestre = exportUrssafTrimestre.total_encaisse;
+  const provision = provisionCotisations(encaisseTrimestre, bareme, today);
+  const basculeInfo = prochaineBascule(bareme, today);
+  const cotisations: DashboardData["cotisations"] = {
+    trimestreLabel: trimestre.label,
+    encaisseTrimestre,
+    provision,
+    bascule: basculeInfo
+      ? {
+          date: basculeInfo.date,
+          tauxAvantPct: tauxTotalPct(basculeInfo.avant),
+          tauxApresPct: tauxTotalPct(basculeInfo.apres),
+        }
+      : null,
+  };
 
   // Factures impayées
   const facturesEnvoyees = (facturesEnvoyeesRes.data ?? []) as Array<{
@@ -291,8 +337,10 @@ export async function getDashboardData(): Promise<DashboardData> {
   const nbRefuse = devisStatuts.filter((d) => d.statut === "refuse").length;
   const nbEnvoye = devisStatuts.filter((d) => d.statut === "envoye").length;
   const totalDecidables = nbAccepte + nbRefuse + nbEnvoye;
+  // null (affiché « — ») tant qu'aucun devis n'a été envoyé/tranché :
+  // un « 0 % » sans devis décidable est trompeur.
   const tauxConversionDevis =
-    totalDecidables > 0 ? Math.round((nbAccepte / totalDecidables) * 100) : 0;
+    totalDecidables > 0 ? Math.round((nbAccepte / totalDecidables) * 100) : null;
 
   // CA par mois (12 derniers) ventilé par type d'activité
   const caParMois: DashboardData["caParMois"] = [];
@@ -452,6 +500,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     nbDevisEnAttente,
     tauxConversionDevis,
     caEncaisseAnnee,
+    cotisations,
     caParMois,
     caParActivite,
     topClients,

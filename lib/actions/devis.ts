@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import {
   devisSchema,
   type DevisFormValues,
@@ -217,6 +218,7 @@ export async function createDevisAction(
     devis_id: devis.id,
     ordre: idx,
     designation: l.designation,
+    nature_fiscale: l.nature_fiscale ?? "bic_prestations",
     quantite: l.quantite,
     prix_unitaire_ht: l.prix_unitaire_ht,
     total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
@@ -305,6 +307,7 @@ export async function updateDevisAction(
     devis_id: id,
     ordre: idx,
     designation: l.designation,
+    nature_fiscale: l.nature_fiscale ?? "bic_prestations",
     quantite: l.quantite,
     prix_unitaire_ht: l.prix_unitaire_ht,
     total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
@@ -332,6 +335,12 @@ export async function setDevisStatutAction(
     .update({ statut })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  // Le devis quitte le brouillon : fige les mentions émetteur.
+  if (statut !== "brouillon") {
+    await figerEmetteurDocument(supabase, "devis", id);
+  }
+
   revalidatePath("/devis");
   revalidatePath(`/devis/${id}`);
   return { ok: true, data: undefined };
@@ -462,6 +471,7 @@ export async function convertirDevisEnFactureAction(
     facture_id: facture.id,
     ordre: idx,
     designation: l.designation,
+    nature_fiscale: l.nature_fiscale ?? "bic_prestations",
     quantite: Number(l.quantite),
     prix_unitaire_ht: Number(l.prix_unitaire_ht),
     total_ht: Number(l.total_ht),
@@ -479,6 +489,9 @@ export async function convertirDevisEnFactureAction(
     .from("devis")
     .update({ facture_id: facture.id, statut: "accepte" })
     .eq("id", devisId);
+
+  // Devis accepté = engageant : mentions émetteur figées.
+  await figerEmetteurDocument(supabase, "devis", devisId);
 
   revalidatePath("/devis");
   revalidatePath(`/devis/${devisId}`);

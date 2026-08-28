@@ -25,6 +25,7 @@ import {
   mentionRgeQualipac,
   mentionRm,
 } from "@/lib/legal-text";
+import { profilEffectif } from "@/lib/emetteur";
 import type { Database } from "@/types/database";
 
 type Facture = Database["public"]["Tables"]["factures"]["Row"];
@@ -229,7 +230,7 @@ export function FacturePdf({
   facture,
   lignes,
   client,
-  profil,
+  profil: profilCourant,
   logoData,
 }: {
   facture: Facture;
@@ -238,6 +239,9 @@ export function FacturePdf({
   profil: Profil | null;
   logoData?: string | null;
 }) {
+  // Facture émise : mentions émetteur FIGÉES au moment de l'émission
+  // (SIRET historisé) ; brouillon : profil courant.
+  const profil = profilEffectif(profilCourant, facture.emetteur);
   const equip = (facture.equipement_info ?? {}) as Record<string, unknown>;
   const aides = (facture.aides_financieres ?? {}) as Record<string, unknown>;
   const isClimPac =
@@ -255,6 +259,7 @@ export function FacturePdf({
     decennale: mentionDecennale({
       numero: profil?.num_assurance_decennale,
       assureur: profil?.assureur_decennale,
+      assureurAdresse: profil?.assureur_decennale_adresse,
       zone: profil?.zone_couverture_decennale,
     }),
     fluides: isClimPac

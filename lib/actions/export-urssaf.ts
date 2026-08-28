@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { VENTILATION_VIDE } from "@/lib/fiscal";
 import {
   summarizeEncaissements,
   totalFacturesEmises,
@@ -35,24 +36,26 @@ export async function buildExportUrssaf(
     return {
       periode: { label: "", start, end },
       total_encaisse: 0,
+      ventilation: { ...VENTILATION_VIDE },
       total_facture_emis: 0,
       nb_factures: 0,
       rows: [],
     };
   }
 
-  // Paiements de la période (date_paiement >= start, < end), avec
-  // les infos facture/client jointes.
+  // Paiements de la période (date_paiement >= start, < end), avec les
+  // infos facture/client jointes + les lignes (nature fiscale) pour
+  // ventiler chaque encaissement dans les 3 cases URSSAF au prorata.
   const { data: paiements } = await supabase
     .from("paiements")
     .select(
-      "id, date_paiement, montant, mode, reference, facture:factures(id, numero, date_emission, total_ht, type_activite, statut, client:clients(nom))",
+      "id, date_paiement, montant, mode, reference, facture:factures(id, numero, date_emission, total_ht, type_activite, statut, client:clients(nom), lignes:factures_lignes(total_ht, nature_fiscale))",
     )
     .gte("date_paiement", start)
     .lt("date_paiement", end)
     .order("date_paiement", { ascending: true });
 
-  const { rows, total_encaisse, nb_factures } = summarizeEncaissements(
+  const { rows, total_encaisse, ventilation, nb_factures } = summarizeEncaissements(
     (paiements ?? []) as unknown as PaiementExportInput[],
   );
 
@@ -67,6 +70,7 @@ export async function buildExportUrssaf(
   return {
     periode: { label: "", start, end },
     total_encaisse,
+    ventilation,
     total_facture_emis: totalFacturesEmises(facturesEmises ?? []),
     nb_factures,
     rows,

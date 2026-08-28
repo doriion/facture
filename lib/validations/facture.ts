@@ -55,6 +55,11 @@ export const ligneFactureSchema = z.object({
       .min(0, "Le prix ne peut pas être négatif.")
       .max(1_000_000, "Prix trop élevé."),
   ),
+  // Case URSSAF de la ligne. Défaut : prestations (les fournitures
+  // posées dans le cadre d'une prestation restent des prestations).
+  nature_fiscale: z
+    .enum(["bic_prestations", "bic_ventes", "bnc"])
+    .default("bic_prestations"),
 });
 
 /**

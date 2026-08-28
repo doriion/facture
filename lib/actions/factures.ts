@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import {
   computeTotalHt,
   factureSchema,
@@ -189,6 +190,7 @@ export async function createFactureAction(
     facture_id: facture.id,
     ordre: idx,
     designation: l.designation,
+    nature_fiscale: l.nature_fiscale ?? "bic_prestations",
     quantite: l.quantite,
     prix_unitaire_ht: l.prix_unitaire_ht,
     total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
@@ -288,6 +290,7 @@ export async function updateFactureAction(
     facture_id: id,
     ordre: idx,
     designation: l.designation,
+    nature_fiscale: l.nature_fiscale ?? "bic_prestations",
     quantite: l.quantite,
     prix_unitaire_ht: l.prix_unitaire_ht,
     total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
@@ -336,6 +339,13 @@ export async function setFactureStatutAction(
     .update(update)
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  // Le document quitte le brouillon : fige les mentions émetteur
+  // (SIRET, adresse, assurance…) telles qu'elles sont aujourd'hui.
+  if (statut !== "brouillon") {
+    await figerEmetteurDocument(supabase, "factures", id);
+  }
+
   revalidatePath("/factures");
   revalidatePath(`/factures/${id}`);
   return { ok: true, data: undefined };
@@ -424,6 +434,7 @@ export async function duplicateFactureAction(
       facture_id: facture.id,
       ordre: idx,
       designation: l.designation,
+      nature_fiscale: l.nature_fiscale ?? "bic_prestations",
       quantite: Number(l.quantite),
       prix_unitaire_ht: Number(l.prix_unitaire_ht),
       total_ht: Number(l.total_ht),

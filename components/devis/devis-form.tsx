@@ -39,6 +39,7 @@ import {
 import { LignesEditor } from "@/components/factures/lignes-editor";
 
 import type { Database } from "@/types/database";
+import type { NatureFiscale } from "@/lib/fiscal";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Produit = Database["public"]["Tables"]["produits_services"]["Row"];
@@ -72,6 +73,7 @@ export function DevisForm({
       designation: string;
       quantite: number;
       prix_unitaire_ht: number;
+      nature_fiscale?: string;
     }>;
   };
 }) {
@@ -88,11 +90,13 @@ export function DevisForm({
         designation: l.designation,
         quantite: Number(l.quantite),
         prix_unitaire_ht: Number(l.prix_unitaire_ht),
+        nature_fiscale: (l.nature_fiscale ?? "bic_prestations") as NatureFiscale,
       }))
     : (prefill?.lignes ?? []).map((l) => ({
         designation: l.designation,
         quantite: l.quantite,
         prix_unitaire_ht: l.prix_unitaire_ht,
+        nature_fiscale: (l.nature_fiscale ?? "bic_prestations") as NatureFiscale,
       }));
 
   const today = new Date().toISOString().slice(0, 10);
