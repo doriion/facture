@@ -35,6 +35,7 @@ export const CHAMPS_EMETTEUR = [
   "site_web",
   "num_assurance_decennale",
   "assureur_decennale",
+  "assureur_decennale_adresse",
   "zone_couverture_decennale",
   "num_rm",
   "num_rge_qualipac",

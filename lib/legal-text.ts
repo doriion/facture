@@ -87,11 +87,14 @@ export const MENTION_DEVIS_VALIDITE = (jours: number) =>
 export function mentionDecennale(opts: {
   numero?: string | null;
   assureur?: string | null;
+  /** Coordonnées de l'assureur (adresse) — exigées par l'art. 22-2 de la loi 96-603 */
+  assureurAdresse?: string | null;
   zone?: string | null;
 }): string | null {
   if (!opts.numero || !opts.assureur) return null;
   const zone = opts.zone || "France métropolitaine";
-  return `Assurance décennale n° ${opts.numero} souscrite auprès de ${opts.assureur}, couvrant le territoire : ${zone}.`;
+  const coordonnees = opts.assureurAdresse ? ` (${opts.assureurAdresse})` : "";
+  return `Assurance décennale n° ${opts.numero} souscrite auprès de ${opts.assureur}${coordonnees}, couvrant le territoire : ${zone}.`;
 }
 
 /**

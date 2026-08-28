@@ -72,6 +72,12 @@ alter table public.factures
 alter table public.devis
   add column if not exists emetteur jsonb;
 
+-- Coordonnées de l'assureur décennale (art. 22-2 de la loi 96-603 :
+-- la mention sur devis/factures doit inclure les COORDONNÉES de
+-- l'assureur, pas seulement son nom).
+alter table public.profil_entreprise
+  add column if not exists assureur_decennale_adresse text;
+
 comment on column public.factures.emetteur is
   'Snapshot des mentions émetteur au moment de l''émission (partiel de profil_entreprise). NULL = brouillon, le PDF utilise le profil courant.';
 
@@ -86,8 +92,10 @@ set emetteur = (
     'code_postal', p.code_postal, 'ville', p.ville, 'pays', p.pays,
     'siret', p.siret, 'siren', p.siren, 'code_ape', p.code_ape,
     'email_pro', p.email_pro, 'telephone', p.telephone,
+    'site_web', p.site_web,
     'num_assurance_decennale', p.num_assurance_decennale,
     'assureur_decennale', p.assureur_decennale,
+    'assureur_decennale_adresse', p.assureur_decennale_adresse,
     'zone_couverture_decennale', p.zone_couverture_decennale,
     'num_rm', p.num_rm, 'num_rge_qualipac', p.num_rge_qualipac,
     'num_attestation_fluides_frigo', p.num_attestation_fluides_frigo
@@ -105,8 +113,10 @@ set emetteur = (
     'code_postal', p.code_postal, 'ville', p.ville, 'pays', p.pays,
     'siret', p.siret, 'siren', p.siren, 'code_ape', p.code_ape,
     'email_pro', p.email_pro, 'telephone', p.telephone,
+    'site_web', p.site_web,
     'num_assurance_decennale', p.num_assurance_decennale,
     'assureur_decennale', p.assureur_decennale,
+    'assureur_decennale_adresse', p.assureur_decennale_adresse,
     'zone_couverture_decennale', p.zone_couverture_decennale,
     'num_rm', p.num_rm, 'num_rge_qualipac', p.num_rge_qualipac,
     'num_attestation_fluides_frigo', p.num_attestation_fluides_frigo

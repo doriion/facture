@@ -277,6 +277,7 @@ export function DevisPdf({
     decennale: mentionDecennale({
       numero: profil?.num_assurance_decennale,
       assureur: profil?.assureur_decennale,
+      assureurAdresse: profil?.assureur_decennale_adresse,
       zone: profil?.zone_couverture_decennale,
     }),
     fluides: isClimPac

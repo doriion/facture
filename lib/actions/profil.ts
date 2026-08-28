@@ -76,6 +76,7 @@ export async function upsertProfil(
     site_web: v.site_web || null,
     num_assurance_decennale: v.num_assurance_decennale || null,
     assureur_decennale: v.assureur_decennale || null,
+    assureur_decennale_adresse: v.assureur_decennale_adresse || null,
     zone_couverture_decennale: v.zone_couverture_decennale || null,
     num_attestation_fluides_frigo: v.num_attestation_fluides_frigo || null,
     num_rge_qualipac: v.num_rge_qualipac || null,

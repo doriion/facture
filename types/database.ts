@@ -921,6 +921,7 @@ export type Database = {
           adresse_ligne1: string | null;
           adresse_ligne2: string | null;
           assureur_decennale: string | null;
+          assureur_decennale_adresse: string | null;
           banque_nom: string | null;
           bic: string | null;
           calendar_token: string | null;
@@ -960,6 +961,7 @@ export type Database = {
           adresse_ligne1?: string | null;
           adresse_ligne2?: string | null;
           assureur_decennale?: string | null;
+          assureur_decennale_adresse?: string | null;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;
@@ -999,6 +1001,7 @@ export type Database = {
           adresse_ligne1?: string | null;
           adresse_ligne2?: string | null;
           assureur_decennale?: string | null;
+          assureur_decennale_adresse?: string | null;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;

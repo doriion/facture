@@ -58,6 +58,7 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
       site_web: profil?.site_web ?? "",
       num_assurance_decennale: profil?.num_assurance_decennale ?? "",
       assureur_decennale: profil?.assureur_decennale ?? "",
+      assureur_decennale_adresse: profil?.assureur_decennale_adresse ?? "",
       zone_couverture_decennale:
         profil?.zone_couverture_decennale ?? "France métropolitaine",
       num_attestation_fluides_frigo: profil?.num_attestation_fluides_frigo ?? "",
@@ -275,6 +276,19 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
             <Input
               id="assureur_decennale"
               {...register("assureur_decennale")}
+            />
+          </Field>
+          <Field
+            label="Coordonnées de l'assureur (adresse)"
+            id="assureur_decennale_adresse"
+            error={errors.assureur_decennale_adresse?.message}
+            className="md:col-span-2"
+            help="Mention obligatoire sur devis et factures de travaux (art. 22-2, loi 96-603)."
+          >
+            <Input
+              id="assureur_decennale_adresse"
+              placeholder="ex. 12 rue de la Paix, 75002 Paris"
+              {...register("assureur_decennale_adresse")}
             />
           </Field>
           <Field
