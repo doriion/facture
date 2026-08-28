@@ -136,11 +136,84 @@ export type Database = {
           },
         ];
       };
+      declarations_urssaf: {
+        Row: {
+          id: string;
+          user_id: string;
+          periode_label: string;
+          periode_start: string;
+          periode_end: string;
+          montant_declare: number;
+          ventilation: Json;
+          declare_le: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          periode_label: string;
+          periode_start: string;
+          periode_end: string;
+          montant_declare: number;
+          ventilation?: Json;
+          declare_le?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          periode_label?: string;
+          periode_start?: string;
+          periode_end?: string;
+          montant_declare?: number;
+          ventilation?: Json;
+          declare_le?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      taux_cotisations: {
+        Row: {
+          id: string;
+          user_id: string;
+          date_debut: string;
+          libelle: string;
+          taux_social: number;
+          taux_cfp: number;
+          taux_vl: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          date_debut: string;
+          libelle: string;
+          taux_social: number;
+          taux_cfp?: number;
+          taux_vl?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          date_debut?: string;
+          libelle?: string;
+          taux_social?: number;
+          taux_cfp?: number;
+          taux_vl?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       devis: {
         Row: {
           aides_financieres: Json;
           client_id: string;
           conditions: string | null;
+          emetteur: Json | null;
           created_at: string;
           date_debut_travaux: string | null;
           date_emission: string;
@@ -167,6 +240,7 @@ export type Database = {
           aides_financieres?: Json;
           client_id: string;
           conditions?: string | null;
+          emetteur?: Json | null;
           created_at?: string;
           date_debut_travaux?: string | null;
           date_emission?: string;
@@ -193,6 +267,7 @@ export type Database = {
           aides_financieres?: Json;
           client_id?: string;
           conditions?: string | null;
+          emetteur?: Json | null;
           created_at?: string;
           date_debut_travaux?: string | null;
           date_emission?: string;
@@ -238,6 +313,7 @@ export type Database = {
           designation: string;
           devis_id: string;
           id: string;
+          nature_fiscale: string;
           ordre: number;
           prix_unitaire_ht: number;
           quantite: number;
@@ -249,6 +325,7 @@ export type Database = {
           designation: string;
           devis_id: string;
           id?: string;
+          nature_fiscale?: string;
           ordre?: number;
           prix_unitaire_ht: number;
           quantite?: number;
@@ -260,6 +337,7 @@ export type Database = {
           designation?: string;
           devis_id?: string;
           id?: string;
+          nature_fiscale?: string;
           ordre?: number;
           prix_unitaire_ht?: number;
           quantite?: number;
@@ -281,6 +359,7 @@ export type Database = {
           aides_financieres: Json;
           client_id: string;
           conditions_paiement: string | null;
+          emetteur: Json | null;
           created_at: string;
           date_echeance: string;
           date_emission: string;
@@ -307,6 +386,7 @@ export type Database = {
           aides_financieres?: Json;
           client_id: string;
           conditions_paiement?: string | null;
+          emetteur?: Json | null;
           created_at?: string;
           date_echeance: string;
           date_emission?: string;
@@ -333,6 +413,7 @@ export type Database = {
           aides_financieres?: Json;
           client_id?: string;
           conditions_paiement?: string | null;
+          emetteur?: Json | null;
           created_at?: string;
           date_echeance?: string;
           date_emission?: string;
@@ -371,6 +452,7 @@ export type Database = {
           designation: string;
           facture_id: string;
           id: string;
+          nature_fiscale: string;
           ordre: number;
           prix_unitaire_ht: number;
           quantite: number;
@@ -382,6 +464,7 @@ export type Database = {
           designation: string;
           facture_id: string;
           id?: string;
+          nature_fiscale?: string;
           ordre?: number;
           prix_unitaire_ht: number;
           quantite?: number;
@@ -393,6 +476,7 @@ export type Database = {
           designation?: string;
           facture_id?: string;
           id?: string;
+          nature_fiscale?: string;
           ordre?: number;
           prix_unitaire_ht?: number;
           quantite?: number;
@@ -757,6 +841,7 @@ export type Database = {
           description: string | null;
           designation: string;
           id: string;
+          nature_fiscale: string;
           prix_ht: number;
           tva_taux_suggere: number | null;
           unite: string;
@@ -770,6 +855,7 @@ export type Database = {
           description?: string | null;
           designation: string;
           id?: string;
+          nature_fiscale?: string;
           prix_ht: number;
           tva_taux_suggere?: number | null;
           unite?: string;
@@ -782,6 +868,7 @@ export type Database = {
           created_at?: string;
           description?: string | null;
           designation?: string;
+          nature_fiscale?: string;
           id?: string;
           prix_ht?: number;
           tva_taux_suggere?: number | null;

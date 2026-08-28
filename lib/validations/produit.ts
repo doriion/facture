@@ -32,6 +32,10 @@ export const produitSchema = z.object({
   ),
   unite: z.enum(UNITES),
   categorie: z.enum(categorieValues),
+  // Case URSSAF par défaut des lignes créées depuis ce produit.
+  nature_fiscale: z
+    .enum(["bic_prestations", "bic_ventes", "bnc"])
+    .default("bic_prestations"),
   tva_taux_suggere: z.preprocess(
     moneyInputOrNull,
     z.number().min(0).max(100).nullable(),

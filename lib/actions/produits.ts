@@ -68,6 +68,7 @@ export async function createProduitAction(
       prix_ht: v.prix_ht,
       unite: v.unite,
       categorie: v.categorie,
+      nature_fiscale: v.nature_fiscale,
       tva_taux_suggere: v.tva_taux_suggere ?? null,
       actif: v.actif,
     })
@@ -102,6 +103,7 @@ export async function updateProduitAction(
       prix_ht: v.prix_ht,
       unite: v.unite,
       categorie: v.categorie,
+      nature_fiscale: v.nature_fiscale,
       tva_taux_suggere: v.tva_taux_suggere ?? null,
       actif: v.actif,
     })

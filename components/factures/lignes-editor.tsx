@@ -41,7 +41,15 @@ type LigneShape = {
   designation: string;
   quantite: number | string;
   prix_unitaire_ht: number | string;
+  nature_fiscale?: string;
 };
+
+/** Libellés courts pour le select de nature (case URSSAF) par ligne. */
+const NATURES_LIGNE = [
+  { value: "bic_prestations", label: "Prestation" },
+  { value: "bic_ventes", label: "Vente seule" },
+  { value: "bnc", label: "BNC" },
+] as const;
 
 /**
  * Éditeur générique de lignes pour facture ou devis (même structure).
@@ -76,6 +84,7 @@ export function LignesEditor<T extends FieldValues>({
       designation: "",
       quantite: 1,
       prix_unitaire_ht: 0,
+      nature_fiscale: "bic_prestations",
     } as unknown as FieldArray<T, ArrayPath<T>>);
   }
 
@@ -89,6 +98,7 @@ export function LignesEditor<T extends FieldValues>({
       designation,
       quantite: 1,
       prix_unitaire_ht: Number(p.prix_ht),
+      nature_fiscale: p.nature_fiscale ?? "bic_prestations",
     } as unknown as FieldArray<T, ArrayPath<T>>);
   }
 
@@ -139,7 +149,7 @@ export function LignesEditor<T extends FieldValues>({
                   key={field.id}
                   className="space-y-2 px-3 py-3 sm:flex sm:items-start sm:gap-2 sm:space-y-0 sm:py-2"
                 >
-                  {/* Désignation */}
+                  {/* Désignation + nature URSSAF */}
                   <div className="space-y-1 sm:flex-1">
                     <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
                       Ligne #{index + 1}
@@ -151,6 +161,22 @@ export function LignesEditor<T extends FieldValues>({
                     {errDesignation && (
                       <p className="text-xs text-destructive">{errDesignation}</p>
                     )}
+                    {/* Nature fiscale (case URSSAF) — select natif discret.
+                        Défaut « Prestation » : ne changer que pour une
+                        revente de matériel SANS pose. */}
+                    <select
+                      className="h-8 w-full max-w-44 rounded-md border border-input bg-transparent px-2 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label="Nature URSSAF de la ligne"
+                      {...register(
+                        `${fieldName}.${index}.nature_fiscale` as Path<T>,
+                      )}
+                    >
+                      {NATURES_LIGNE.map((n) => (
+                        <option key={n.value} value={n.value}>
+                          {n.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Quantité + Prix : côte à côte sur mobile, inline desktop */}

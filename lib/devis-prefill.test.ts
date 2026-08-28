@@ -15,6 +15,7 @@ const source: DevisRow = {
   date_validite: "2026-06-15",
   date_debut_travaux: "2026-04-01",
   date_signature: null,
+  emetteur: null,
   duree_estimee_jours: 3,
   est_modele: false,
   type_activite: "installation_clim",
@@ -43,6 +44,7 @@ const lignes: DevisLigneRow[] = [
     quantite: 1,
     prix_unitaire_ht: 3800,
     total_ht: 3800,
+    nature_fiscale: "bic_prestations",
     created_at: "2026-03-15T09:00:00Z",
   },
   {
@@ -54,6 +56,7 @@ const lignes: DevisLigneRow[] = [
     quantite: 7,
     prix_unitaire_ht: 100,
     total_ht: 700,
+    nature_fiscale: "bic_ventes",
     created_at: "2026-03-15T09:00:00Z",
   },
 ];
@@ -70,17 +73,19 @@ describe("buildDevisDuplicata", () => {
     expect(copie.devis.date_debut_travaux).toBeNull();
   });
 
-  it("recopie lignes, équipement, performances, aides et conditions", () => {
+  it("recopie lignes (nature fiscale incluse), équipement, performances, aides et conditions", () => {
     expect(copie.lignes).toEqual([
       {
         designation: "Pose clim mono-split 2,5 kW",
         quantite: 1,
         prix_unitaire_ht: 3800,
+        nature_fiscale: "bic_prestations",
       },
       {
         designation: "Liaison frigorifique (ml)",
         quantite: 7,
         prix_unitaire_ht: 100,
+        nature_fiscale: "bic_ventes",
       },
     ]);
     expect(copie.devis.equipement_info).toEqual({
