@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import {
   computeTotalHt,
   factureSchema,
@@ -338,6 +339,13 @@ export async function setFactureStatutAction(
     .update(update)
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  // Le document quitte le brouillon : fige les mentions émetteur
+  // (SIRET, adresse, assurance…) telles qu'elles sont aujourd'hui.
+  if (statut !== "brouillon") {
+    await figerEmetteurDocument(supabase, "factures", id);
+  }
+
   revalidatePath("/factures");
   revalidatePath(`/factures/${id}`);
   return { ok: true, data: undefined };

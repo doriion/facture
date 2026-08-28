@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import {
   devisSchema,
   type DevisFormValues,
@@ -334,6 +335,12 @@ export async function setDevisStatutAction(
     .update({ statut })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  // Le devis quitte le brouillon : fige les mentions émetteur.
+  if (statut !== "brouillon") {
+    await figerEmetteurDocument(supabase, "devis", id);
+  }
+
   revalidatePath("/devis");
   revalidatePath(`/devis/${id}`);
   return { ok: true, data: undefined };
@@ -482,6 +489,9 @@ export async function convertirDevisEnFactureAction(
     .from("devis")
     .update({ facture_id: facture.id, statut: "accepte" })
     .eq("id", devisId);
+
+  // Devis accepté = engageant : mentions émetteur figées.
+  await figerEmetteurDocument(supabase, "devis", devisId);
 
   revalidatePath("/devis");
   revalidatePath(`/devis/${devisId}`);

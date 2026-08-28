@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import { parseMoneyInput } from "@/lib/format";
 import {
   montantRestant,
@@ -218,4 +219,7 @@ async function maybeMarkFacturePaid(factureId: string) {
       .update({ statut: nouveau })
       .eq("id", factureId);
   }
+  // Une facture qui reçoit un paiement est de fait émise : mentions
+  // émetteur figées (couvre le passage direct brouillon → payée).
+  await figerEmetteurDocument(supabase, "factures", factureId);
 }

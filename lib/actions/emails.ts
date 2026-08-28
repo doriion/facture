@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { renderToBuffer } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
+import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import {
   buildDocumentEmail,
   buildRelanceEmail,
@@ -118,6 +119,9 @@ export async function envoyerFactureParEmailAction(
     })
     .eq("id", factureId);
 
+  // Document envoyé au client : mentions émetteur figées.
+  await figerEmetteurDocument(supabase, "factures", factureId);
+
   revalidatePath(`/factures/${factureId}`);
   revalidatePath("/factures");
   return { ok: true, data: undefined };
@@ -204,6 +208,9 @@ export async function envoyerDevisParEmailAction(
       statut: devis.statut === "brouillon" ? "envoye" : devis.statut,
     })
     .eq("id", devisId);
+
+  // Document envoyé au client : mentions émetteur figées.
+  await figerEmetteurDocument(supabase, "devis", devisId);
 
   revalidatePath(`/devis/${devisId}`);
   revalidatePath("/devis");
