@@ -8,7 +8,7 @@ const moneyInput = (v: unknown) =>
 const moneyInputOrNull = (v: unknown) =>
   v === "" || v === null || v === undefined ? null : parseMoneyInput(v);
 
-const TYPES_ACTIVITE = [
+export const TYPES_ACTIVITE = [
   "plomberie",
   "installation_clim",
   "installation_pac",
@@ -106,7 +106,12 @@ export type AidesFinancieresValues = z.infer<typeof aidesFinancieresSchema>;
  */
 export const factureSchema = z.object({
   client_id: z.string().uuid("Sélectionnez un client."),
-  type_activite: z.enum(TYPES_ACTIVITE),
+  // Choix EXPLICITE exigé : le formulaire démarre vide en création
+  // (fini les « autre » silencieux qui rendaient la répartition par
+  // activité du dashboard illisible).
+  type_activite: z.enum(TYPES_ACTIVITE, {
+    error: "Choisissez le type d'activité.",
+  }),
   date_emission: z.string().min(1, "Date d'émission obligatoire."),
   date_echeance: z.string().min(1, "Date d'échéance obligatoire."),
   date_prestation: z.string().optional().or(z.literal("")),

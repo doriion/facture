@@ -119,9 +119,11 @@ export function DevisForm({
     resolver: zodResolver(devisSchema),
     defaultValues: {
       client_id: base?.client_id ?? "",
+      // Pas de pré-sélection en création : choix explicite exigé par le
+      // schéma (les « autre » silencieux polluaient la répartition).
       type_activite:
         (base?.type_activite as DevisFormInput["type_activite"]) ??
-        "plomberie",
+        ("" as DevisFormInput["type_activite"]),
       date_emission: base?.date_emission ?? today,
       date_validite: base?.date_validite ?? inThreeMonths,
       date_debut_travaux: base?.date_debut_travaux ?? "",
@@ -198,7 +200,7 @@ export function DevisForm({
             }
           >
             <SelectTrigger className="md:max-w-md">
-              <SelectValue />
+              <SelectValue placeholder="Choisir le type d'activité…" />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(LABELS_TYPE_ACTIVITE).map(([k, label]) => (
@@ -208,6 +210,11 @@ export function DevisForm({
               ))}
             </SelectContent>
           </Select>
+          {errors.type_activite && (
+            <p className="mt-1 text-xs text-destructive">
+              {errors.type_activite.message}
+            </p>
+          )}
         </CardContent>
       </Card>
 

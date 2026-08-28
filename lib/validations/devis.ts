@@ -90,7 +90,9 @@ export const aidesDevisSchema = z.object({
  */
 export const devisSchema = z.object({
   client_id: z.string().uuid("Sélectionnez un client."),
-  type_activite: z.enum(TYPES_ACTIVITE),
+  type_activite: z.enum(TYPES_ACTIVITE, {
+    error: "Choisissez le type d'activité.",
+  }),
   date_emission: z.string().min(1, "Date d'émission obligatoire."),
   date_validite: z.string().min(1, "Date de validité obligatoire."),
   date_debut_travaux: z.string().optional().or(z.literal("")),

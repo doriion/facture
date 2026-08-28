@@ -7,6 +7,7 @@ import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import {
   computeTotalHt,
   factureSchema,
+  TYPES_ACTIVITE,
   type FactureFormValues,
 } from "@/lib/validations/facture";
 import type { Database, Json } from "@/types/database";
@@ -770,4 +771,35 @@ function cleanedAides(a: FactureFormValues["aides_financieres"]): Json {
   if (a.cee !== null && a.cee !== undefined) out.cee = a.cee;
   if (a.eco_ptz !== null && a.eco_ptz !== undefined) out.eco_ptz = a.eco_ptz;
   return out as Json;
+}
+
+/**
+ * Recatégorisation en masse du type d'activité (nettoyage des factures
+ * retombées en « autre » avant que le choix ne soit rendu explicite).
+ * Ne touche QUE type_activite — montants, lignes, statuts et snapshot
+ * émetteur restent intacts (le type d'activité n'est pas une mention
+ * légale figée, c'est un axe d'analyse).
+ */
+export async function bulkSetTypeActiviteAction(
+  updates: Array<{ id: string; type_activite: string }>,
+): Promise<ActionResult<{ nb: number }>> {
+  const valides = updates.filter((u) =>
+    (TYPES_ACTIVITE as readonly string[]).includes(u.type_activite),
+  );
+  if (valides.length === 0) {
+    return { ok: false, error: "Aucune recatégorisation à appliquer." };
+  }
+
+  const supabase = createClient();
+  for (const u of valides) {
+    const { error } = await supabase
+      .from("factures")
+      .update({ type_activite: u.type_activite })
+      .eq("id", u.id);
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/factures");
+  revalidatePath("/dashboard");
+  return { ok: true, data: { nb: valides.length } };
 }

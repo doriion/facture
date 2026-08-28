@@ -121,9 +121,11 @@ export function FactureForm({
     resolver: zodResolver(factureSchema),
     defaultValues: {
       client_id: base?.client_id ?? "",
+      // Pas de pré-sélection en création : choix explicite exigé par le
+      // schéma (les « autre » silencieux polluaient la répartition).
       type_activite:
         (base?.type_activite as FactureFormInput["type_activite"]) ??
-        "plomberie",
+        ("" as FactureFormInput["type_activite"]),
       date_emission: base?.date_emission ?? today,
       date_echeance: base?.date_echeance ?? inThirtyDays,
       date_prestation: base?.date_prestation ?? "",
@@ -197,7 +199,7 @@ export function FactureForm({
             }
           >
             <SelectTrigger className="md:max-w-md">
-              <SelectValue />
+              <SelectValue placeholder="Choisir le type d'activité…" />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(LABELS_TYPE_ACTIVITE).map(([k, label]) => (
