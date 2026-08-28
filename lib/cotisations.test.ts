@@ -41,6 +41,12 @@ describe("provisionCotisations", () => {
     expect(provisionCotisations(1000, [], "2026-08-28")).toBeNull();
     expect(provisionCotisations(-5, BAREME_DEFAUT, "2026-08-28")).toBeNull();
   });
+
+  it("null pour une date ANTÉRIEURE à toute ligne du barème (la carte affiche alors le repli « aucun barème »)", () => {
+    // BAREME_DEFAUT démarre au 01/04/2026 : avant, aucun taux applicable
+    expect(tauxApplicable(BAREME_DEFAUT, "2026-03-31")).toBeNull();
+    expect(provisionCotisations(5000, BAREME_DEFAUT, "2026-03-31")).toBeNull();
+  });
 });
 
 describe("prochaineBascule", () => {

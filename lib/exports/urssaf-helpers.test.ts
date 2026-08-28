@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { ecartDeclaration } from "@/lib/fiscal";
 import {
   buildCsv,
   getExportPeriodes,
@@ -120,6 +121,73 @@ describe("summarizeEncaissements", () => {
       bnc: 0,
     });
     expect(res.total_encaisse).toBe(600);
+  });
+});
+
+describe("bout en bout : facture mixte encaissée sur deux trimestres", () => {
+  // Facture 1000 € HT : 800 € de prestation (pose) + 200 € de vente
+  // seule. Acompte de 300 € encaissé en T2, solde de 700 € en T3.
+  const lignes = [
+    { total_ht: 800, nature_fiscale: "bic_prestations" },
+    { total_ht: 200, nature_fiscale: "bic_ventes" },
+  ];
+  const facture = { id: "f-mixte", total_ht: 1000, lignes };
+  const acompteT2 = paiement({
+    montant: 300,
+    date_paiement: "2026-05-10",
+    facture,
+  });
+  const soldeT3 = paiement({
+    montant: 700,
+    date_paiement: "2026-07-20",
+    facture,
+  });
+
+  it("chaque trimestre reçoit sa part au prorata des natures", () => {
+    // T2 ne voit que l'acompte
+    const t2 = summarizeEncaissements([acompteT2]);
+    expect(t2.total_encaisse).toBe(300);
+    expect(t2.ventilation).toEqual({
+      bic_prestations: 240, // 300 × 800/1000
+      bic_ventes: 60, // 300 × 200/1000
+      bnc: 0,
+    });
+
+    // T3 ne voit que le solde
+    const t3 = summarizeEncaissements([soldeT3]);
+    expect(t3.total_encaisse).toBe(700);
+    expect(t3.ventilation).toEqual({
+      bic_prestations: 560,
+      bic_ventes: 140,
+      bnc: 0,
+    });
+  });
+
+  it("la somme des deux trimestres reconstitue exactement la facture", () => {
+    const t2 = summarizeEncaissements([acompteT2]);
+    const t3 = summarizeEncaissements([soldeT3]);
+    expect(
+      t2.ventilation.bic_prestations + t3.ventilation.bic_prestations,
+    ).toBe(800);
+    expect(t2.ventilation.bic_ventes + t3.ventilation.bic_ventes).toBe(200);
+    expect(t2.total_encaisse + t3.total_encaisse).toBe(1000);
+  });
+
+  it("un paiement ajouté APRÈS déclaration du trimestre produit un écart détecté", () => {
+    // Le trimestre est déclaré sur la base de l'acompte seul…
+    const declare = summarizeEncaissements([acompteT2]).total_encaisse;
+    // …puis un règlement complémentaire de 50 € est saisi sur T2
+    const complement = paiement({
+      montant: 50,
+      date_paiement: "2026-06-28",
+      facture,
+    });
+    const apres = summarizeEncaissements([acompteT2, complement]);
+    // ecartDeclaration est ce que la carte Déclaration affiche en
+    // alerte ambre (« Écart de X € en plus depuis la déclaration »)
+    expect(ecartDeclaration(declare, apres.total_encaisse)).toBe(50);
+    // Et un paiement SUPPRIMÉ après coup donne un écart négatif
+    expect(ecartDeclaration(declare, 0)).toBe(-300);
   });
 });
 
