@@ -17,6 +17,7 @@ export type DashboardData = {
   annee: number;
   // KPIs
   caMois: number;
+  caEncaisseMois: number;
   caAnnee: number;
   caMoisPrecedent: number;
   nbFacturesImpayees: number;
@@ -131,6 +132,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     facturesAnneeRes,
     exportUrssafAnnee,
     exportUrssafTrimestre,
+    exportUrssafMois,
     bareme,
     facturesEnvoyeesRes,
     devisEnvoyesRes,
@@ -139,13 +141,16 @@ export async function getDashboardData(): Promise<DashboardData> {
     devisRecentsRes,
     contratsRes,
   ] = await Promise.all([
-    // Toutes les factures de l'année courante (non annulées) avec client_id, pour les graphes + top clients
+    // Factures ÉMISES sur 12 mois glissants (brouillons et annulées
+    // exclus : un brouillon n'est pas émis, il ne doit pas gonfler le
+    // « facturé » des cartes ni des graphes)
     supabase
       .from("factures")
       .select("id,numero,date_emission,date_echeance,total_ht,statut,type_activite,client_id,client:clients(id,nom)")
       .gte("date_emission", start12moisAgo)
       .lt("date_emission", startOfNextYear)
-      .neq("statut", "annulee"),
+      .neq("statut", "annulee")
+      .neq("statut", "brouillon"),
     // CA ENCAISSÉ de l'année pour les jauges de seuils micro — on
     // réutilise le calcul de l'export URSSAF (somme des paiements,
     // factures annulées exclues) pour avoir exactement le même chiffre
@@ -153,6 +158,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     buildExportUrssaf(startOfYear, startOfNextYear),
     // Encaissé du trimestre en cours + barème → provision de cotisations
     buildExportUrssaf(trimestre.start, trimestre.end),
+    // Encaissé du mois courant (carte KPI trésorerie)
+    buildExportUrssaf(startOfMonth, startOfNextMonth),
     getBaremeCotisations(),
     // Factures envoyées (= impayées) tous statuts
     supabase
@@ -209,7 +216,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     client: { id: string; nom: string } | null;
   }>;
 
-  // CA mois courant (factures encaissées + envoyées)
+  // Facturé du mois courant (factures émises : envoyées + payées)
   const caMois = facturesAnnee
     .filter(
       (f) =>
@@ -234,6 +241,9 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   // CA encaissé de l'année (base URSSAF) pour les jauges de seuils micro.
   const caEncaisseAnnee = exportUrssafAnnee.total_encaisse;
+  // Encaissé du mois courant — LE chiffre de trésorerie du quotidien
+  // (même source que l'export URSSAF : somme des paiements datés du mois)
+  const caEncaisseMois = exportUrssafMois.total_encaisse;
 
   // Cotisations à provisionner sur l'encaissé du trimestre en cours,
   // au barème applicable aujourd'hui (table taux_cotisations, ACRE puis
@@ -488,6 +498,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   return {
     annee,
     caMois,
+    caEncaisseMois,
     caAnnee,
     caMoisPrecedent,
     nbFacturesImpayees,

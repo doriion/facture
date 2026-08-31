@@ -27,6 +27,7 @@ export default async function DashboardPage() {
 
       <KpiCards
         caMois={data.caMois}
+        caEncaisseMois={data.caEncaisseMois}
         caMoisPrecedent={data.caMoisPrecedent}
         caAnnee={data.caAnnee}
         nbFacturesImpayees={data.nbFacturesImpayees}
