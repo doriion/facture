@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
+import { computeTauxConversionDevis } from "@/lib/devis-stats";
+import { derniers12Mois } from "@/lib/mois";
 import {
   prochaineBascule,
   provisionCotisations,
@@ -16,6 +18,7 @@ export type DashboardData = {
   annee: number;
   // KPIs
   caMois: number;
+  caEncaisseMois: number;
   caAnnee: number;
   caMoisPrecedent: number;
   nbFacturesImpayees: number;
@@ -117,11 +120,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     mois === 0
       ? `${annee - 1}-12-01`
       : `${annee}-${String(mois).padStart(2, "0")}-01`;
-  // 12 mois glissants — premier jour du 11e mois précédent
-  const date12moisAgo = new Date(now);
-  date12moisAgo.setMonth(date12moisAgo.getMonth() - 11);
-  date12moisAgo.setDate(1);
-  const start12moisAgo = date12moisAgo.toISOString().slice(0, 10);
+  // 12 mois glissants — bornes sûres même un 31 (lib/mois, testé)
+  const moisGlissants = derniers12Mois(now);
+  const start12moisAgo = moisGlissants[0]!.start;
 
   const trimestre = trimestreCourant(today);
 
@@ -130,6 +131,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     facturesAnneeRes,
     exportUrssafAnnee,
     exportUrssafTrimestre,
+    exportUrssafMois,
     bareme,
     facturesEnvoyeesRes,
     devisEnvoyesRes,
@@ -138,13 +140,16 @@ export async function getDashboardData(): Promise<DashboardData> {
     devisRecentsRes,
     contratsRes,
   ] = await Promise.all([
-    // Toutes les factures de l'année courante (non annulées) avec client_id, pour les graphes + top clients
+    // Factures ÉMISES sur 12 mois glissants (brouillons et annulées
+    // exclus : un brouillon n'est pas émis, il ne doit pas gonfler le
+    // « facturé » des cartes ni des graphes)
     supabase
       .from("factures")
       .select("id,numero,date_emission,date_echeance,total_ht,statut,type_activite,client_id,client:clients(id,nom)")
       .gte("date_emission", start12moisAgo)
       .lt("date_emission", startOfNextYear)
-      .neq("statut", "annulee"),
+      .neq("statut", "annulee")
+      .neq("statut", "brouillon"),
     // CA ENCAISSÉ de l'année pour les jauges de seuils micro — on
     // réutilise le calcul de l'export URSSAF (somme des paiements,
     // factures annulées exclues) pour avoir exactement le même chiffre
@@ -152,6 +157,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     buildExportUrssaf(startOfYear, startOfNextYear),
     // Encaissé du trimestre en cours + barème → provision de cotisations
     buildExportUrssaf(trimestre.start, trimestre.end),
+    // Encaissé du mois courant (carte KPI trésorerie)
+    buildExportUrssaf(startOfMonth, startOfNextMonth),
     getBaremeCotisations(),
     // Factures envoyées (= impayées) tous statuts
     supabase
@@ -208,7 +215,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     client: { id: string; nom: string } | null;
   }>;
 
-  // CA mois courant (factures encaissées + envoyées)
+  // Facturé du mois courant (factures émises : envoyées + payées)
   const caMois = facturesAnnee
     .filter(
       (f) =>
@@ -233,6 +240,9 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   // CA encaissé de l'année (base URSSAF) pour les jauges de seuils micro.
   const caEncaisseAnnee = exportUrssafAnnee.total_encaisse;
+  // Encaissé du mois courant — LE chiffre de trésorerie du quotidien
+  // (même source que l'export URSSAF : somme des paiements datés du mois)
+  const caEncaisseMois = exportUrssafMois.total_encaisse;
 
   // Cotisations à provisionner sur l'encaissé du trimestre en cours,
   // au barème applicable aujourd'hui (table taux_cotisations, ACRE puis
@@ -329,40 +339,24 @@ export async function getDashboardData(): Promise<DashboardData> {
       .sort((a, b) => a.joursAvantExpiration - b.joursAvantExpiration);
   }
 
-  // Taux de conversion devis
+  // Taux de conversion devis — helper pur testé (null si aucun devis
+  // décidable, affiché « — » par la carte KPI).
   const devisStatuts = (devisStatutsRes.data ?? []) as Array<{
     statut: string;
   }>;
-  const nbAccepte = devisStatuts.filter((d) => d.statut === "accepte").length;
-  const nbRefuse = devisStatuts.filter((d) => d.statut === "refuse").length;
-  const nbEnvoye = devisStatuts.filter((d) => d.statut === "envoye").length;
-  const totalDecidables = nbAccepte + nbRefuse + nbEnvoye;
-  // null (affiché « — ») tant qu'aucun devis n'a été envoyé/tranché :
-  // un « 0 % » sans devis décidable est trompeur.
-  const tauxConversionDevis =
-    totalDecidables > 0 ? Math.round((nbAccepte / totalDecidables) * 100) : null;
+  const tauxConversionDevis = computeTauxConversionDevis(devisStatuts);
 
-  // CA par mois (12 derniers) ventilé par type d'activité
+  // CA par mois (12 derniers) ventilé par type d'activité —
+  // buckets calculés par lib/mois (le setMonth() d'origine dupliquait
+  // des mois et en faisait disparaître quand on était un 31)
   const caParMois: DashboardData["caParMois"] = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - i);
-    d.setDate(1);
-    const moisIso = d.toISOString().slice(0, 7); // YYYY-MM
-    const moisLabel = d
-      .toLocaleDateString("fr-FR", { month: "short", year: "2-digit" })
-      .replace(".", "");
-    const dStart = `${moisIso}-01`;
-    const dEnd = new Date(d);
-    dEnd.setMonth(dEnd.getMonth() + 1);
-    const dEndIso = dEnd.toISOString().slice(0, 10);
-
+  for (const mois of moisGlissants) {
     const facturesDuMois = facturesAnnee.filter(
-      (f) => f.date_emission >= dStart && f.date_emission < dEndIso,
+      (f) => f.date_emission >= mois.start && f.date_emission < mois.end,
     );
 
     const bucket = {
-      mois: moisLabel,
+      mois: mois.label,
       plomberie: 0,
       clim: 0,
       pac: 0,
@@ -493,6 +487,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   return {
     annee,
     caMois,
+    caEncaisseMois,
     caAnnee,
     caMoisPrecedent,
     nbFacturesImpayees,

@@ -6,6 +6,7 @@ import { getFacturesEnRetard } from "@/lib/actions/relances";
 import { Button } from "@/components/ui/button";
 import { FacturesTable } from "@/components/factures/factures-table";
 import { FacturesToolbar } from "@/components/factures/factures-toolbar";
+import { RecategoriserBanner } from "@/components/factures/recategoriser-dialog";
 import { RelancesSection } from "@/components/factures/relances-section";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 
@@ -20,10 +21,22 @@ export default async function FacturesPage({
   const statut = searchParams.statut ?? "";
   const type = searchParams.type ?? "";
 
-  const [factures, enRetard] = await Promise.all([
+  const [factures, enRetard, facturesAutre] = await Promise.all([
     listFactures({ search, statut, type }),
     getFacturesEnRetard(),
+    // Indépendant des filtres : toutes les « Autre » à requalifier
+    listFactures({ type: "autre" }),
   ]);
+
+  const aRecategoriser = facturesAutre
+    .filter((f) => f.statut !== "annulee")
+    .map((f) => ({
+      id: f.id,
+      numero: f.numero,
+      date_emission: f.date_emission,
+      total_ht: Number(f.total_ht),
+      client_nom: f.client?.nom ?? null,
+    }));
 
   // Total brut sur la liste filtrée (à titre indicatif)
   const totalAffiche = factures.reduce(
@@ -55,6 +68,8 @@ export default async function FacturesPage({
       </div>
 
       <RelancesSection factures={enRetard.factures} />
+
+      <RecategoriserBanner factures={aRecategoriser} />
 
       <FacturesToolbar
         initialSearch={search}

@@ -62,9 +62,11 @@ describe("mapInterventionTypeToActivite", () => {
     );
   });
 
-  it("retombe sur autre pour les types inconnus", () => {
-    expect(mapInterventionTypeToActivite("autre", null)).toBe("autre");
-    expect(mapInterventionTypeToActivite("inconnu", null)).toBe("autre");
+  it("laisse le choix vide (explicite) pour les types inconnus", () => {
+    // Plus de retombée silencieuse en « autre » : le formulaire force
+    // alors un choix, sinon la répartition par activité devient illisible.
+    expect(mapInterventionTypeToActivite("autre", null)).toBe("");
+    expect(mapInterventionTypeToActivite("inconnu", null)).toBe("");
   });
 });
 

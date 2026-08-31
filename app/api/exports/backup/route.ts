@@ -16,7 +16,13 @@ export const dynamic = "force-dynamic";
  * de chaque facture/devis sont intégralement présents.
  */
 
-/** Tables utilisateur exportées, dans un ordre lisible. */
+/**
+ * Tables utilisateur exportées, dans un ordre lisible.
+ * INVARIANT : cette liste doit couvrir TOUTES les tables métier du
+ * schéma public (vérifié le 28/08/2026 : 18/18, `select *` embarque
+ * aussi les colonnes récentes comme `emetteur` et `nature_fiscale`).
+ * Toute migration qui crée une table doit l'ajouter ici.
+ */
 const TABLES = [
   "profil_entreprise",
   "clients",
@@ -77,7 +83,7 @@ export async function GET() {
       exported_at: exportedAt.toISOString(),
       user_id: user.id,
       tables: counts,
-      note: "Sauvegarde JSON complète. Les fichiers du Storage (logo, photos) ne sont pas inclus, seulement leurs chemins.",
+      note: "Sauvegarde JSON complète (obligation de conservation des pièces : 10 ans — conservez ce fichier hors de l'application). Les fichiers du Storage (logo, photos, signatures, CERFA PDF) ne sont pas inclus, seulement leurs chemins : téléchargez aussi les PDF archivés depuis les fiches.",
     },
     data,
   };

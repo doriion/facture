@@ -5,6 +5,7 @@ import {
   FileSignature,
   FileText,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import { formatEuros } from "@/lib/format";
  */
 export function KpiCards({
   caMois,
+  caEncaisseMois,
   caMoisPrecedent,
   caAnnee,
   nbFacturesImpayees,
@@ -24,6 +26,7 @@ export function KpiCards({
   annee,
 }: {
   caMois: number;
+  caEncaisseMois: number;
   caMoisPrecedent: number;
   caAnnee: number;
   nbFacturesImpayees: number;
@@ -39,7 +42,27 @@ export function KpiCards({
   const evolutionPositive = evolutionMois !== null && evolutionMois >= 0;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+      {/* LE chiffre de trésorerie du quotidien : ce qui est réellement
+          rentré ce mois-ci (somme des paiements, même source que
+          l'URSSAF) — mis en avant, pleine largeur sur mobile. */}
+      <Card className="col-span-2 border-primary bg-primary/5 lg:col-span-1">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-xs font-medium sm:text-sm">
+            Encaissé ce mois
+          </CardTitle>
+          <Wallet className="size-4 text-primary" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-lg font-bold tabular-nums sm:text-2xl">
+            {formatEuros(caEncaisseMois)}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Paiements reçus — base URSSAF
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
@@ -51,7 +74,7 @@ export function KpiCards({
           <div className="text-lg font-bold tabular-nums sm:text-2xl">
             {formatEuros(caMois)}
           </div>
-          {evolutionMois !== null && (
+          {evolutionMois !== null ? (
             <p
               className={`mt-1 flex items-center gap-1 text-xs ${
                 evolutionPositive ? "text-emerald-600" : "text-destructive"
@@ -64,6 +87,10 @@ export function KpiCards({
               )}
               {evolutionPositive ? "+" : ""}
               {evolutionMois}% vs mois précédent
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Émis, hors brouillons
             </p>
           )}
         </CardContent>

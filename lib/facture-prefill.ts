@@ -23,7 +23,7 @@ export type LignePrefill = {
 
 export type FacturePrefill = {
   client_id: string;
-  type_activite: TypeActivite;
+  type_activite: TypeActivite | "";
   date_prestation: string;
   date_prestation_fin: string;
   equipement_info: {
@@ -45,7 +45,7 @@ export type FacturePrefill = {
 export function mapInterventionTypeToActivite(
   type: string,
   fluideFrigoType: string | null,
-): TypeActivite {
+): TypeActivite | "" {
   switch (type) {
     case "entretien":
       return "entretien";
@@ -54,7 +54,10 @@ export function mapInterventionTypeToActivite(
     case "installation":
       return fluideFrigoType ? "installation_clim" : "plomberie";
     default:
-      return "autre";
+      // Pas de pré-sélection : le formulaire force alors un choix
+      // explicite (les retombées silencieuses en « autre » ont pollué
+      // la répartition par activité).
+      return "";
   }
 }
 

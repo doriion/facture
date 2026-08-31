@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ajouterMois } from "@/lib/mois";
+
 export const FREQUENCES = ["annuelle", "semestrielle", "trimestrielle"] as const;
 export type Frequence = (typeof FREQUENCES)[number];
 
@@ -46,16 +48,20 @@ export function nextVisitDate(
   fromDate: string | Date,
   frequence: Frequence,
 ): string {
-  const d = typeof fromDate === "string" ? new Date(fromDate) : new Date(fromDate);
+  const iso =
+    typeof fromDate === "string"
+      ? fromDate.slice(0, 10)
+      : fromDate.toISOString().slice(0, 10);
   const monthsToAdd =
     frequence === "annuelle"
       ? 12
       : frequence === "semestrielle"
         ? 6
         : 3;
-  const next = new Date(d);
-  next.setMonth(next.getMonth() + monthsToAdd);
-  return next.toISOString().slice(0, 10);
+  // ajouterMois borne au dernier jour du mois cible : une visite
+  // planifiée un 31 août + 6 mois tombe au 28 février, pas au 3 mars
+  // (le setMonth() natif débordait).
+  return ajouterMois(iso, monthsToAdd);
 }
 
 /**

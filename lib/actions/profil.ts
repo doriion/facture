@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { profilSchema, type ProfilFormValues } from "@/lib/validations/profil";
 import { siretToSiren, stripSpaces } from "@/lib/format";
+import { normalizeSiret } from "@/lib/siret";
 
 type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -53,7 +54,7 @@ export async function upsertProfil(
 
   const v = parsed.data;
   // Normalisation : "" → null + nettoyage espaces
-  const cleanedSiret = v.siret ? stripSpaces(v.siret) : null;
+  const cleanedSiret = v.siret ? normalizeSiret(v.siret) : null;
   const cleanedIban = v.iban ? stripSpaces(v.iban).toUpperCase() : null;
   const cleanedBic = v.bic ? stripSpaces(v.bic).toUpperCase() : null;
 
