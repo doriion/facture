@@ -5,6 +5,7 @@ import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
 import { computeTauxConversionDevis } from "@/lib/devis-stats";
+import { derniers12Mois } from "@/lib/mois";
 import {
   prochaineBascule,
   provisionCotisations,
@@ -119,11 +120,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     mois === 0
       ? `${annee - 1}-12-01`
       : `${annee}-${String(mois).padStart(2, "0")}-01`;
-  // 12 mois glissants — premier jour du 11e mois précédent
-  const date12moisAgo = new Date(now);
-  date12moisAgo.setMonth(date12moisAgo.getMonth() - 11);
-  date12moisAgo.setDate(1);
-  const start12moisAgo = date12moisAgo.toISOString().slice(0, 10);
+  // 12 mois glissants — bornes sûres même un 31 (lib/mois, testé)
+  const moisGlissants = derniers12Mois(now);
+  const start12moisAgo = moisGlissants[0]!.start;
 
   const trimestre = trimestreCourant(today);
 
@@ -347,27 +346,17 @@ export async function getDashboardData(): Promise<DashboardData> {
   }>;
   const tauxConversionDevis = computeTauxConversionDevis(devisStatuts);
 
-  // CA par mois (12 derniers) ventilé par type d'activité
+  // CA par mois (12 derniers) ventilé par type d'activité —
+  // buckets calculés par lib/mois (le setMonth() d'origine dupliquait
+  // des mois et en faisait disparaître quand on était un 31)
   const caParMois: DashboardData["caParMois"] = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - i);
-    d.setDate(1);
-    const moisIso = d.toISOString().slice(0, 7); // YYYY-MM
-    const moisLabel = d
-      .toLocaleDateString("fr-FR", { month: "short", year: "2-digit" })
-      .replace(".", "");
-    const dStart = `${moisIso}-01`;
-    const dEnd = new Date(d);
-    dEnd.setMonth(dEnd.getMonth() + 1);
-    const dEndIso = dEnd.toISOString().slice(0, 10);
-
+  for (const mois of moisGlissants) {
     const facturesDuMois = facturesAnnee.filter(
-      (f) => f.date_emission >= dStart && f.date_emission < dEndIso,
+      (f) => f.date_emission >= mois.start && f.date_emission < mois.end,
     );
 
     const bucket = {
-      mois: moisLabel,
+      mois: mois.label,
       plomberie: 0,
       clim: 0,
       pac: 0,
