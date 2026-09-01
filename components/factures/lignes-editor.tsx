@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatEuros, parseMoneyInput } from "@/lib/format";
+import { contientMateriel } from "@/lib/sections";
 import type { Database } from "@/types/database";
 
 /** Convertit une valeur de champ (string tolérant FR/EN) en number sûr. */
@@ -42,6 +43,8 @@ type LigneShape = {
   quantite: number | string;
   prix_unitaire_ht: number | string;
   nature_fiscale?: string;
+  /** 'ligne' (défaut) ou 'titre' — titre de section, sans qté ni prix */
+  type?: string;
 };
 
 /** Libellés courts pour le select de nature (case URSSAF) par ligne. */
@@ -85,6 +88,20 @@ export function LignesEditor<T extends FieldValues>({
       quantite: 1,
       prix_unitaire_ht: 0,
       nature_fiscale: "bic_prestations",
+      type: "ligne",
+    } as unknown as FieldArray<T, ArrayPath<T>>);
+  }
+
+  // Titre de section (« MATÉRIEL », « MAIN-D'ŒUVRE »…) : pas de
+  // quantité ni de prix — qté 1 × 0 € en interne pour satisfaire le
+  // schéma, le PDF et les totaux l'ignorent.
+  function addTitleLine() {
+    append({
+      designation: "",
+      quantite: 1,
+      prix_unitaire_ht: 0,
+      nature_fiscale: "bic_prestations",
+      type: "titre",
     } as unknown as FieldArray<T, ArrayPath<T>>);
   }
 
@@ -99,6 +116,7 @@ export function LignesEditor<T extends FieldValues>({
       quantite: 1,
       prix_unitaire_ht: Number(p.prix_ht),
       nature_fiscale: p.nature_fiscale ?? "bic_prestations",
+      type: "ligne",
     } as unknown as FieldArray<T, ArrayPath<T>>);
   }
 
@@ -144,6 +162,43 @@ export function LignesEditor<T extends FieldValues>({
               const errDesignation = lineErr(index, "designation");
               const errQuantite = lineErr(index, "quantite");
               const errPrix = lineErr(index, "prix_unitaire_ht");
+
+              // Titre de section : une seule saisie en gras, sans
+              // quantité/prix/nature (valeurs neutres dans le form state)
+              if (ligne?.type === "titre") {
+                return (
+                  <div
+                    key={field.id}
+                    className="flex items-start gap-2 bg-muted/20 px-3 py-2"
+                  >
+                    <div className="flex-1 space-y-1">
+                      <Input
+                        placeholder="Titre de section (ex. MATÉRIEL, MAIN-D'ŒUVRE)"
+                        className="border-dashed font-bold uppercase"
+                        {...register(
+                          `${fieldName}.${index}.designation` as Path<T>,
+                        )}
+                      />
+                      {errDesignation && (
+                        <p className="text-xs text-destructive">
+                          {errDesignation}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => remove(index)}
+                      title="Supprimer le titre"
+                      className="shrink-0"
+                    >
+                      <Trash2 className="size-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={field.id}
@@ -263,6 +318,11 @@ export function LignesEditor<T extends FieldValues>({
           Ajouter une ligne libre
         </Button>
 
+        <Button type="button" variant="outline" onClick={addTitleLine}>
+          <Plus className="size-4" />
+          Titre de section
+        </Button>
+
         {produits.length > 0 && (
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-muted-foreground">
@@ -288,6 +348,24 @@ export function LignesEditor<T extends FieldValues>({
           </div>
         )}
       </div>
+      <p className="text-xs text-muted-foreground">
+        💡 La quantité se saisit dans la colonne Qté — inutile de la
+        répéter dans la désignation (« 2x … »). Les titres de section
+        s'affichent en gras sur le PDF avec un sous-total par section.
+      </p>
+
+      {/* Info activité mixte — formulaire uniquement, jamais sur le PDF */}
+      {contientMateriel(lignes) && (
+        <div className="rounded-md border border-sky-600/30 bg-sky-500/5 p-3 text-xs text-muted-foreground">
+          ℹ️ Ce document contient du matériel. En micro-entreprise, les
+          cotisations s'appliquent sur le TOTAL encaissé, matériel
+          compris (pas de déduction d'achats), et la fourniture de
+          matériel revendu sans pose relève de l'activité mixte
+          (case « ventes » de la déclaration URSSAF — la nature de
+          chaque ligne fait déjà la ventilation). Information
+          indicative, rien à faire de plus.
+        </div>
+      )}
     </div>
   );
 }

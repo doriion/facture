@@ -100,6 +100,22 @@ export const devisSchema = z.object({
     moneyInputOrNull,
     z.number().int().min(0).max(3650).nullable(),
   ),
+  // Acompte demandé à la commande : % (prioritaire) ou montant fixe.
+  acompte_pct: z.preprocess(
+    moneyInputOrNull,
+    z
+      .number()
+      .positive("Le pourcentage doit être positif.")
+      .max(100, "100 % maximum.")
+      .nullable(),
+  ),
+  acompte_montant: z.preprocess(
+    moneyInputOrNull,
+    z.number().min(0).max(1_000_000).nullable(),
+  ),
+  // Devis signé au domicile du client (hors établissement) : le PDF
+  // ajoute la mention L221-18 + le formulaire de rétractation.
+  signe_a_domicile: z.boolean().default(false),
   conditions: z.string().trim().max(2000).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   lignes: z

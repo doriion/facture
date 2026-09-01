@@ -21,6 +21,7 @@ export type DevisPrefill = {
     quantite: number;
     prix_unitaire_ht: number;
     nature_fiscale: string;
+    type: string;
   }>;
 };
 
@@ -60,6 +61,7 @@ export function buildDevisDuplicata(
       quantite: Number(l.quantite),
       prix_unitaire_ht: Number(l.prix_unitaire_ht),
       nature_fiscale: l.nature_fiscale ?? "bic_prestations",
+      type: l.type ?? "ligne",
     })),
   };
 }

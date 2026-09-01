@@ -16,6 +16,9 @@ const source: DevisRow = {
   date_debut_travaux: "2026-04-01",
   date_signature: null,
   emetteur: null,
+  acompte_pct: null,
+  acompte_montant: null,
+  signe_a_domicile: false,
   duree_estimee_jours: 3,
   est_modele: false,
   type_activite: "installation_clim",
@@ -45,6 +48,7 @@ const lignes: DevisLigneRow[] = [
     prix_unitaire_ht: 3800,
     total_ht: 3800,
     nature_fiscale: "bic_prestations",
+    type: "ligne",
     created_at: "2026-03-15T09:00:00Z",
   },
   {
@@ -57,6 +61,7 @@ const lignes: DevisLigneRow[] = [
     prix_unitaire_ht: 100,
     total_ht: 700,
     nature_fiscale: "bic_ventes",
+    type: "ligne",
     created_at: "2026-03-15T09:00:00Z",
   },
 ];
@@ -80,12 +85,14 @@ describe("buildDevisDuplicata", () => {
         quantite: 1,
         prix_unitaire_ht: 3800,
         nature_fiscale: "bic_prestations",
+    type: "ligne",
       },
       {
         designation: "Liaison frigorifique (ml)",
         quantite: 7,
         prix_unitaire_ht: 100,
         nature_fiscale: "bic_ventes",
+    type: "ligne",
       },
     ]);
     expect(copie.devis.equipement_info).toEqual({

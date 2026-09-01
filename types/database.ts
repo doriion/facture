@@ -214,6 +214,9 @@ export type Database = {
           client_id: string;
           conditions: string | null;
           emetteur: Json | null;
+          acompte_pct: number | null;
+          acompte_montant: number | null;
+          signe_a_domicile: boolean;
           created_at: string;
           date_debut_travaux: string | null;
           date_emission: string;
@@ -241,6 +244,9 @@ export type Database = {
           client_id: string;
           conditions?: string | null;
           emetteur?: Json | null;
+          acompte_pct?: number | null;
+          acompte_montant?: number | null;
+          signe_a_domicile?: boolean;
           created_at?: string;
           date_debut_travaux?: string | null;
           date_emission?: string;
@@ -268,6 +274,9 @@ export type Database = {
           client_id?: string;
           conditions?: string | null;
           emetteur?: Json | null;
+          acompte_pct?: number | null;
+          acompte_montant?: number | null;
+          signe_a_domicile?: boolean;
           created_at?: string;
           date_debut_travaux?: string | null;
           date_emission?: string;
@@ -314,6 +323,7 @@ export type Database = {
           devis_id: string;
           id: string;
           nature_fiscale: string;
+          type: string;
           ordre: number;
           prix_unitaire_ht: number;
           quantite: number;
@@ -326,6 +336,7 @@ export type Database = {
           devis_id: string;
           id?: string;
           nature_fiscale?: string;
+          type?: string;
           ordre?: number;
           prix_unitaire_ht: number;
           quantite?: number;
@@ -338,6 +349,7 @@ export type Database = {
           devis_id?: string;
           id?: string;
           nature_fiscale?: string;
+          type?: string;
           ordre?: number;
           prix_unitaire_ht?: number;
           quantite?: number;
@@ -453,6 +465,7 @@ export type Database = {
           facture_id: string;
           id: string;
           nature_fiscale: string;
+          type: string;
           ordre: number;
           prix_unitaire_ht: number;
           quantite: number;
@@ -465,6 +478,7 @@ export type Database = {
           facture_id: string;
           id?: string;
           nature_fiscale?: string;
+          type?: string;
           ordre?: number;
           prix_unitaire_ht: number;
           quantite?: number;
@@ -477,6 +491,7 @@ export type Database = {
           facture_id?: string;
           id?: string;
           nature_fiscale?: string;
+          type?: string;
           ordre?: number;
           prix_unitaire_ht?: number;
           quantite?: number;
@@ -922,6 +937,9 @@ export type Database = {
           adresse_ligne2: string | null;
           assureur_decennale: string | null;
           assureur_decennale_adresse: string | null;
+          decennale_valide_jusquau: string | null;
+          decennale_activites: string | null;
+          fluides_valide_jusquau: string | null;
           banque_nom: string | null;
           bic: string | null;
           calendar_token: string | null;
@@ -962,6 +980,9 @@ export type Database = {
           adresse_ligne2?: string | null;
           assureur_decennale?: string | null;
           assureur_decennale_adresse?: string | null;
+          decennale_valide_jusquau?: string | null;
+          decennale_activites?: string | null;
+          fluides_valide_jusquau?: string | null;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;
@@ -1002,6 +1023,9 @@ export type Database = {
           adresse_ligne2?: string | null;
           assureur_decennale?: string | null;
           assureur_decennale_adresse?: string | null;
+          decennale_valide_jusquau?: string | null;
+          decennale_activites?: string | null;
+          fluides_valide_jusquau?: string | null;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;

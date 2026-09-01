@@ -60,6 +60,9 @@ export const ligneFactureSchema = z.object({
   nature_fiscale: z
     .enum(["bic_prestations", "bic_ventes", "bnc"])
     .default("bic_prestations"),
+  // 'titre' = titre de section (rendu en gras, sans quantité ni prix,
+  // déclenche les sous-totaux du PDF). Défaut : ligne normale.
+  type: z.enum(["ligne", "titre"]).default("ligne"),
 });
 
 /**

@@ -88,6 +88,9 @@ export const profilSchema = z.object({
     .max(300)
     .optional()
     .or(z.literal("")),
+  decennale_valide_jusquau: z.string().optional().or(z.literal("")),
+  decennale_activites: z.string().trim().max(500).optional().or(z.literal("")),
+  fluides_valide_jusquau: z.string().optional().or(z.literal("")),
   zone_couverture_decennale: z.string().trim().max(200).optional().or(z.literal("")),
 
   // Clim/PAC

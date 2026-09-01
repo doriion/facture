@@ -75,6 +75,22 @@ export async function GET(
 
   const { client: _client, ...devisClean } = raw;
 
+  // Signature client « Bon pour accord » → data URI (bucket privé)
+  let signatureData: string | null = null;
+  if (devisClean.signature_client_url) {
+    try {
+      const { data: blob } = await supabase.storage
+        .from("signatures")
+        .download(devisClean.signature_client_url);
+      if (blob) {
+        const buf = Buffer.from(await blob.arrayBuffer());
+        signatureData = `data:image/png;base64,${buf.toString("base64")}`;
+      }
+    } catch {
+      signatureData = null;
+    }
+  }
+
   const stream = await renderToStream(
     DevisPdf({
       devis: devisClean,
@@ -82,6 +98,7 @@ export async function GET(
       client,
       profil: profilRes.data,
       logoData,
+      signatureData,
     }),
   );
 
