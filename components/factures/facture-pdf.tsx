@@ -26,6 +26,7 @@ import {
   mentionRm,
 } from "@/lib/legal-text";
 import { profilEffectif } from "@/lib/emetteur";
+import { computeSections } from "@/lib/sections";
 import type { Database } from "@/types/database";
 
 type Facture = Database["public"]["Tables"]["factures"]["Row"];
@@ -122,6 +123,29 @@ const styles = StyleSheet.create({
     borderBottom: `1pt solid ${BORDER}`,
   },
   colDesignation: { flex: 1, paddingRight: 8 },
+
+  // Titres de section (lignes type='titre') + sous-totaux par section
+  sectionTitreRow: {
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderBottom: `1pt solid ${BORDER}`,
+    backgroundColor: "#f6f7f9",
+  },
+  sectionTitreText: {
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  sousTotalRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 12,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    borderBottom: `1pt solid ${BORDER}`,
+  },
+  sousTotalLabel: { fontWeight: 700, fontSize: 9, color: MUTED },
+  sousTotalValue: { fontWeight: 700, width: 75, textAlign: "right" },
   colQte: { width: 50, textAlign: "right" },
   colPu: { width: 70, textAlign: "right" },
   colTotal: { width: 75, textAlign: "right" },
@@ -394,20 +418,39 @@ export function FacturePdf({
             <Text style={styles.colPu}>P.U. HT</Text>
             <Text style={styles.colTotal}>Total HT</Text>
           </View>
-          {lignes.map((l) => (
-            <View key={l.id} style={styles.tableRow} wrap={false}>
-              <Text style={styles.colDesignation}>{l.designation}</Text>
-              <Text style={styles.colQte}>
-                {Number(l.quantite).toLocaleString("fr-FR", {
-                  maximumFractionDigits: 3,
-                })}
-              </Text>
-              <Text style={styles.colPu}>
-                {formatEuros(Number(l.prix_unitaire_ht))}
-              </Text>
-              <Text style={styles.colTotal}>
-                {formatEuros(Number(l.total_ht))}
-              </Text>
+          {computeSections(lignes).sections.map((section, si) => (
+            <View key={si}>
+              {section.titre !== null && (
+                <View style={styles.sectionTitreRow} wrap={false}>
+                  <Text style={styles.sectionTitreText}>{section.titre}</Text>
+                </View>
+              )}
+              {section.lignes.map((l) => (
+                <View key={l.id} style={styles.tableRow} wrap={false}>
+                  <Text style={styles.colDesignation}>{l.designation}</Text>
+                  <Text style={styles.colQte}>
+                    {Number(l.quantite).toLocaleString("fr-FR", {
+                      maximumFractionDigits: 3,
+                    })}
+                  </Text>
+                  <Text style={styles.colPu}>
+                    {formatEuros(Number(l.prix_unitaire_ht))}
+                  </Text>
+                  <Text style={styles.colTotal}>
+                    {formatEuros(Number(l.total_ht))}
+                  </Text>
+                </View>
+              ))}
+              {section.titre !== null && (
+                <View style={styles.sousTotalRow} wrap={false}>
+                  <Text style={styles.sousTotalLabel}>
+                    Sous-total {section.titre}
+                  </Text>
+                  <Text style={styles.sousTotalValue}>
+                    {formatEuros(section.sousTotal)}
+                  </Text>
+                </View>
+              )}
             </View>
           ))}
         </View>

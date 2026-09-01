@@ -94,12 +94,14 @@ export function FactureForm({
         quantite: Number(l.quantite),
         prix_unitaire_ht: Number(l.prix_unitaire_ht),
         nature_fiscale: (l.nature_fiscale ?? "bic_prestations") as NatureFiscale,
+        type: (l.type ?? "ligne") as "ligne" | "titre",
       }))
     : (prefill?.lignes ?? []).map((l) => ({
         designation: l.designation,
         quantite: l.quantite,
         prix_unitaire_ht: l.prix_unitaire_ht,
         nature_fiscale: "bic_prestations" as NatureFiscale,
+        type: "ligne" as const,
       }));
 
   const today = new Date().toISOString().slice(0, 10);
