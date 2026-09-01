@@ -4,6 +4,7 @@ import { ArrowLeft, FileSignature, FileText, Mail, MapPin, Phone } from "lucide-
 
 import { getClient } from "@/lib/actions/clients";
 import { statutAffichageDevis } from "@/lib/validations/devis";
+import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { DeleteClientDialog } from "@/components/clients/delete-client-dialog";
 import { StatutBadge } from "@/components/factures/statut-badge";
@@ -73,6 +74,10 @@ export default async function ClientDetailPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <AjouterTacheButton
+              lienLabel={client.nom}
+              clientId={client.id}
+            />
             <ClientFormDialog
               client={client}
               trigger={<Button variant="outline">Modifier</Button>}

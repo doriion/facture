@@ -11,6 +11,7 @@ import {
   getAvailableEventsForFacture,
   getFactureCoveredEvents,
 } from "@/lib/actions/facture-events-couverts";
+import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { FactureForm } from "@/components/factures/facture-form";
 import { FacturePaiements } from "@/components/factures/facture-paiements";
 import { FactureAcompteSolde } from "@/components/factures/facture-acompte-solde";
@@ -79,13 +80,20 @@ export default async function EditFacturePage({
               </span>
             </p>
           </div>
-          <FactureActions
-            factureId={facture.id}
-            numero={facture.numero}
-            statut={facture.statut as StatutFacture}
-            clientEmail={client?.email ?? null}
-            clientNom={client?.nom ?? "le client"}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <AjouterTacheButton
+              lienLabel={`Facture ${facture.numero}`}
+              titre={`Relancer la facture ${facture.numero}`}
+              factureId={facture.id}
+            />
+            <FactureActions
+              factureId={facture.id}
+              numero={facture.numero}
+              statut={facture.statut as StatutFacture}
+              clientEmail={client?.email ?? null}
+              clientNom={client?.nom ?? "le client"}
+            />
+          </div>
         </div>
       </div>
 

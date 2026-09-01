@@ -7,6 +7,7 @@ import {
   type FactureRelancable,
 } from "@/lib/relances-auto";
 import { buildRelanceEmail, isEmailConfigured, sendEmail } from "@/lib/email";
+import { lignePenseBeteHtml } from "@/lib/cron/pense-bete";
 import { formatDateFr, formatEuros } from "@/lib/format";
 
 /**
@@ -135,10 +136,11 @@ async function executerRelances({
           `<li>${f.numero} — ${f.client_nom} — ${formatEuros(f.total_ht)} — ${f.joursRetard} j de retard</li>`,
       )
       .join("");
+    const penseBete = await lignePenseBeteHtml(service, userId, today);
     await sendEmail({
       to: profil.email_pro,
       subject: `${envoyees.length} relance(s) automatique(s) envoyée(s) — ${formatDateFr(today)}`,
-      html: `<p>Bonjour,</p><p>Les relances suivantes sont parties ce matin :</p><ul>${lignes}</ul><p>Rappel : maximum 2 relances automatiques par facture — au-delà, un appel vaut mieux qu'un email.</p><p>— Facture AE</p>`,
+      html: `<p>Bonjour,</p><p>Les relances suivantes sont parties ce matin :</p><ul>${lignes}</ul><p>Rappel : maximum 2 relances automatiques par facture — au-delà, un appel vaut mieux qu'un email.</p>${penseBete}<p>— Facture AE</p>`,
     });
   }
 

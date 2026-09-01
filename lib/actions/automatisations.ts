@@ -14,6 +14,7 @@ export type ReglagesAutomatisations = {
   relances_delai_jours: number;
   auto_rappels_active: boolean;
   rappels_fenetre_jours: number;
+  auto_email_taches_active: boolean;
   automatisations_simulation: boolean;
 };
 
@@ -73,6 +74,7 @@ export async function saveReglagesAutomatisationsAction(
       relances_delai_jours: delaiRelances,
       auto_rappels_active: input.auto_rappels_active === true,
       rappels_fenetre_jours: fenetreRappels,
+      auto_email_taches_active: input.auto_email_taches_active === true,
       automatisations_simulation: input.automatisations_simulation === true,
     })
     .eq("user_id", user.id);

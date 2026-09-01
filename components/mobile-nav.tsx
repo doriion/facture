@@ -20,7 +20,7 @@ import {
  * sidebar sur les écrans < md. La sidebar standard reste affichée
  * en >=md, donc ce composant est masqué à ces tailles.
  */
-export function MobileNav() {
+export function MobileNav({ badgeTaches = 0 }: { badgeTaches?: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -31,9 +31,14 @@ export function MobileNav() {
           variant="ghost"
           size="icon"
           aria-label="Ouvrir le menu"
-          className="md:hidden"
+          className="relative md:hidden"
         >
           <Menu className="size-5" />
+          {badgeTaches > 0 && (
+            <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground">
+              {badgeTaches}
+            </span>
+          )}
         </Button>
       </SheetTrigger>
       <SheetContent side="left">
@@ -68,6 +73,18 @@ export function MobileNav() {
               >
                 <Icon className="size-4 shrink-0" />
                 <span className="truncate">{item.label}</span>
+                {item.href === "/taches" && badgeTaches > 0 && (
+                  <span
+                    className={cn(
+                      "ml-auto rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+                      isActive
+                        ? "bg-primary-foreground/20"
+                        : "bg-destructive text-destructive-foreground",
+                    )}
+                  >
+                    {badgeTaches}
+                  </span>
+                )}
               </Link>
             );
           })}

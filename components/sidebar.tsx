@@ -8,8 +8,10 @@ import { NAV_ITEMS } from "@/lib/constants";
 
 /**
  * Sidebar de navigation principale. Met en surbrillance la route active.
+ * `badgeTaches` : nombre de tâches du jour/en retard, affiché sur
+ * l'entrée « À faire ».
  */
-export function Sidebar() {
+export function Sidebar({ badgeTaches = 0 }: { badgeTaches?: number }) {
   const pathname = usePathname();
 
   return (
@@ -40,6 +42,18 @@ export function Sidebar() {
             >
               <Icon className="size-4 shrink-0" />
               <span className="truncate">{item.label}</span>
+              {item.href === "/taches" && badgeTaches > 0 && (
+                <span
+                  className={cn(
+                    "ml-auto rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+                    isActive
+                      ? "bg-primary-foreground/20"
+                      : "bg-destructive text-destructive-foreground",
+                  )}
+                >
+                  {badgeTaches}
+                </span>
+              )}
             </Link>
           );
         })}

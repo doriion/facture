@@ -8,6 +8,7 @@ import { listInterventionPhotos } from "@/lib/actions/intervention-photos";
 import { listInterventionSignatures } from "@/lib/actions/signatures";
 import { listCerfaDocuments } from "@/lib/actions/cerfa";
 import { getProfil } from "@/lib/actions/profil";
+import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { InterventionForm } from "@/components/interventions/intervention-form";
 import { InterventionPhotos } from "@/components/interventions/intervention-photos";
 import { InterventionSignatures } from "@/components/interventions/intervention-signatures";
@@ -86,6 +87,10 @@ export default async function EditInterventionPage({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <AjouterTacheButton
+              lienLabel={`Intervention du ${formatDateFr(intervention.date_intervention)}`}
+              interventionId={intervention.id}
+            />
             {facture ? (
               <Button variant="outline" asChild>
                 <Link href={`/factures/${facture.id}`}>

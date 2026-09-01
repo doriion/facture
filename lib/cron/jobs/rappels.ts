@@ -11,6 +11,7 @@ import {
   isEmailConfigured,
   sendEmail,
 } from "@/lib/email";
+import { lignePenseBeteHtml } from "@/lib/cron/pense-bete";
 import { formatDateFr } from "@/lib/format";
 
 /**
@@ -130,12 +131,13 @@ async function executerRappels({
 
   // Récapitulatif à l'artisan dès qu'au moins un rappel est parti
   if (envoyes.length > 0 && profil.email_pro) {
+    const penseBete = await lignePenseBeteHtml(service, userId, today);
     await sendEmail({
       to: profil.email_pro,
       subject: `${envoyes.length} rappel(s) d'entretien envoyé(s) — ${formatDateFr(today)}`,
       html: `<p>Bonjour,</p><p>Les rappels d'entretien suivants sont partis ce matin :</p><ul>${envoyes
         .map((l) => `<li>${l}</li>`)
-        .join("")}</ul><p>Pensez à planifier ces visites dans votre agenda.</p><p>— Facture AE</p>`,
+        .join("")}</ul><p>Pensez à planifier ces visites dans votre agenda.</p>${penseBete}<p>— Facture AE</p>`,
     });
   }
 

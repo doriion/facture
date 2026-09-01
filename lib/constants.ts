@@ -5,6 +5,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
+  ListTodo,
   FileText,
   FileSignature,
   Users,
@@ -32,6 +33,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/dashboard",
     label: "Tableau de bord",
     icon: LayoutDashboard,
+  },
+  {
+    href: "/taches",
+    label: "À faire",
+    icon: ListTodo,
+    description: "Pense-bête : notes, photos, rappels",
   },
   {
     href: "/agenda",

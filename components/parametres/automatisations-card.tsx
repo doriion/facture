@@ -77,6 +77,7 @@ export function AutomatisationsCard({
       | "auto_sauvegarde_active"
       | "auto_relances_active"
       | "auto_rappels_active"
+      | "auto_email_taches_active"
       | "automatisations_simulation",
     titre: string,
     description: string,
@@ -189,6 +190,12 @@ export function AutomatisationsCard({
             </span>
           </div>
         </div>
+
+        {switchRow(
+          "auto_email_taches_active",
+          "Email « Tes tâches du jour »",
+          "Chaque matin, s'il y a des tâches échues ou en retard dans le pense-bête : un email récapitulatif à VOUS (jamais aux clients — hors simulation). Activé par défaut.",
+        )}
 
         <div className="flex flex-wrap gap-2">
           <Button type="button" onClick={onSave} disabled={saving}>
