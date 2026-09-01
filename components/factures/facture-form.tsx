@@ -135,6 +135,7 @@ export function FactureForm({
       conditions_paiement:
         base?.conditions_paiement ?? defaultConditionsPaiement ?? "",
       notes: base?.notes ?? "",
+      exclure_relances_auto: base?.exclure_relances_auto ?? false,
       lignes: baseLignes,
       equipement: {
         marque: (equip.marque as string) ?? "",
@@ -314,6 +315,20 @@ export function FactureForm({
             Date(s) d'exécution effective des travaux. Pour un chantier d'un
             seul jour, laissez la date de fin vide.
           </p>
+          <label className="flex items-start gap-2 md:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+              {...register("exclure_relances_auto")}
+            />
+            <span className="text-sm">
+              Exclure des relances automatiques
+              <span className="block text-xs text-muted-foreground">
+                Cette facture ne recevra jamais de relance d'impayé
+                automatique (client à relancer de vive voix).
+              </span>
+            </span>
+          </label>
         </CardContent>
       </Card>
 

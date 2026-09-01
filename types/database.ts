@@ -934,6 +934,7 @@ export type Database = {
       };
       relances: {
         Row: {
+          automatique: boolean;
           created_at: string;
           destinataire: string;
           envoyee_le: string;
@@ -943,6 +944,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          automatique?: boolean;
           created_at?: string;
           destinataire: string;
           envoyee_le?: string;
@@ -952,6 +954,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          automatique?: boolean;
           created_at?: string;
           destinataire?: string;
           envoyee_le?: string;

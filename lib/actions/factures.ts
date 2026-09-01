@@ -173,6 +173,7 @@ export async function createFactureAction(
       total_ht,
       conditions_paiement: v.conditions_paiement || null,
       notes: v.notes || null,
+      exclure_relances_auto: v.exclure_relances_auto ?? false,
       equipement_info: cleanedEquipement(v.equipement),
       aides_financieres: cleanedAides(v.aides_financieres),
     })
@@ -272,6 +273,7 @@ export async function updateFactureAction(
       total_ht,
       conditions_paiement: v.conditions_paiement || null,
       notes: v.notes || null,
+      exclure_relances_auto: v.exclure_relances_auto ?? false,
       equipement_info: cleanedEquipement(v.equipement),
       aides_financieres: cleanedAides(v.aides_financieres),
     })

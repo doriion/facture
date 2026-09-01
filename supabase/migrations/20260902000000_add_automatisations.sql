@@ -71,6 +71,16 @@ comment on column public.factures.exclure_relances_auto is
   'Facture exclue des relances automatiques (client à relancer de vive voix). Les relances manuelles restent possibles.';
 
 -- -----------------------------------------------------------------------------
+-- 3 bis) Distinguo relance manuelle / automatique (plafond de 2 autos
+--        par facture — au-delà, relance de vive voix)
+-- -----------------------------------------------------------------------------
+alter table public.relances
+  add column if not exists automatique boolean not null default false;
+
+comment on column public.relances.automatique is
+  'true = envoyée par le cron de relances ; false = relance manuelle. Max 2 automatiques par facture.';
+
+-- -----------------------------------------------------------------------------
 -- 4) Traçage du rappel d'entretien
 -- -----------------------------------------------------------------------------
 alter table public.contrats_maintenance
