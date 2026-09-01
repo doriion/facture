@@ -28,7 +28,7 @@ SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> & {
-    side?: "left" | "right";
+    side?: "left" | "right" | "bottom";
   }
 >(({ className, children, side = "left", ...props }, ref) => (
   <SheetPrimitive.Portal>
@@ -36,10 +36,14 @@ const SheetContent = React.forwardRef<
     <SheetPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-y-0 z-50 flex w-72 flex-col bg-card shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out duration-300",
-        side === "left"
-          ? "left-0 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left"
-          : "right-0 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+        "fixed z-50 flex flex-col bg-card shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out duration-300",
+        side === "bottom"
+          ? // Tiroir du bas (saisie éclair mobile) : pleine largeur,
+            // coins arrondis en haut, safe-area iPhone
+            "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-2xl border-t pb-[env(safe-area-inset-bottom)] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom"
+          : side === "left"
+            ? "inset-y-0 left-0 w-72 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left"
+            : "inset-y-0 right-0 w-72 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
         className,
       )}
       {...props}

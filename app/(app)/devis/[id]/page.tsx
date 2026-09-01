@@ -7,6 +7,7 @@ import { listProduits } from "@/lib/actions/produits";
 import { getDevis } from "@/lib/actions/devis";
 import { getProfil } from "@/lib/actions/profil";
 import { statutAffichageDevis } from "@/lib/validations/devis";
+import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { DevisForm } from "@/components/devis/devis-form";
 import { DevisActions } from "@/components/devis/devis-actions";
 import { DevisSignatureDialog } from "@/components/devis/devis-signature-dialog";
@@ -65,6 +66,13 @@ export default async function EditDevisPage({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {!devis.est_modele && (
+              <AjouterTacheButton
+                lienLabel={`Devis ${devis.numero}`}
+                titre={`Relancer le devis ${devis.numero}`}
+                devisId={devis.id}
+              />
+            )}
             {!devis.est_modele && (
               <DevisSignatureDialog
                 devisId={devis.id}

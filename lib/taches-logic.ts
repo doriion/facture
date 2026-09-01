@@ -139,6 +139,28 @@ export function aujourdhuiParis(now: Date = new Date()): string {
   return now.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
 }
 
+export type RaccourciDate = "aujourdhui" | "demain" | "semaine";
+
+/**
+ * Raccourcis de la saisie éclair. « Cette semaine » = le vendredi de la
+ * semaine en cours (fin de semaine d'artisan) ; si on est déjà
+ * vendredi, samedi ou dimanche, ce sera le dimanche pour rester dans
+ * la semaine courante.
+ */
+export function dateRaccourci(type: RaccourciDate, today: string): string {
+  const base = new Date(`${today}T00:00:00Z`);
+  if (type === "aujourdhui") return today;
+  if (type === "demain") {
+    base.setUTCDate(base.getUTCDate() + 1);
+    return base.toISOString().slice(0, 10);
+  }
+  // semaine : lundi=1 … dimanche=7
+  const jour = base.getUTCDay() === 0 ? 7 : base.getUTCDay();
+  const decalage = jour <= 4 ? 5 - jour : 7 - jour;
+  base.setUTCDate(base.getUTCDate() + decalage);
+  return base.toISOString().slice(0, 10);
+}
+
 function normaliser(s: string): string {
   return s
     .toLowerCase()

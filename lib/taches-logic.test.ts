@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   aujourdhuiParis,
+  dateRaccourci,
   classerTaches,
   compteurTachesDuJour,
   filtrerTaches,
@@ -144,6 +145,30 @@ describe("aujourdhuiParis", () => {
     expect(aujourdhuiParis(new Date("2026-09-01T12:00:00Z"))).toBe(
       "2026-09-01",
     );
+  });
+});
+
+describe("dateRaccourci", () => {
+  it("aujourd'hui et demain", () => {
+    expect(dateRaccourci("aujourdhui", "2026-09-02")).toBe("2026-09-02");
+    expect(dateRaccourci("demain", "2026-09-02")).toBe("2026-09-03");
+    // Passage de mois
+    expect(dateRaccourci("demain", "2026-09-30")).toBe("2026-10-01");
+  });
+
+  it("« cette semaine » = le vendredi de la semaine en cours", () => {
+    // 2026-09-02 est un mercredi → vendredi 4
+    expect(dateRaccourci("semaine", "2026-09-02")).toBe("2026-09-04");
+    // Lundi 2026-08-31 → vendredi 4
+    expect(dateRaccourci("semaine", "2026-08-31")).toBe("2026-09-04");
+  });
+
+  it("« cette semaine » depuis vendredi/samedi → dimanche de la même semaine", () => {
+    // Vendredi 2026-09-04 → dimanche 6
+    expect(dateRaccourci("semaine", "2026-09-04")).toBe("2026-09-06");
+    // Samedi 5 → dimanche 6 ; dimanche 6 → lui-même
+    expect(dateRaccourci("semaine", "2026-09-05")).toBe("2026-09-06");
+    expect(dateRaccourci("semaine", "2026-09-06")).toBe("2026-09-06");
   });
 });
 
