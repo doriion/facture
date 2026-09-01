@@ -513,7 +513,9 @@ export function DevisPdf({
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>TVA</Text>
-              <Text style={styles.totalValue}>—</Text>
+              <Text style={styles.totalValue}>
+                non applicable (voir mention)
+              </Text>
             </View>
             <View style={styles.totalFinal}>
               <Text style={styles.totalFinalLabel}>Total</Text>

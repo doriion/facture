@@ -14,16 +14,15 @@
  */
 
 /**
- * Date de bascule CGI → CIBS retenue pour la mention de franchise.
+ * Date de bascule CGI → CIBS pour la mention de franchise.
  *
- * L'ordonnance n° 2025-1247 (17/12/2025) recodifie la TVA dans le CIBS
- * avec entrée en vigueur initialement prévue au 01/09/2026, MAIS un
- * report au 01/01/2027 est annoncé (ordonnance modificative attendue à
- * l'automne 2026) et l'ancienne référence CGI reste TOLÉRÉE sur les
- * factures jusqu'au 31/12/2027. On bascule donc au 01/01/2027 : choix
- * valide dans les deux scénarios (vérifié le 28/08/2026 — sources :
- * synapx.fr, cacomptepourmoi.fr, houjo.fr, kohenavocats.com).
- * Re-vérifier à la parution de l'ordonnance modificative.
+ * CONFIRMÉ (re-vérifié le 02/09/2026) : le report est acté par
+ * l'ordonnance n° 2026-671 du 27 juillet 2026 — la recodification TVA
+ * dans le CIBS entre en vigueur au 01/01/2027 (et non au 01/09/2026
+ * initialement prévu par l'ordonnance 2025-1247). Jusqu'au 31/12/2026,
+ * la mention correcte reste « art. 293 B du CGI » ; les références CGI
+ * restent tolérées jusqu'au 30/06/2028. Sources : fiscalonline.com,
+ * arsene-taxand.com, mathez-compliance.com, synapx.fr, dikoo.fr.
  */
 export const DATE_BASCULE_MENTION_CIBS = "2027-01-01";
 
