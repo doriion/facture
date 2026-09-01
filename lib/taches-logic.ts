@@ -129,6 +129,16 @@ export function filtrerTaches<T extends { titre: string; notes: string | null }>
   );
 }
 
+/**
+ * Date « du jour » vue de France (Europe/Paris), au format YYYY-MM-DD.
+ * Sur le serveur (UTC), entre minuit et 2 h du matin heure française,
+ * la date UTC est encore celle de la veille — d'où ce helper, utilisé
+ * partout où l'on classe les tâches.
+ */
+export function aujourdhuiParis(now: Date = new Date()): string {
+  return now.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
+}
+
 function normaliser(s: string): string {
   return s
     .toLowerCase()

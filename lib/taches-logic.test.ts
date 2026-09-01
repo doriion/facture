@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  aujourdhuiParis,
   classerTaches,
   compteurTachesDuJour,
   filtrerTaches,
@@ -132,6 +133,17 @@ describe("compteurTachesDuJour", () => {
         TODAY,
       ),
     ).toBe(2);
+  });
+});
+
+describe("aujourdhuiParis", () => {
+  it("à 23h30 UTC un 1er septembre, il est déjà le 2 en France (été, UTC+2)", () => {
+    expect(aujourdhuiParis(new Date("2026-09-01T23:30:00Z"))).toBe(
+      "2026-09-02",
+    );
+    expect(aujourdhuiParis(new Date("2026-09-01T12:00:00Z"))).toBe(
+      "2026-09-01",
+    );
   });
 });
 
