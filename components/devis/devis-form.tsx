@@ -131,6 +131,9 @@ export function DevisForm({
       date_validite: base?.date_validite ?? inThreeMonths,
       date_debut_travaux: base?.date_debut_travaux ?? "",
       duree_estimee_jours: base?.duree_estimee_jours ?? null,
+      acompte_pct: base?.acompte_pct ?? null,
+      acompte_montant: base?.acompte_montant ?? null,
+      signe_a_domicile: base?.signe_a_domicile ?? false,
       conditions: base?.conditions ?? defaultConditions ?? "",
       notes: base?.notes ?? "",
       lignes: baseLignes,
@@ -319,6 +322,50 @@ export function DevisForm({
               {...register("duree_estimee_jours")}
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="acompte_pct">Acompte demandé (%)</Label>
+            <Input
+              id="acompte_pct"
+              type="text"
+              inputMode="decimal"
+              placeholder="Ex : 30"
+              {...register("acompte_pct")}
+            />
+            {errors.acompte_pct && (
+              <p className="text-xs text-destructive">
+                {errors.acompte_pct.message}
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="acompte_montant">ou montant fixe (€)</Label>
+            <Input
+              id="acompte_montant"
+              type="text"
+              inputMode="decimal"
+              placeholder="Ex : 500"
+              {...register("acompte_montant")}
+            />
+            <p className="text-xs text-muted-foreground">
+              Le PDF affiche « Acompte à la commande… solde à réception de
+              facture ». Le % prime si les deux sont remplis.
+            </p>
+          </div>
+          <label className="flex items-start gap-2 text-sm md:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 accent-primary"
+              {...register("signe_a_domicile")}
+            />
+            <span>
+              Devis signé au domicile du client (hors établissement)
+              <span className="block text-xs text-muted-foreground">
+                Ajoute au PDF la mention du droit de rétractation de 14
+                jours (art. L221-18) et le formulaire de rétractation —
+                sans lui, le délai passe à 12 mois.
+              </span>
+            </span>
+          </label>
         </CardContent>
       </Card>
 

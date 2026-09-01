@@ -74,6 +74,26 @@ export const MENTION_PENALITES_RETARD_DEFAULT =
 
 export const MENTION_ESCOMPTE_DEFAULT = "Pas d'escompte pour règlement anticipé.";
 
+/**
+ * Droit de rétractation — contrat conclu HORS ÉTABLISSEMENT (devis
+ * signé au domicile du client). Art. L221-18 du Code de la
+ * consommation, vérifié le 02/09/2026 : 14 jours calendaires à compter
+ * du LENDEMAIN de la conclusion du contrat. Sans remise du formulaire
+ * de rétractation, le délai est prolongé de 12 mois (art. L221-20) —
+ * d'où le formulaire détachable imprimé avec la mention.
+ */
+export const MENTION_RETRACTATION_L221_18 =
+  "Contrat conclu hors établissement : conformément à l'article L221-18 du Code de la consommation, vous disposez d'un délai de quatorze jours pour exercer votre droit de rétractation, sans avoir à motiver votre décision. Ce délai court à compter du lendemain de la conclusion du contrat (signature du présent devis). Pour l'exercer, adressez-nous, avant l'expiration du délai, le formulaire ci-dessous ou toute autre déclaration dénuée d'ambiguïté, par courrier ou par email. Les travaux ne peuvent commencer avant la fin du délai de rétractation, sauf demande expresse de votre part.";
+
+/** Formulaire de rétractation type (annexe à l'art. R221-1 c. conso, simplifié). */
+export const FORMULAIRE_RETRACTATION_LIGNES = [
+  "FORMULAIRE DE RÉTRACTATION (à compléter et renvoyer uniquement si vous souhaitez vous rétracter)",
+  "À l'attention de : (nom et adresse de l'entreprise — voir en-tête)",
+  "Je vous notifie par la présente ma rétractation du contrat portant sur la prestation ci-dessus, conclu le : ……………………",
+  "Nom du consommateur : ……………………  Adresse : …………………………………………",
+  "Signature :                              Date : ……………………",
+] as const;
+
 export const MENTION_DEVIS_GRATUIT = "Devis gratuit.";
 
 export const MENTION_BON_POUR_ACCORD = "Bon pour accord, le :";

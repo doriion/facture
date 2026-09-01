@@ -9,6 +9,7 @@ import { getProfil } from "@/lib/actions/profil";
 import { statutAffichageDevis } from "@/lib/validations/devis";
 import { DevisForm } from "@/components/devis/devis-form";
 import { DevisActions } from "@/components/devis/devis-actions";
+import { DevisSignatureDialog } from "@/components/devis/devis-signature-dialog";
 import { StatutBadgeDevis } from "@/components/devis/statut-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,15 +64,26 @@ export default async function EditDevisPage({
               </span>
             </p>
           </div>
-          <DevisActions
-            devisId={devis.id}
-            numero={devis.numero}
-            statut={statutAffiche}
-            factureId={devis.facture_id}
-            clientEmail={client?.email ?? null}
-            clientNom={client?.nom ?? "le client"}
-            estModele={devis.est_modele}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            {!devis.est_modele && (
+              <DevisSignatureDialog
+                devisId={devis.id}
+                numero={devis.numero}
+                signatureUrl={devis.signature_client_url}
+                dateSignature={devis.date_signature}
+                statut={statutAffiche}
+              />
+            )}
+            <DevisActions
+              devisId={devis.id}
+              numero={devis.numero}
+              statut={statutAffiche}
+              factureId={devis.facture_id}
+              clientEmail={client?.email ?? null}
+              clientNom={client?.nom ?? "le client"}
+              estModele={devis.est_modele}
+            />
+          </div>
         </div>
       </div>
 

@@ -19,6 +19,8 @@ import {
   MENTION_AUTO_ENTREPRENEUR,
   MENTION_DEVIS_GRATUIT,
   mentionTvaFranchise,
+  MENTION_RETRACTATION_L221_18,
+  FORMULAIRE_RETRACTATION_LIGNES,
   mentionDecennale,
   mentionFluidesFrigo,
   mentionMediateur,
@@ -27,6 +29,7 @@ import {
 } from "@/lib/legal-text";
 import { profilEffectif } from "@/lib/emetteur";
 import { computeSections } from "@/lib/sections";
+import { mentionAcompte } from "@/lib/devis-mentions";
 import type { Database } from "@/types/database";
 
 type Devis = Database["public"]["Tables"]["devis"]["Row"];
@@ -267,12 +270,15 @@ export function DevisPdf({
   client,
   profil: profilCourant,
   logoData,
+  signatureData,
 }: {
   devis: Devis;
   lignes: Ligne[];
   client: Client | null;
   profil: Profil | null;
   logoData?: string | null;
+  /** PNG (data URI) de la signature client enregistrée dans l'app */
+  signatureData?: string | null;
 }) {
   // Devis émis : mentions émetteur FIGÉES au moment de l'émission
   // (SIRET historisé) ; brouillon : profil courant.
@@ -293,6 +299,11 @@ export function DevisPdf({
     0,
   );
   const totalHt = Number(devis.total_ht);
+  const acompte = mentionAcompte(
+    totalHt,
+    devis.acompte_pct !== null ? Number(devis.acompte_pct) : null,
+    devis.acompte_montant !== null ? Number(devis.acompte_montant) : null,
+  );
   const resteAcharge = Math.max(0, totalHt - totalAides);
 
   const sirenComputed = profil?.siren ?? siretToSiren(profil?.siret);
@@ -635,6 +646,14 @@ export function DevisPdf({
           </View>
         )}
 
+        {/* Modalités de paiement (acompte) */}
+        {acompte && (
+          <View style={styles.conditions}>
+            <Text style={styles.encadreTitle}>Modalités de paiement</Text>
+            <Text style={{ fontWeight: 700 }}>{acompte}</Text>
+          </View>
+        )}
+
         {/* Conditions */}
         {devis.conditions && (
           <View style={styles.conditions}>
@@ -667,12 +686,34 @@ export function DevisPdf({
         <View style={styles.signatureBox} wrap={false}>
           <View style={styles.signatureCell}>
             <Text style={styles.signatureTitle}>Bon pour accord du client</Text>
-            <Text style={styles.signatureMention}>
-              Date : ……………………………………
-            </Text>
-            <Text style={styles.signatureMention}>
-              Signature précédée de la mention « Bon pour accord » :
-            </Text>
+            {signatureData ? (
+              <>
+                <Text style={styles.signatureMention}>
+                  Bon pour accord — signé le{" "}
+                  {devis.date_signature
+                    ? formatDateFr(devis.date_signature)
+                    : "…"}
+                </Text>
+                <Image
+                  src={signatureData}
+                  style={{
+                    width: 140,
+                    height: 55,
+                    objectFit: "contain",
+                    marginTop: 4,
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <Text style={styles.signatureMention}>
+                  Date : ……………………………………
+                </Text>
+                <Text style={styles.signatureMention}>
+                  Signature précédée de la mention « Bon pour accord » :
+                </Text>
+              </>
+            )}
           </View>
           <View style={styles.signatureCell}>
             <Text style={styles.signatureTitle}>Émetteur</Text>
@@ -682,6 +723,36 @@ export function DevisPdf({
             </Text>
           </View>
         </View>
+
+        {/* Droit de rétractation (devis signé au domicile du client) */}
+        {devis.signe_a_domicile && (
+          <View style={styles.encadreDashed} wrap={false}>
+            <Text style={styles.encadreTitle}>
+              Droit de rétractation (art. L221-18 du Code de la consommation)
+            </Text>
+            <Text style={{ fontSize: 8.5 }}>{MENTION_RETRACTATION_L221_18}</Text>
+            <View
+              style={{
+                marginTop: 8,
+                paddingTop: 6,
+                borderTop: "1pt dashed #9ca3af",
+              }}
+            >
+              {FORMULAIRE_RETRACTATION_LIGNES.map((ligne, i) => (
+                <Text
+                  key={i}
+                  style={{
+                    fontSize: 8.5,
+                    fontWeight: i === 0 ? 700 : 400,
+                    marginBottom: 4,
+                  }}
+                >
+                  {ligne}
+                </Text>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Pied de page */}
         <View style={styles.footer} fixed>
