@@ -88,6 +88,7 @@ export type Database = {
           notes: string | null;
           prix_annuel_ht: number;
           prochaine_visite: string | null;
+          rappel_envoye_pour: string | null;
           statut: string;
           updated_at: string;
           user_id: string;
@@ -105,6 +106,7 @@ export type Database = {
           notes?: string | null;
           prix_annuel_ht: number;
           prochaine_visite?: string | null;
+          rappel_envoye_pour?: string | null;
           statut?: string;
           updated_at?: string;
           user_id: string;
@@ -122,6 +124,7 @@ export type Database = {
           notes?: string | null;
           prix_annuel_ht?: number;
           prochaine_visite?: string | null;
+          rappel_envoye_pour?: string | null;
           statut?: string;
           updated_at?: string;
           user_id?: string;
@@ -171,6 +174,39 @@ export type Database = {
           ventilation?: Json;
           declare_le?: string;
           notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      taches_journal: {
+        Row: {
+          id: string;
+          user_id: string;
+          tache: string;
+          date_execution: string;
+          statut: string;
+          details: string | null;
+          dry_run: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          tache: string;
+          date_execution?: string;
+          statut: string;
+          details?: string | null;
+          dry_run?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          tache?: string;
+          date_execution?: string;
+          statut?: string;
+          details?: string | null;
+          dry_run?: boolean;
           created_at?: string;
         };
         Relationships: [];
@@ -372,6 +408,7 @@ export type Database = {
           client_id: string;
           conditions_paiement: string | null;
           emetteur: Json | null;
+          exclure_relances_auto: boolean;
           created_at: string;
           date_echeance: string;
           date_emission: string;
@@ -399,6 +436,7 @@ export type Database = {
           client_id: string;
           conditions_paiement?: string | null;
           emetteur?: Json | null;
+          exclure_relances_auto?: boolean;
           created_at?: string;
           date_echeance: string;
           date_emission?: string;
@@ -426,6 +464,7 @@ export type Database = {
           client_id?: string;
           conditions_paiement?: string | null;
           emetteur?: Json | null;
+          exclure_relances_auto?: boolean;
           created_at?: string;
           date_echeance?: string;
           date_emission?: string;
@@ -895,6 +934,7 @@ export type Database = {
       };
       relances: {
         Row: {
+          automatique: boolean;
           created_at: string;
           destinataire: string;
           envoyee_le: string;
@@ -904,6 +944,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          automatique?: boolean;
           created_at?: string;
           destinataire: string;
           envoyee_le?: string;
@@ -913,6 +954,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          automatique?: boolean;
           created_at?: string;
           destinataire?: string;
           envoyee_le?: string;
@@ -940,6 +982,12 @@ export type Database = {
           decennale_valide_jusquau: string | null;
           decennale_activites: string | null;
           fluides_valide_jusquau: string | null;
+          auto_sauvegarde_active: boolean;
+          auto_relances_active: boolean;
+          relances_delai_jours: number;
+          auto_rappels_active: boolean;
+          rappels_fenetre_jours: number;
+          automatisations_simulation: boolean;
           banque_nom: string | null;
           bic: string | null;
           calendar_token: string | null;
@@ -983,6 +1031,12 @@ export type Database = {
           decennale_valide_jusquau?: string | null;
           decennale_activites?: string | null;
           fluides_valide_jusquau?: string | null;
+          auto_sauvegarde_active?: boolean;
+          auto_relances_active?: boolean;
+          relances_delai_jours?: number;
+          auto_rappels_active?: boolean;
+          rappels_fenetre_jours?: number;
+          automatisations_simulation?: boolean;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;
@@ -1026,6 +1080,12 @@ export type Database = {
           decennale_valide_jusquau?: string | null;
           decennale_activites?: string | null;
           fluides_valide_jusquau?: string | null;
+          auto_sauvegarde_active?: boolean;
+          auto_relances_active?: boolean;
+          relances_delai_jours?: number;
+          auto_rappels_active?: boolean;
+          rappels_fenetre_jours?: number;
+          automatisations_simulation?: boolean;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;

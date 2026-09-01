@@ -121,6 +121,8 @@ export const factureSchema = z.object({
   date_prestation_fin: z.string().optional().or(z.literal("")),
   conditions_paiement: z.string().trim().max(500).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  // Opt-out des relances automatiques (client à relancer de vive voix)
+  exclure_relances_auto: z.boolean().default(false),
   lignes: z
     .array(ligneFactureSchema)
     .min(1, "Au moins une ligne est requise."),
