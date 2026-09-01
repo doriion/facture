@@ -1,3 +1,5 @@
+import { AlertTriangle } from "lucide-react";
+
 import { ProfilForm } from "@/components/parametres/profil-form";
 import { LogoUpload } from "@/components/parametres/logo-upload";
 import { CalendarSyncCard } from "@/components/parametres/calendar-sync-card";
@@ -48,6 +50,19 @@ export default async function ParametresPage() {
           vos factures et devis.
         </p>
       </div>
+
+      {!profil?.fluides_valide_jusquau && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/30">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="text-amber-900 dark:text-amber-200">
+            <strong>Attestation fluides frigorigènes :</strong> la date
+            « valable jusqu'au » n'est pas renseignée. Sans elle, aucune
+            alerte d'expiration ne peut vous prévenir avant le renouvellement.
+            Renseignez-la dans la section « Climatisation / Pompes à
+            chaleur » ci-dessous.
+          </p>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
