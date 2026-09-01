@@ -42,6 +42,10 @@ const BORDER = "#e5e7eb";
 const styles = StyleSheet.create({
   page: {
     padding: 36,
+    // Réserve la hauteur du pied de page FIXE (mentions légales sur
+    // ~6 lignes) : sans ça, un encadré poussé en bas de page passe
+    // SOUS le footer (chevauchement constaté sur le PDF d'exemple).
+    paddingBottom: 118,
     fontSize: 9.5,
     fontFamily: "Helvetica",
     color: TEXT,

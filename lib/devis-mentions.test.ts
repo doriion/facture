@@ -5,7 +5,7 @@ import { mentionAcompte } from "./devis-mentions";
 describe("mentionAcompte", () => {
   it("pourcentage : calcule le montant sur le total et l'affiche", () => {
     expect(mentionAcompte(4500, 30, null)).toBe(
-      "Acompte à la commande : 30 % (1\u202f350,00 €), solde à réception de facture.",
+      "Acompte à la commande : 30 % (1 350,00 €), solde à réception de facture.",
     );
   });
 
