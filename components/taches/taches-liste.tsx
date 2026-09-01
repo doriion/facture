@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Coffee } from "lucide-react";
+import { CheckCircle2, Coffee, Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import {
   aujourdhuiParis,
   classerTaches,
@@ -23,12 +24,14 @@ export type VueTaches = "aujourdhui" | "avenir" | "faites";
 export function TachesListe({
   taches,
   vue,
-  recherche = "",
+  recherche: rechercheInitiale = "",
 }: {
   taches: TacheAvecDetails[];
   vue: VueTaches;
   recherche?: string;
 }) {
+  // Recherche instantanée, côté client (titre + notes, accents ignorés)
+  const [recherche, setRecherche] = useState(rechercheInitiale);
   const today = aujourdhuiParis();
   const classement = useMemo(
     () => classerTaches(filtrerTaches(taches, recherche), today),
@@ -48,6 +51,27 @@ export function TachesListe({
 
   return (
     <div className="space-y-4">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Rechercher (titre, notes)…"
+          className="pl-9 pr-9"
+          aria-label="Rechercher dans les tâches"
+        />
+        {recherche && (
+          <button
+            type="button"
+            aria-label="Effacer la recherche"
+            onClick={() => setRecherche("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-3 gap-1 rounded-lg border bg-card p-1">
         {onglets.map((o) => (
           <Link

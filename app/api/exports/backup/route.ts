@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 /**
  * Tables utilisateur exportées, dans un ordre lisible.
  * INVARIANT : cette liste doit couvrir TOUTES les tables métier du
- * schéma public (vérifié le 28/08/2026 : 18/18, `select *` embarque
+ * schéma public (vérifié le 02/09/2026 : 21/21, `select *` embarque
  * aussi les colonnes récentes comme `emetteur` et `nature_fiscale`).
  * Toute migration qui crée une table doit l'ajouter ici.
  */
@@ -35,6 +35,9 @@ const TABLES = [
   "relances",
   "declarations_urssaf",
   "taux_cotisations",
+  "taches_journal",
+  "taches",
+  "taches_photos",
   "interventions",
   "intervention_photos",
   "intervention_signatures",

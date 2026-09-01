@@ -14,8 +14,8 @@ type AnyClient = SupabaseClient<Database>;
 /**
  * Tables métier exportées.
  * INVARIANT : couvrir TOUTES les tables du schéma public (vérifié le
- * 02/09/2026 : 19/19 avec taches_journal). Toute migration qui crée
- * une table doit l'ajouter ici.
+ * 02/09/2026 : 21/21 avec taches et taches_photos). Toute migration
+ * qui crée une table doit l'ajouter ici.
  */
 export const TABLES_SAUVEGARDE = [
   "profil_entreprise",
@@ -30,6 +30,8 @@ export const TABLES_SAUVEGARDE = [
   "declarations_urssaf",
   "taux_cotisations",
   "taches_journal",
+  "taches",
+  "taches_photos",
   "interventions",
   "intervention_photos",
   "intervention_signatures",
