@@ -211,6 +211,124 @@ export type Database = {
         };
         Relationships: [];
       };
+      taches: {
+        Row: {
+          id: string;
+          user_id: string;
+          titre: string;
+          notes: string | null;
+          date_echeance: string | null;
+          heure: string | null;
+          priorite: string;
+          fait: boolean;
+          fait_le: string | null;
+          client_id: string | null;
+          intervention_id: string | null;
+          devis_id: string | null;
+          facture_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          titre: string;
+          notes?: string | null;
+          date_echeance?: string | null;
+          heure?: string | null;
+          priorite?: string;
+          fait?: boolean;
+          fait_le?: string | null;
+          client_id?: string | null;
+          intervention_id?: string | null;
+          devis_id?: string | null;
+          facture_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          titre?: string;
+          notes?: string | null;
+          date_echeance?: string | null;
+          heure?: string | null;
+          priorite?: string;
+          fait?: boolean;
+          fait_le?: string | null;
+          client_id?: string | null;
+          intervention_id?: string | null;
+          devis_id?: string | null;
+          facture_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "taches_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "taches_intervention_id_fkey";
+            columns: ["intervention_id"];
+            isOneToOne: false;
+            referencedRelation: "interventions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "taches_devis_id_fkey";
+            columns: ["devis_id"];
+            isOneToOne: false;
+            referencedRelation: "devis";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "taches_facture_id_fkey";
+            columns: ["facture_id"];
+            isOneToOne: false;
+            referencedRelation: "factures";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      taches_photos: {
+        Row: {
+          id: string;
+          user_id: string;
+          tache_id: string;
+          storage_path: string;
+          ordre: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          tache_id: string;
+          storage_path: string;
+          ordre?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          tache_id?: string;
+          storage_path?: string;
+          ordre?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "taches_photos_tache_id_fkey";
+            columns: ["tache_id"];
+            isOneToOne: false;
+            referencedRelation: "taches";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       taux_cotisations: {
         Row: {
           id: string;
@@ -988,6 +1106,7 @@ export type Database = {
           auto_rappels_active: boolean;
           rappels_fenetre_jours: number;
           automatisations_simulation: boolean;
+          auto_email_taches_active: boolean;
           banque_nom: string | null;
           bic: string | null;
           calendar_token: string | null;
@@ -1037,6 +1156,7 @@ export type Database = {
           auto_rappels_active?: boolean;
           rappels_fenetre_jours?: number;
           automatisations_simulation?: boolean;
+          auto_email_taches_active?: boolean;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;
@@ -1086,6 +1206,7 @@ export type Database = {
           auto_rappels_active?: boolean;
           rappels_fenetre_jours?: number;
           automatisations_simulation?: boolean;
+          auto_email_taches_active?: boolean;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;
