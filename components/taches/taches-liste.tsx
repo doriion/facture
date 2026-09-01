@@ -79,7 +79,7 @@ export function TachesListe({
             href={o.id === "aujourdhui" ? "/taches" : `/taches?vue=${o.id}`}
             replace
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-md px-2 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center justify-center gap-1 rounded-md px-1 py-2.5 text-sm font-medium transition-colors",
               vue === o.id
                 ? "bg-primary text-primary-foreground"
                 : "text-foreground/70 hover:bg-accent",
@@ -89,7 +89,7 @@ export function TachesListe({
             {o.compte > 0 && (
               <span
                 className={cn(
-                  "rounded-full px-1.5 text-xs tabular-nums",
+                  "rounded-full px-1 text-xs tabular-nums",
                   vue === o.id
                     ? "bg-primary-foreground/20"
                     : "bg-muted text-muted-foreground",
