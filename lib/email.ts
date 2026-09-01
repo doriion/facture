@@ -178,3 +178,62 @@ ${args.expediteurNom}
 
   return { subject, html, text };
 }
+
+/**
+ * Email de rappel d'entretien (contrat de maintenance). Ton cordial :
+ * on invite le client à prendre rendez-vous, avec les coordonnées de
+ * l'artisan pour répondre directement.
+ */
+export function buildRappelEntretienEmail(args: {
+  clientNom: string;
+  expediteurNom: string;
+  /** Libellé du contrat ou de l'équipement (ex. « Entretien clim annuel ») */
+  objetEntretien: string;
+  /** Date de visite prévue, déjà formatée (ex. « 20 septembre 2026 ») */
+  dateVisiteText: string;
+  telephone?: string | null;
+  emailPro?: string | null;
+}): { subject: string; html: string; text: string } {
+  const subject = `Rappel d'entretien — ${args.objetEntretien}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
+
+  const coordonnees = [
+    args.telephone ? `par téléphone au ${args.telephone}` : null,
+    args.emailPro ? `par email à ${args.emailPro}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ou ");
+
+  const contactHtml = coordonnees
+    ? `<p>Pour convenir d'un rendez-vous, vous pouvez me joindre ${escapeHtml(coordonnees)}, ou simplement répondre à ce message.</p>`
+    : `<p>Pour convenir d'un rendez-vous, vous pouvez simplement répondre à ce message.</p>`;
+
+  const html = `<!doctype html>
+<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
+<p>Bonjour ${escapeHtml(args.clientNom)},</p>
+<p>La prochaine visite d'entretien de votre installation (<strong>${escapeHtml(args.objetEntretien)}</strong>) est prévue aux alentours du <strong>${escapeHtml(args.dateVisiteText)}</strong>.</p>
+<p>Un entretien régulier garantit le bon fonctionnement et la longévité de votre équipement.</p>
+${contactHtml}
+<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
+<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
+<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+</body></html>`;
+
+  const contactText = coordonnees
+    ? `Pour convenir d'un rendez-vous, vous pouvez me joindre ${coordonnees}, ou simplement répondre à ce message.`
+    : `Pour convenir d'un rendez-vous, vous pouvez simplement répondre à ce message.`;
+
+  const text = `Bonjour ${args.clientNom},
+
+La prochaine visite d'entretien de votre installation (${args.objetEntretien}) est prévue aux alentours du ${args.dateVisiteText}.
+
+Un entretien régulier garantit le bon fonctionnement et la longévité de votre équipement.
+
+${contactText}
+
+Cordialement,
+${args.expediteurNom}
+
+— Envoyé via Facture AE`;
+
+  return { subject, html, text };
+}
