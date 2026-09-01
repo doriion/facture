@@ -59,6 +59,9 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
       num_assurance_decennale: profil?.num_assurance_decennale ?? "",
       assureur_decennale: profil?.assureur_decennale ?? "",
       assureur_decennale_adresse: profil?.assureur_decennale_adresse ?? "",
+      decennale_valide_jusquau: profil?.decennale_valide_jusquau ?? "",
+      decennale_activites: profil?.decennale_activites ?? "",
+      fluides_valide_jusquau: profil?.fluides_valide_jusquau ?? "",
       zone_couverture_decennale:
         profil?.zone_couverture_decennale ?? "France métropolitaine",
       num_attestation_fluides_frigo: profil?.num_attestation_fluides_frigo ?? "",
@@ -302,6 +305,29 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
               {...register("zone_couverture_decennale")}
             />
           </Field>
+          <Field
+            label="Attestation valide jusqu'au"
+            id="decennale_valide_jusquau"
+            error={errors.decennale_valide_jusquau?.message}
+            help="Alerte sur le tableau de bord 30 jours avant l'échéance."
+          >
+            <Input
+              id="decennale_valide_jusquau"
+              type="date"
+              {...register("decennale_valide_jusquau")}
+            />
+          </Field>
+          <Field
+            label="Activités couvertes"
+            id="decennale_activites"
+            error={errors.decennale_activites?.message}
+            help="Ex. 5.1 Plomberie, 5.2 Génie climatique/PAC, 5.4 Aéraulique."
+          >
+            <Input
+              id="decennale_activites"
+              {...register("decennale_activites")}
+            />
+          </Field>
         </CardContent>
       </Card>
 
@@ -324,6 +350,18 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
             <Input
               id="num_attestation_fluides_frigo"
               {...register("num_attestation_fluides_frigo")}
+            />
+          </Field>
+          <Field
+            label="Attestation fluides valide jusqu'au"
+            id="fluides_valide_jusquau"
+            error={errors.fluides_valide_jusquau?.message}
+            help="Même alerte que la décennale : 30 jours avant l'échéance."
+          >
+            <Input
+              id="fluides_valide_jusquau"
+              type="date"
+              {...register("fluides_valide_jusquau")}
             />
           </Field>
           <Field

@@ -5,6 +5,7 @@ import { SeuilsMicroCard } from "@/components/dashboard/seuils-micro-card";
 import { CaMensuelChart } from "@/components/dashboard/ca-mensuel-chart";
 import { RepartitionActiviteChart } from "@/components/dashboard/repartition-activite-chart";
 import { AlertesSection } from "@/components/dashboard/alertes-section";
+import { AttestationsAlerte } from "@/components/dashboard/attestations-alerte";
 import { TopClients } from "@/components/dashboard/top-clients";
 import {
   DevisRecentsCard,
@@ -24,6 +25,8 @@ export default async function DashboardPage() {
           Vue d'ensemble de votre activité — année {data.annee}
         </p>
       </div>
+
+      <AttestationsAlerte attestations={data.attestations} />
 
       <KpiCards
         caMois={data.caMois}

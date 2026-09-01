@@ -6,6 +6,7 @@ import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
 import { computeTauxConversionDevis } from "@/lib/devis-stats";
 import { derniers12Mois } from "@/lib/mois";
+import { alerteValidite, type AlerteValidite } from "@/lib/attestations";
 import {
   prochaineBascule,
   provisionCotisations,
@@ -94,6 +95,12 @@ export type DashboardData = {
     intitule: string | null;
     client_nom: string | null;
   }>;
+  /** Attestations à renouveler (décennale, fluides) — alerte J-30, rouge si dépassée */
+  attestations: Array<{
+    label: string;
+    dateFin: string;
+    alerte: AlerteValidite;
+  }>;
 };
 
 /**
@@ -139,6 +146,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     facturesRecentesRes,
     devisRecentsRes,
     contratsRes,
+    profilRes,
   ] = await Promise.all([
     // Factures ÉMISES sur 12 mois glissants (brouillons et annulées
     // exclus : un brouillon n'est pas émis, il ne doit pas gonfler le
@@ -201,6 +209,11 @@ export async function getDashboardData(): Promise<DashboardData> {
       )
       .order("prochaine_visite", { ascending: true })
       .limit(8),
+    // Échéances des attestations (décennale, capacité fluides)
+    supabase
+      .from("profil_entreprise")
+      .select("decennale_valide_jusquau, fluides_valide_jusquau")
+      .maybeSingle(),
   ]);
 
   const facturesAnnee = (facturesAnneeRes.data ?? []) as Array<{
@@ -484,6 +497,23 @@ export async function getDashboardData(): Promise<DashboardData> {
     client_nom: c.client?.nom ?? null,
   }));
 
+  // Alertes de validité des attestations (logique testée dans
+  // lib/attestations) — affichées 30 j avant l'échéance, rouge après.
+  const attestations: DashboardData["attestations"] = [];
+  const profilEcheances = profilRes.data;
+  for (const [label, dateFin] of [
+    ["Attestation décennale", profilEcheances?.decennale_valide_jusquau],
+    [
+      "Attestation de capacité fluides",
+      profilEcheances?.fluides_valide_jusquau,
+    ],
+  ] as const) {
+    const alerte = alerteValidite(dateFin, today);
+    if (alerte && dateFin) {
+      attestations.push({ label, dateFin, alerte });
+    }
+  }
+
   return {
     annee,
     caMois,
@@ -504,5 +534,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     facturesEnRetard,
     devisExpirantBientot,
     prochainesVisitesMaintenance,
+    attestations,
   };
 }
