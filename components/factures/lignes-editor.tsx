@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatEuros, parseMoneyInput } from "@/lib/format";
+import { contientMateriel } from "@/lib/sections";
 import type { Database } from "@/types/database";
 
 /** Convertit une valeur de champ (string tolérant FR/EN) en number sûr. */
@@ -352,6 +353,19 @@ export function LignesEditor<T extends FieldValues>({
         répéter dans la désignation (« 2x … »). Les titres de section
         s'affichent en gras sur le PDF avec un sous-total par section.
       </p>
+
+      {/* Info activité mixte — formulaire uniquement, jamais sur le PDF */}
+      {contientMateriel(lignes) && (
+        <div className="rounded-md border border-sky-600/30 bg-sky-500/5 p-3 text-xs text-muted-foreground">
+          ℹ️ Ce document contient du matériel. En micro-entreprise, les
+          cotisations s'appliquent sur le TOTAL encaissé, matériel
+          compris (pas de déduction d'achats), et la fourniture de
+          matériel revendu sans pose relève de l'activité mixte
+          (case « ventes » de la déclaration URSSAF — la nature de
+          chaque ligne fait déjà la ventilation). Information
+          indicative, rien à faire de plus.
+        </div>
+      )}
     </div>
   );
 }

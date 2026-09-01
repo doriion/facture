@@ -69,3 +69,30 @@ export function totalLignes(lignes: LigneSectionInput[]): number {
       .reduce((sum, l) => sum + Number(l.total_ht), 0),
   );
 }
+
+/**
+ * Détecte la présence de matériel dans un document : une ligne classée
+ * « BIC ventes » (revente sans pose) OU une section dont le titre
+ * évoque le matériel/fournitures. Sert au bandeau informatif du
+ * FORMULAIRE (activité mixte en micro) — jamais bloquant, jamais sur
+ * le PDF.
+ */
+export function contientMateriel(
+  lignes: Array<{
+    designation?: string | null;
+    type?: string | null;
+    nature_fiscale?: string | null;
+  }>,
+): boolean {
+  return lignes.some((l) => {
+    if (!estTitre(l) && l.nature_fiscale === "bic_ventes") return true;
+    if (estTitre(l)) {
+      const t = (l.designation ?? "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      return t.includes("materiel") || t.includes("fourniture");
+    }
+    return false;
+  });
+}

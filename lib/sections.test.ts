@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeSections, estTitre, totalLignes } from "./sections";
+import { computeSections, contientMateriel, estTitre, totalLignes } from "./sections";
 
 const titre = (designation: string) => ({
   designation,
@@ -97,5 +97,31 @@ describe("totalLignes / estTitre", () => {
     expect(estTitre({ type: "ligne" })).toBe(false);
     expect(estTitre({})).toBe(false);
     expect(estTitre({ type: null })).toBe(false);
+  });
+});
+
+describe("contientMateriel", () => {
+  it("détecte une ligne en BIC ventes ou un titre Matériel/Fournitures", () => {
+    expect(
+      contientMateriel([
+        { designation: "Robinet", type: "ligne", nature_fiscale: "bic_ventes" },
+      ]),
+    ).toBe(true);
+    expect(
+      contientMateriel([{ designation: "MATÉRIEL", type: "titre" }]),
+    ).toBe(true);
+    expect(
+      contientMateriel([{ designation: "Fournitures diverses", type: "titre" }]),
+    ).toBe(true);
+  });
+
+  it("silencieux pour un devis 100 % prestations", () => {
+    expect(
+      contientMateriel([
+        { designation: "MAIN-D'ŒUVRE", type: "titre" },
+        { designation: "Pose", type: "ligne", nature_fiscale: "bic_prestations" },
+      ]),
+    ).toBe(false);
+    expect(contientMateriel([])).toBe(false);
   });
 });
