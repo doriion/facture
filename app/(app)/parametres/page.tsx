@@ -6,6 +6,7 @@ import { ExternalCalendarCard } from "@/components/parametres/external-calendar-
 import { ResetNumerotationCard } from "@/components/parametres/reset-numerotation-card";
 import { ExportDonneesCard } from "@/components/parametres/export-donnees-card";
 import { TauxCotisationsCard } from "@/components/parametres/taux-cotisations-card";
+import { AutomatisationsCard } from "@/components/parametres/automatisations-card";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import {
   Card,
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { getLogoUrl, getProfil } from "@/lib/actions/profil";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
+import { getJournalTaches } from "@/lib/actions/automatisations";
 
 export const metadata = { title: "Paramètres — Facture AE" };
 
@@ -27,6 +29,15 @@ export default async function ParametresPage() {
   const profil = await getProfil();
   const logoUrl = await getLogoUrl(profil?.logo_url);
   const bareme = await getBaremeCotisations();
+  const journal = await getJournalTaches();
+  const reglages = {
+    auto_sauvegarde_active: profil?.auto_sauvegarde_active ?? true,
+    auto_relances_active: profil?.auto_relances_active ?? false,
+    relances_delai_jours: profil?.relances_delai_jours ?? 15,
+    auto_rappels_active: profil?.auto_rappels_active ?? false,
+    rappels_fenetre_jours: profil?.rappels_fenetre_jours ?? 30,
+    automatisations_simulation: profil?.automatisations_simulation ?? true,
+  };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -61,6 +72,8 @@ export default async function ParametresPage() {
       />
 
       <ProfilForm profil={profil} />
+
+      <AutomatisationsCard reglages={reglages} journal={journal} />
 
       <TauxCotisationsCard bareme={bareme} />
 
