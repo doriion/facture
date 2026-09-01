@@ -1,4 +1,6 @@
 import { getDashboardData } from "@/lib/actions/dashboard";
+import { getTachesDuJour } from "@/lib/actions/taches";
+import { TachesDuJourCard } from "@/components/dashboard/taches-du-jour-card";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { CotisationsCard } from "@/components/dashboard/cotisations-card";
 import { SeuilsMicroCard } from "@/components/dashboard/seuils-micro-card";
@@ -15,7 +17,10 @@ import {
 export const metadata = { title: "Tableau de bord — Facture AE" };
 
 export default async function DashboardPage() {
-  const data = await getDashboardData();
+  const [data, tachesDuJour] = await Promise.all([
+    getDashboardData(),
+    getTachesDuJour(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -25,6 +30,8 @@ export default async function DashboardPage() {
           Vue d'ensemble de votre activité — année {data.annee}
         </p>
       </div>
+
+      <TachesDuJourCard taches={tachesDuJour} />
 
       <AttestationsAlerte attestations={data.attestations} />
 

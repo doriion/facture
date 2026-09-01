@@ -21,7 +21,13 @@ import { MobileNav } from "@/components/mobile-nav";
  * La déconnexion passe par une Server Action pour cohérence avec le
  * login (cookies serveur + redirect synchrones).
  */
-export function Topbar({ email }: { email: string }) {
+export function Topbar({
+  email,
+  badgeTaches = 0,
+}: {
+  email: string;
+  badgeTaches?: number;
+}) {
   async function handleSignOut() {
     try {
       await signOutAction();
@@ -37,7 +43,7 @@ export function Topbar({ email }: { email: string }) {
   return (
     <header className="flex h-14 items-center justify-between gap-2 border-b bg-background px-3 sm:h-16 sm:px-6">
       <div className="flex items-center gap-2">
-        <MobileNav />
+        <MobileNav badgeTaches={badgeTaches} />
         <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <span className="text-xs font-bold">F</span>

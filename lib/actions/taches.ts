@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { formatDateFr } from "@/lib/format";
+import { aujourdhuiParis, classerTaches } from "@/lib/taches-logic";
 import { tacheSchema, type TacheFormInput } from "@/lib/validations/tache";
 
 type ActionResult<T = void> =
@@ -151,6 +152,67 @@ export async function getTaches(): Promise<TacheAvecDetails[]> {
     lien: construireLien(t),
     photos: photosParTache.get(t.id) ?? [],
   }));
+}
+
+/**
+ * Compteur du badge de navigation : tâches non faites, échues
+ * aujourd'hui ou en retard (les sans-date ne comptent pas). Une seule
+ * requête count head — appelée par le layout à chaque navigation.
+ */
+export async function getCompteurBadgeTaches(): Promise<number> {
+  const supabase = createClient();
+  const { count } = await supabase
+    .from("taches")
+    .select("id", { count: "exact", head: true })
+    .eq("fait", false)
+    .not("date_echeance", "is", null)
+    .lte("date_echeance", aujourdhuiParis());
+  return count ?? 0;
+}
+
+export type TacheDuJour = {
+  id: string;
+  titre: string;
+  date_echeance: string | null;
+  heure: string | null;
+  priorite: string;
+  joursRetard: number;
+};
+
+/**
+ * Tâches échues aujourd'hui + en retard, pour le bloc « À faire
+ * aujourd'hui » du dashboard (léger : pas de photos ni de liens).
+ */
+export async function getTachesDuJour(): Promise<TacheDuJour[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("taches")
+    .select("id, titre, date_echeance, heure, priorite, fait, fait_le")
+    .eq("fait", false)
+    .not("date_echeance", "is", null);
+
+  const { enRetard, aujourdhui } = classerTaches(
+    (data ?? []).map((t) => ({ ...t, heure: t.heure?.slice(0, 5) ?? null })),
+    aujourdhuiParis(),
+  );
+  return [
+    ...enRetard.map((t) => ({
+      id: t.id,
+      titre: t.titre,
+      date_echeance: t.date_echeance,
+      heure: t.heure,
+      priorite: t.priorite,
+      joursRetard: t.joursRetard,
+    })),
+    ...aujourdhui.map((t) => ({
+      id: t.id,
+      titre: t.titre,
+      date_echeance: t.date_echeance,
+      heure: t.heure,
+      priorite: t.priorite,
+      joursRetard: 0,
+    })),
+  ];
 }
 
 export async function createTacheAction(

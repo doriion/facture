@@ -38,6 +38,7 @@ export default async function ParametresPage() {
     relances_delai_jours: profil?.relances_delai_jours ?? 15,
     auto_rappels_active: profil?.auto_rappels_active ?? false,
     rappels_fenetre_jours: profil?.rappels_fenetre_jours ?? 30,
+    auto_email_taches_active: profil?.auto_email_taches_active ?? true,
     automatisations_simulation: profil?.automatisations_simulation ?? true,
   };
 
