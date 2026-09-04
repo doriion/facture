@@ -50,7 +50,16 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublicPage = path === "/login" || path.startsWith("/login/");
+  // Chemins publics :
+  // - /login : authentification ;
+  // - /c/… : page de signature d'un contrat par le client (l'accès est
+  //   contrôlé par l'access_token du contrat, résolu côté serveur) ;
+  // - /api/public/… : les routes serveur de ce même parcours.
+  const isPublicPage =
+    path === "/login" ||
+    path.startsWith("/login/") ||
+    path.startsWith("/c/") ||
+    path.startsWith("/api/public/");
 
   if (!user && !isPublicPage) {
     if (path.startsWith("/api/")) {

@@ -180,6 +180,84 @@ ${args.expediteurNom}
 }
 
 /**
+ * Email d'invitation à signer un contrat d'entretien (lien public).
+ */
+export function buildLienContratEmail(args: {
+  clientNom: string;
+  expediteurNom: string;
+  numero: string;
+  lien: string;
+  expireLeText: string;
+}): { subject: string; html: string; text: string } {
+  const subject = `Votre contrat d'entretien ${args.numero} — à signer en ligne${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
+
+  const html = `<!doctype html>
+<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
+<p>Bonjour ${escapeHtml(args.clientNom)},</p>
+<p>Veuillez trouver ci-dessous le lien vers votre contrat d'entretien <strong>${escapeHtml(args.numero)}</strong>. Vous pouvez le lire, compléter vos informations et le signer directement depuis votre téléphone — aucun compte n'est nécessaire.</p>
+<p style="text-align:center; margin:24px 0;">
+  <a href="${args.lien}" style="background:#2A7D5B; color:#fff; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:600;">Lire et signer mon contrat</a>
+</p>
+<p style="font-size:13px; color:#666;">Ce lien est personnel et valable jusqu'au ${escapeHtml(args.expireLeText)}. Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br/>${args.lien}</p>
+<p>Une fois signé, vous recevrez immédiatement le contrat en PDF par retour d'e-mail.</p>
+<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
+<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
+<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+</body></html>`;
+
+  const text = `Bonjour ${args.clientNom},
+
+Voici le lien vers votre contrat d'entretien ${args.numero}, à lire et signer en ligne (aucun compte nécessaire) :
+
+${args.lien}
+
+Ce lien est personnel et valable jusqu'au ${args.expireLeText}. Une fois signé, vous recevrez immédiatement le contrat en PDF par retour d'e-mail.
+
+Cordialement,
+${args.expediteurNom}
+
+— Envoyé via Facture AE`;
+
+  return { subject, html, text };
+}
+
+/**
+ * Email accompagnant le PDF signé (envoyé au client ET à l'artisan).
+ */
+export function buildContratSigneEmail(args: {
+  destinataireNom: string;
+  numero: string;
+  signataireNom: string;
+  dateSignatureText: string;
+  pourArtisan: boolean;
+}): { subject: string; html: string; text: string } {
+  const subject = args.pourArtisan
+    ? `✅ Contrat ${args.numero} signé par ${args.signataireNom}`
+    : `Votre contrat d'entretien ${args.numero} signé — exemplaire PDF`;
+
+  const intro = args.pourArtisan
+    ? `<p>Bonjour,</p><p><strong>${escapeHtml(args.signataireNom)}</strong> a signé le contrat d'entretien <strong>${escapeHtml(args.numero)}</strong> le ${escapeHtml(args.dateSignatureText)}.</p><p>L'exemplaire signé (avec sa page de preuve) est en pièce jointe et archivé dans l'application. Pensez à passer le contrat en « actif » et à créer le suivi de maintenance.</p>`
+    : `<p>Bonjour ${escapeHtml(args.destinataireNom)},</p><p>Merci ! Votre contrat d'entretien <strong>${escapeHtml(args.numero)}</strong> a bien été signé le ${escapeHtml(args.dateSignatureText)}.</p><p>Vous trouverez en pièce jointe votre exemplaire PDF, à conserver. Il comprend la page de preuve de la signature électronique.</p>`;
+
+  const html = `<!doctype html>
+<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
+${intro}
+<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
+<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+</body></html>`;
+
+  const text = args.pourArtisan
+    ? `${args.signataireNom} a signé le contrat d'entretien ${args.numero} le ${args.dateSignatureText}. L'exemplaire signé est en pièce jointe.`
+    : `Bonjour ${args.destinataireNom},
+
+Votre contrat d'entretien ${args.numero} a bien été signé le ${args.dateSignatureText}. Votre exemplaire PDF est en pièce jointe, à conserver.
+
+— Envoyé via Facture AE`;
+
+  return { subject, html, text };
+}
+
+/**
  * Email de rappel d'entretien (contrat de maintenance). Ton cordial :
  * on invite le client à prendre rendez-vous, avec les coordonnées de
  * l'artisan pour répondre directement.

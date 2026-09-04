@@ -1,13 +1,23 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 import { createClient } from "@/lib/supabase/server";
 import {
   contratEntretienSchema,
   type ContratEntretienFormInput,
 } from "@/lib/validations/contrat-entretien";
-import { echeanceInitiale, TEMPLATE_VERSION_COURANTE } from "@/lib/contrats/logic";
+import {
+  echeanceInitiale,
+  expirationToken,
+  TEMPLATE_VERSION_COURANTE,
+} from "@/lib/contrats/logic";
+import { buildPrestataireSnapshot } from "@/lib/contrats/rendu";
+import { buildLienContratEmail, isEmailConfigured, sendEmail } from "@/lib/email";
+import { formatDateFr } from "@/lib/format";
 
 type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -188,6 +198,184 @@ export async function deleteContratEntretienAction(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/contrats");
+  return { ok: true, data: undefined };
+}
+
+/**
+ * Envoi du contrat au client : fige les snapshots (prestataire depuis
+ * les réglages, client depuis sa fiche), attribue le numéro s'il
+ * n'existe pas, génère un lien public (30 jours) et envoie l'email
+ * d'invitation. Ré-appelable sur un contrat déjà envoyé mais non signé
+ * (renvoi = nouveau token, l'ancien lien meurt).
+ */
+export async function envoyerContratAction(
+  id: string,
+): Promise<ActionResult<{ lien: string }>> {
+  if (!isEmailConfigured()) {
+    return {
+      ok: false,
+      error:
+        "Resend non configuré (RESEND_API_KEY / RESEND_FROM) — impossible d'envoyer.",
+    };
+  }
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { data: contratData } = await supabase
+    .from("contrats")
+    .select("*, client:clients(*)")
+    .eq("id", id)
+    .maybeSingle();
+  if (!contratData) return { ok: false, error: "Contrat introuvable." };
+
+  const { client, ...contrat } = contratData as typeof contratData & {
+    client: Database["public"]["Tables"]["clients"]["Row"] | null;
+  };
+
+  if (contrat.statut !== "brouillon" && contrat.statut !== "envoye") {
+    return {
+      ok: false,
+      error: "Ce contrat est déjà signé — rien à envoyer.",
+    };
+  }
+  if (!client?.email) {
+    return {
+      ok: false,
+      error:
+        "Le client n'a pas d'adresse e-mail — ajoutez-la sur sa fiche avant l'envoi.",
+    };
+  }
+  if (
+    !Array.isArray(contrat.equipements) ||
+    contrat.equipements.length === 0
+  ) {
+    return { ok: false, error: "Ajoutez au moins un équipement couvert." };
+  }
+
+  const { data: profil } = await supabase
+    .from("profil_entreprise")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const prestataire = buildPrestataireSnapshot(profil ?? null);
+  if (!prestataire?.siret) {
+    return {
+      ok: false,
+      error:
+        "Complétez votre SIRET dans Paramètres avant d'envoyer un contrat.",
+    };
+  }
+
+  // Numéro : attribué UNE seule fois, au premier envoi
+  let numero = contrat.numero;
+  if (!numero) {
+    const { data: nouveauNumero, error: numErr } = await supabase.rpc(
+      "next_document_number",
+      { p_type: "contrat" },
+    );
+    if (numErr || !nouveauNumero) {
+      return {
+        ok: false,
+        error: numErr?.message ?? "Numérotation indisponible.",
+      };
+    }
+    numero = nouveauNumero;
+  }
+
+  const nowIso = new Date().toISOString();
+  const token = randomBytes(32).toString("base64url");
+  const tokenExpiresAt = expirationToken(nowIso);
+
+  const clientSnapshot = {
+    nom: client.nom,
+    raison_sociale: client.raison_sociale,
+    adresse: [
+      client.adresse_ligne1,
+      client.adresse_ligne2,
+      [client.code_postal, client.ville].filter(Boolean).join(" "),
+    ]
+      .filter(Boolean)
+      .join(", "),
+    telephone: client.telephone,
+    email: client.email,
+    siret: client.siret,
+  };
+
+  const { error: updateErr } = await supabase
+    .from("contrats")
+    .update({
+      numero,
+      statut: "envoye",
+      prestataire,
+      client_snapshot: clientSnapshot,
+      access_token: token,
+      token_expires_at: tokenExpiresAt,
+      sent_at: nowIso,
+      updated_at: nowIso,
+    })
+    .eq("id", id)
+    .in("statut", ["brouillon", "envoye"]);
+  if (updateErr) return { ok: false, error: updateErr.message };
+
+  // URL absolue du lien public, à partir de l'hôte de la requête
+  const h = headers();
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const lien = `${proto}://${host}/c/${token}`;
+
+  const expediteurNom =
+    profil?.nom_commercial ||
+    [profil?.prenom, profil?.nom].filter(Boolean).join(" ") ||
+    "Votre artisan";
+  const email = buildLienContratEmail({
+    clientNom: client.nom,
+    expediteurNom,
+    numero: numero!,
+    lien,
+    expireLeText: formatDateFr(tokenExpiresAt.slice(0, 10)),
+  });
+  const envoi = await sendEmail({
+    to: client.email,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
+    replyTo: profil?.email_pro ?? undefined,
+  });
+  if (!envoi.ok) {
+    // Le contrat reste « envoyé » avec un lien valide : on peut copier
+    // le lien à la main ou re-tenter l'envoi.
+    return {
+      ok: false,
+      error: `Contrat prêt mais email non parti : ${envoi.error}. Le lien reste copiable depuis la fiche.`,
+    };
+  }
+
+  revalidatePath("/contrats");
+  revalidatePath(`/contrats/${id}`);
+  return { ok: true, data: { lien } };
+}
+
+/** Révoque le lien public d'un contrat envoyé (le lien meurt aussitôt). */
+export async function revoquerLienContratAction(
+  id: string,
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("contrats")
+    .update({
+      access_token: null,
+      token_expires_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("statut", "envoye");
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/contrats/${id}`);
   return { ok: true, data: undefined };
 }
 
