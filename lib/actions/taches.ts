@@ -260,6 +260,44 @@ export async function createTacheAction(
   return { ok: true, data: { id: data.id } };
 }
 
+/**
+ * Modifie une tâche existante (titre, notes, échéance, heure, priorité).
+ * Les liens vers un document et l'état fait/à faire ne passent pas par
+ * ici (le lien se fixe à la création, cocher a son action dédiée).
+ */
+export async function updateTacheAction(
+  id: string,
+  input: TacheFormInput,
+): Promise<ActionResult> {
+  const parsed = tacheSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Saisie invalide.",
+    };
+  }
+  const v = parsed.data;
+
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("taches")
+    .update({
+      titre: v.titre,
+      notes: v.notes || null,
+      date_echeance: v.date_echeance || null,
+      // Même règle qu'à la création : pas d'heure sans date
+      heure: v.date_echeance && v.heure ? v.heure : null,
+      priorite: v.priorite,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/taches");
+  revalidatePath("/dashboard");
+  return { ok: true, data: undefined };
+}
+
 /** Coche / décoche une tâche (fait + horodatage de réalisation). */
 export async function setTacheFaitAction(
   id: string,
