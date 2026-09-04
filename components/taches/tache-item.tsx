@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Clock, Link2, Trash2 } from "lucide-react";
+import { Check, Clock, Link2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import {
 } from "@/lib/actions/taches";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { TacheEditSheet } from "@/components/taches/tache-edit-sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +44,7 @@ export function TacheItem({
   // Animation locale de validation, le temps que le serveur reclasse
   const [validee, setValidee] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [editOuvert, setEditOuvert] = useState(false);
 
   const coche = tache.fait || validee;
 
@@ -107,14 +109,17 @@ export function TacheItem({
       </button>
 
       <div className="min-w-0 flex-1">
-        <p
+        {/* Toucher le titre ouvre l'édition */}
+        <button
+          type="button"
+          onClick={() => setEditOuvert(true)}
           className={cn(
-            "break-words text-sm font-medium leading-snug",
+            "block w-full break-words text-left text-sm font-medium leading-snug",
             coche && "line-through opacity-60",
           )}
         >
           {tache.titre}
-        </p>
+        </button>
         {tache.notes && (
           <p className="mt-0.5 line-clamp-2 whitespace-pre-line break-words text-xs text-muted-foreground">
             {tache.notes}
@@ -183,12 +188,21 @@ export function TacheItem({
         )}
       </div>
 
+      <button
+        type="button"
+        aria-label="Modifier la tâche"
+        onClick={() => setEditOuvert(true)}
+        className="mt-1 rounded p-2 text-muted-foreground/50 transition-colors hover:text-foreground"
+      >
+        <Pencil className="size-4" />
+      </button>
+
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <button
             type="button"
             aria-label="Supprimer la tâche"
-            className="mt-1 rounded p-2 text-muted-foreground/50 transition-colors hover:text-destructive"
+            className="mt-1 -ml-1 rounded p-2 text-muted-foreground/50 transition-colors hover:text-destructive"
           >
             <Trash2 className="size-4" />
           </button>
@@ -211,6 +225,16 @@ export function TacheItem({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Monté à l'ouverture seulement : le formulaire repart des
+          valeurs actuelles de la tâche à chaque édition */}
+      {editOuvert && (
+        <TacheEditSheet
+          tache={tache}
+          open={editOuvert}
+          onClose={() => setEditOuvert(false)}
+        />
+      )}
 
       <Dialog
         open={Boolean(lightbox)}
