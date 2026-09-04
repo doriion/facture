@@ -13,6 +13,7 @@ import {
   Wrench,
   CalendarClock,
   CalendarDays,
+  ScrollText,
   FileSpreadsheet,
   Settings,
 } from "lucide-react";
@@ -72,6 +73,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Interventions",
     icon: Wrench,
     description: "Suivi chantiers + fluides frigo",
+  },
+  {
+    href: "/contrats",
+    label: "Contrats",
+    icon: ScrollText,
+    description: "Contrats d'entretien signés en ligne",
   },
   {
     href: "/maintenance",
