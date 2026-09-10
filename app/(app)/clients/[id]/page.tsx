@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileSignature, FileText, Mail, MapPin, Phone } from "lucide-react";
+import { ArrowLeft, FileSignature, FileText, Mail, MapPin, Phone, ScrollText } from "lucide-react";
 
 import { getClient } from "@/lib/actions/clients";
 import { statutAffichageDevis } from "@/lib/validations/devis";
@@ -74,6 +74,12 @@ export default async function ClientDetailPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/contrats/nouveau?client=${client.id}`}>
+                <ScrollText className="size-4" />
+                Créer un contrat
+              </Link>
+            </Button>
             <AjouterTacheButton
               lienLabel={client.nom}
               clientId={client.id}
