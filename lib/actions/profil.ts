@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { dureeValiditeSure } from "@/lib/devis-validite";
 import { profilSchema, type ProfilFormValues } from "@/lib/validations/profil";
 import { siretToSiren, stripSpaces } from "@/lib/format";
 import { normalizeSiret } from "@/lib/siret";
@@ -90,6 +91,7 @@ export async function upsertProfil(
     mediateur_nom: v.mediateur_nom || null,
     mediateur_site_web: v.mediateur_site_web || null,
     mediateur_adresse: v.mediateur_adresse || null,
+    duree_validite_devis_jours: dureeValiditeSure(v.duree_validite_devis_jours),
     conditions_paiement_default: v.conditions_paiement_default || null,
     penalites_retard_text: v.penalites_retard_text || null,
     escompte_text: v.escompte_text || null,

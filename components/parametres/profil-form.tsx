@@ -72,6 +72,7 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
       mediateur_nom: profil?.mediateur_nom ?? "",
       mediateur_site_web: profil?.mediateur_site_web ?? "",
       mediateur_adresse: profil?.mediateur_adresse ?? "",
+      duree_validite_devis_jours: String(profil?.duree_validite_devis_jours ?? 30),
       conditions_paiement_default: profil?.conditions_paiement_default ?? "",
       penalites_retard_text: profil?.penalites_retard_text ?? "",
       escompte_text: profil?.escompte_text ?? "",
@@ -463,6 +464,19 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
+          <Field
+            label="Durée de validité des devis (jours)"
+            id="duree_validite_devis_jours"
+            error={errors.duree_validite_devis_jours?.message}
+            help="Pré-remplit « Valable jusqu'au » à la création d'un devis (surchargeable au cas par cas). Défaut : 30 jours."
+          >
+            <Input
+              id="duree_validite_devis_jours"
+              inputMode="numeric"
+              className="max-w-28"
+              {...register("duree_validite_devis_jours")}
+            />
+          </Field>
           <Field
             label="Conditions de paiement"
             id="conditions_paiement_default"

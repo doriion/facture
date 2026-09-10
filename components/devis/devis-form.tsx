@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Save } from "lucide-react";
@@ -13,6 +13,7 @@ import {
   type DevisFormValues,
 } from "@/lib/validations/devis";
 import { isClimPac, type TypeActivite } from "@/lib/validations/facture";
+import { dateValiditeDevis, dureeValiditeSure } from "@/lib/devis-validite";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import {
   createDevisAction,
@@ -60,6 +61,7 @@ export function DevisForm({
   devis,
   lignes,
   defaultConditions,
+  dureeValiditeJours,
   prefill,
 }: {
   clients: Client[];
@@ -67,6 +69,8 @@ export function DevisForm({
   devis?: Devis;
   lignes?: Ligne[];
   defaultConditions?: string | null;
+  /** Réglage duree_validite_devis_jours (défaut 30) */
+  dureeValiditeJours?: number | null;
   prefill?: {
     devis: Partial<Devis>;
     lignes: Array<{
@@ -103,9 +107,10 @@ export function DevisForm({
       }));
 
   const today = new Date().toISOString().slice(0, 10);
-  const inThreeMonths = new Date(Date.now() + 90 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  // « Valable jusqu'au » pré-rempli depuis le réglage (défaut 30 j),
+  // surchargeable librement dans le champ.
+  const dureeValidite = dureeValiditeSure(dureeValiditeJours);
+  const validiteInitiale = dateValiditeDevis(today, dureeValidite);
 
   const equip = (base?.equipement_info ?? {}) as Record<string, unknown>;
   const perfs = (base?.performances_energetiques ?? {}) as Record<string, unknown>;
@@ -117,7 +122,7 @@ export function DevisForm({
     control,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<DevisFormInput, unknown, DevisFormValues>({
     resolver: zodResolver(devisSchema),
     defaultValues: {
@@ -128,7 +133,7 @@ export function DevisForm({
         (base?.type_activite as DevisFormInput["type_activite"]) ??
         ("" as DevisFormInput["type_activite"]),
       date_emission: base?.date_emission ?? today,
-      date_validite: base?.date_validite ?? inThreeMonths,
+      date_validite: base?.date_validite ?? validiteInitiale,
       date_debut_travaux: base?.date_debut_travaux ?? "",
       duree_estimee_jours: base?.duree_estimee_jours ?? null,
       acompte_pct: base?.acompte_pct ?? null,
@@ -161,6 +166,14 @@ export function DevisForm({
       },
     },
   });
+
+  // En création, « Valable jusqu'au » suit la date d'émission tant que
+  // l'utilisateur n'a pas touché le champ lui-même (surcharge libre).
+  const dateEmissionSaisie = watch("date_emission");
+  useEffect(() => {
+    if (isEdit || dirtyFields.date_validite || !dateEmissionSaisie) return;
+    setValue("date_validite", dateValiditeDevis(dateEmissionSaisie, dureeValidite));
+  }, [dateEmissionSaisie, isEdit, dirtyFields.date_validite, dureeValidite, setValue]);
 
   const currentType = watch("type_activite") as TypeActivite;
   const showEquipement = isClimPac(currentType);

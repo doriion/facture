@@ -130,6 +130,14 @@ export const profilSchema = z.object({
   mediateur_adresse: z.string().trim().max(300).optional().or(z.literal("")),
 
   // Préférences
+  // Saisi comme texte (formulaire tout-string) ; borné 1-365, vide = 30.
+  duree_validite_devis_jours: z
+    .string()
+    .trim()
+    .refine(
+      (v) => v === "" || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 365),
+      { message: "Entre 1 et 365 jours." },
+    ),
   conditions_paiement_default: z.string().trim().max(500).optional().or(z.literal("")),
   penalites_retard_text: z.string().trim().max(1000).optional().or(z.literal("")),
   escompte_text: z.string().trim().max(500).optional().or(z.literal("")),
