@@ -81,6 +81,7 @@ export default async function NouveauDevisPage({
           clients={clients}
           produits={produits}
           defaultConditions={profil?.conditions_paiement_default}
+          dureeValiditeJours={profil?.duree_validite_devis_jours}
           prefill={prefill}
         />
       )}
