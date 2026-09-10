@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import {
   useFieldArray,
   type Control,
@@ -24,8 +25,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatEuros, parseMoneyInput } from "@/lib/format";
+import { margeLigne, totauxMarges } from "@/lib/marges";
 import { contientMateriel } from "@/lib/sections";
 import type { Database } from "@/types/database";
+
+/** Clé localStorage du toggle « Afficher mes coûts » (privé, off par défaut). */
+const CLE_AFFICHER_COUTS = "facture-ae:afficher-couts";
 
 /** Convertit une valeur de champ (string tolérant FR/EN) en number sûr. */
 function toNum(v: number | string | null | undefined): number {
@@ -42,6 +47,8 @@ type LigneShape = {
   designation: string;
   quantite: number | string;
   prix_unitaire_ht: number | string;
+  prix_achat_ttc_unitaire?: number | string | null;
+  fournisseur?: string;
   nature_fiscale?: string;
   /** 'ligne' (défaut) ou 'titre' — titre de section, sans qté ni prix */
   type?: string;
@@ -82,11 +89,48 @@ export function LignesEditor<T extends FieldValues>({
   // Cast pour pouvoir lire les valeurs typées sans s'embêter avec les Path<T>
   const lignes = (watch(fieldName) ?? []) as LigneShape[];
 
+  // Toggle « Afficher mes coûts » : PRIVÉ, masqué par défaut, persisté
+  // en localStorage. Ne pilote QUE l'affichage — les valeurs saisies
+  // restent dans le formulaire même toggle éteint.
+  const [afficherCouts, setAfficherCouts] = useState(false);
+  useEffect(() => {
+    try {
+      setAfficherCouts(localStorage.getItem(CLE_AFFICHER_COUTS) === "1");
+    } catch {
+      // localStorage indisponible : reste masqué
+    }
+  }, []);
+  function basculerCouts() {
+    setAfficherCouts((v) => {
+      try {
+        localStorage.setItem(CLE_AFFICHER_COUTS, v ? "0" : "1");
+      } catch {
+        // tant pis pour la persistance
+      }
+      return !v;
+    });
+  }
+
+  const lignesPourMarges = lignes.map((l) => ({
+    type: l.type,
+    quantite: toNum(l.quantite),
+    prix_unitaire_ht: toNum(l.prix_unitaire_ht),
+    prix_achat_ttc_unitaire:
+      l.prix_achat_ttc_unitaire === null ||
+      l.prix_achat_ttc_unitaire === undefined ||
+      l.prix_achat_ttc_unitaire === ""
+        ? null
+        : toNum(l.prix_achat_ttc_unitaire),
+  }));
+  const marges = totauxMarges(lignesPourMarges);
+
   function addEmptyLine() {
     append({
       designation: "",
       quantite: 1,
       prix_unitaire_ht: 0,
+      prix_achat_ttc_unitaire: null,
+      fournisseur: "",
       nature_fiscale: "bic_prestations",
       type: "ligne",
     } as unknown as FieldArray<T, ArrayPath<T>>);
@@ -100,6 +144,8 @@ export function LignesEditor<T extends FieldValues>({
       designation: "",
       quantite: 1,
       prix_unitaire_ht: 0,
+      prix_achat_ttc_unitaire: null,
+      fournisseur: "",
       nature_fiscale: "bic_prestations",
       type: "titre",
     } as unknown as FieldArray<T, ArrayPath<T>>);
@@ -115,6 +161,8 @@ export function LignesEditor<T extends FieldValues>({
       designation,
       quantite: 1,
       prix_unitaire_ht: Number(p.prix_ht),
+      prix_achat_ttc_unitaire: null,
+      fournisseur: "",
       nature_fiscale: p.nature_fiscale ?? "bic_prestations",
       type: "ligne",
     } as unknown as FieldArray<T, ArrayPath<T>>);
@@ -137,6 +185,23 @@ export function LignesEditor<T extends FieldValues>({
 
   return (
     <div className="space-y-3">
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={basculerCouts}
+          className="text-muted-foreground"
+        >
+          {afficherCouts ? (
+            <EyeOff className="size-4" />
+          ) : (
+            <Eye className="size-4" />
+          )}
+          {afficherCouts ? "Masquer mes coûts" : "Afficher mes coûts"}
+        </Button>
+      </div>
+
       {fields.length === 0 && (
         <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
           Aucune ligne. Ajoutez-en une depuis votre catalogue ou en saisie libre.
@@ -199,11 +264,11 @@ export function LignesEditor<T extends FieldValues>({
                 );
               }
 
+              const marge = margeLigne(lignesPourMarges[index]!);
+
               return (
-                <div
-                  key={field.id}
-                  className="space-y-2 px-3 py-3 sm:flex sm:items-start sm:gap-2 sm:space-y-0 sm:py-2"
-                >
+                <div key={field.id}>
+                <div className="space-y-2 px-3 py-3 sm:flex sm:items-start sm:gap-2 sm:space-y-0 sm:py-2">
                   {/* Désignation + nature URSSAF */}
                   <div className="space-y-1 sm:flex-1">
                     <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
@@ -294,6 +359,64 @@ export function LignesEditor<T extends FieldValues>({
                     </div>
                   </div>
                 </div>
+
+                {/* Volet PRIVÉ (toggle « Afficher mes coûts ») : prix
+                    d'achat TTC + fournisseur + marge — jamais rendu au
+                    client (liste blanche PDF, RLS owner-only). */}
+                {afficherCouts && (
+                  <div className="flex flex-wrap items-end gap-2 border-t border-dashed border-amber-300/60 bg-amber-500/5 px-3 py-2 dark:border-amber-800/60">
+                    <div className="space-y-0.5">
+                      <span className="block text-[11px] text-muted-foreground">
+                        Prix d'achat TTC (coût réel)
+                      </span>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
+                        placeholder="—"
+                        className="h-8 w-28 text-right"
+                        {...register(
+                          `${fieldName}.${index}.prix_achat_ttc_unitaire` as Path<T>,
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="block text-[11px] text-muted-foreground">
+                        Fournisseur
+                      </span>
+                      <Input
+                        type="text"
+                        autoComplete="off"
+                        placeholder="ex. Yukai, Artiplastic"
+                        className="h-8 w-40"
+                        {...register(
+                          `${fieldName}.${index}.fournisseur` as Path<T>,
+                        )}
+                      />
+                    </div>
+                    <div className="ml-auto pb-1 text-right text-xs tabular-nums">
+                      {marge.margeEuros === null ? (
+                        <span className="text-muted-foreground">
+                          marge : saisir un PA
+                        </span>
+                      ) : (
+                        <span
+                          className={
+                            marge.margeEuros < 0
+                              ? "font-medium text-destructive"
+                              : "font-medium text-green-700 dark:text-green-400"
+                          }
+                        >
+                          marge {formatEuros(marge.margeEuros)}
+                          {marge.margePct !== null
+                            ? ` (${marge.margePct.toLocaleString("fr-FR")} %)`
+                            : ""}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                </div>
               );
             })}
           </div>
@@ -305,6 +428,41 @@ export function LignesEditor<T extends FieldValues>({
               {formatEuros(totalHt)}
             </span>
           </div>
+
+          {/* Totaux PRIVÉS de marge (toggle actif uniquement) */}
+          {afficherCouts && (
+            <div className="space-y-1 border-t border-dashed border-amber-300/60 bg-amber-500/5 px-4 py-3 text-sm dark:border-amber-800/60">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">
+                  Coût d'achat total (TTC)
+                </span>
+                <span className="tabular-nums">
+                  {formatEuros(marges.coutTotal)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Marge totale</span>
+                <span
+                  className={
+                    marges.margeTotale < 0
+                      ? "font-semibold tabular-nums text-destructive"
+                      : "font-semibold tabular-nums text-green-700 dark:text-green-400"
+                  }
+                >
+                  {formatEuros(marges.margeTotale)}
+                  {marges.tauxMargePct !== null
+                    ? ` (${marges.tauxMargePct.toLocaleString("fr-FR")} %)`
+                    : ""}
+                </span>
+              </div>
+              {marges.nbLignesSansPa > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {marges.nbLignesSansPa} ligne(s) sans prix d'achat — exclue(s)
+                  de la marge.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

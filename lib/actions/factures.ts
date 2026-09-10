@@ -196,6 +196,8 @@ export async function createFactureAction(
     type: l.type ?? "ligne",
     quantite: l.quantite,
     prix_unitaire_ht: l.prix_unitaire_ht,
+    prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire ?? null,
+    fournisseur: l.fournisseur || null,
     total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
   }));
 
@@ -298,6 +300,8 @@ export async function updateFactureAction(
     type: l.type ?? "ligne",
     quantite: l.quantite,
     prix_unitaire_ht: l.prix_unitaire_ht,
+    prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire ?? null,
+    fournisseur: l.fournisseur || null,
     total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
   }));
   const { error: insertErr } = await supabase
@@ -443,6 +447,8 @@ export async function duplicateFactureAction(
       type: l.type ?? "ligne",
       quantite: Number(l.quantite),
       prix_unitaire_ht: Number(l.prix_unitaire_ht),
+      prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire ?? null,
+      fournisseur: l.fournisseur ?? null,
       total_ht: Number(l.total_ht),
     }));
     const { error: lignesErr } = await supabase

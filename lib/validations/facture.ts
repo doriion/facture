@@ -55,6 +55,19 @@ export const ligneFactureSchema = z.object({
       .min(0, "Le prix ne peut pas être négatif.")
       .max(1_000_000, "Prix trop élevé."),
   ),
+  // Coûts PRIVÉS de suivi de marge — jamais rendus au client (liste
+  // blanche lib/pdf-payload.ts). Prix d'achat saisi TTC : en franchise
+  // en base, la TVA sur achats n'est pas récupérée, le coût réel est
+  // le TTC payé au fournisseur.
+  prix_achat_ttc_unitaire: z.preprocess(
+    moneyInputOrNull,
+    z
+      .number({ error: "Prix d'achat invalide." })
+      .min(0, "Le prix d'achat ne peut pas être négatif.")
+      .max(1_000_000, "Prix d'achat trop élevé.")
+      .nullable(),
+  ),
+  fournisseur: z.string().trim().max(120).optional().or(z.literal("")),
   // Case URSSAF de la ligne. Défaut : prestations (les fournitures
   // posées dans le cadre d'une prestation restent des prestations).
   nature_fiscale: z
