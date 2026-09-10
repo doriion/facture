@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { renderToBuffer } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
+import { payloadLignesPdf } from "@/lib/pdf-payload";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import {
   buildDocumentEmail,
@@ -70,7 +71,7 @@ export async function envoyerFactureParEmailAction(
   const pdfBuffer = await renderToBuffer(
     FacturePdf({
       facture,
-      lignes,
+      lignes: payloadLignesPdf(lignes),
       client,
       profil,
       logoData: logoUrl,
@@ -166,7 +167,7 @@ export async function envoyerDevisParEmailAction(
     : null;
 
   const pdfBuffer = await renderToBuffer(
-    DevisPdf({ devis, lignes, client, profil, logoData: logoUrl }),
+    DevisPdf({ devis, lignes: payloadLignesPdf(lignes), client, profil, logoData: logoUrl }),
   );
 
   const expediteurNom =
@@ -269,7 +270,7 @@ export async function envoyerRelanceFactureAction(
   const pdfBuffer = await renderToBuffer(
     FacturePdf({
       facture,
-      lignes,
+      lignes: payloadLignesPdf(lignes),
       client,
       profil,
       logoData: logoUrl,

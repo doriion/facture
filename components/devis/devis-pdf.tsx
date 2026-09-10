@@ -33,7 +33,11 @@ import { mentionAcompte } from "@/lib/devis-mentions";
 import type { Database } from "@/types/database";
 
 type Devis = Database["public"]["Tables"]["devis"]["Row"];
-type Ligne = Database["public"]["Tables"]["devis_lignes"]["Row"];
+// Liste blanche : le PDF ne connaît QUE les champs destinés au client
+// (jamais prix_achat_ttc_unitaire / fournisseur — cf. lib/pdf-payload).
+import type { LignePdf } from "@/lib/pdf-payload";
+
+type Ligne = LignePdf;
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Profil = Database["public"]["Tables"]["profil_entreprise"]["Row"];
 
