@@ -30,7 +30,11 @@ import { computeSections } from "@/lib/sections";
 import type { Database } from "@/types/database";
 
 type Facture = Database["public"]["Tables"]["factures"]["Row"];
-type Ligne = Database["public"]["Tables"]["factures_lignes"]["Row"];
+// Liste blanche : le PDF ne connaît QUE les champs destinés au client
+// (jamais prix_achat_ttc_unitaire / fournisseur — cf. lib/pdf-payload).
+import type { LignePdf } from "@/lib/pdf-payload";
+
+type Ligne = LignePdf;
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Profil = Database["public"]["Tables"]["profil_entreprise"]["Row"];
 
@@ -270,6 +274,9 @@ export function FacturePdf({
   // Facture émise : mentions émetteur FIGÉES au moment de l'émission
   // (SIRET historisé) ; brouillon : profil courant.
   const profil = profilEffectif(profilCourant, facture.emetteur);
+  // Affichage TVA : figé dans le snapshot émetteur du document (les
+  // documents émis avant le réglage n'ont pas le champ → false).
+  const assujettiTva = profil?.assujetti_tva === true;
   const equip = (facture.equipement_info ?? {}) as Record<string, unknown>;
   const aides = (facture.aides_financieres ?? {}) as Record<string, unknown>;
   const isClimPac =
@@ -419,8 +426,12 @@ export function FacturePdf({
           <View style={styles.tableHeader}>
             <Text style={styles.colDesignation}>Désignation</Text>
             <Text style={styles.colQte}>Qté</Text>
-            <Text style={styles.colPu}>P.U. HT</Text>
-            <Text style={styles.colTotal}>Total HT</Text>
+            <Text style={styles.colPu}>
+              {assujettiTva ? "P.U. HT" : "P.U."}
+            </Text>
+            <Text style={styles.colTotal}>
+              {assujettiTva ? "Total HT" : "TOTAL"}
+            </Text>
           </View>
           {computeSections(lignes).sections.map((section, si) => (
             <View key={si}>
@@ -462,18 +473,24 @@ export function FacturePdf({
         {/* Totaux */}
         <View style={styles.totalsBlock}>
           <View style={styles.totalsTable}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total HT</Text>
-              <Text style={styles.totalValue}>{formatEuros(totalHt)}</Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>TVA</Text>
-              <Text style={styles.totalValue}>
-                non applicable (voir mention)
-              </Text>
-            </View>
+            {assujettiTva && (
+              <>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total HT</Text>
+                  <Text style={styles.totalValue}>
+                    {formatEuros(totalHt)}
+                  </Text>
+                </View>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>TVA</Text>
+                  <Text style={styles.totalValue}>
+                    non applicable (voir mention)
+                  </Text>
+                </View>
+              </>
+            )}
             <View style={styles.totalFinal}>
-              <Text style={styles.totalFinalLabel}>Net à payer</Text>
+              <Text style={styles.totalFinalLabel}>NET À PAYER</Text>
               <Text style={styles.totalFinalValue}>{formatEuros(totalHt)}</Text>
             </View>
           </View>

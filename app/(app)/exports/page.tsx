@@ -80,6 +80,30 @@ export default async function ExportsPage({
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">
+            Marges (interne — ne pas transmettre)
+          </CardTitle>
+          <CardDescription>
+            CSV privé : chaque ligne de facture de l'année avec prix
+            d'achat TTC, fournisseur et marge. Réservé à votre suivi — ces
+            données n'apparaissent sur aucun document client.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {[now.getFullYear(), now.getFullYear() - 1].map((annee) => (
+            <a
+              key={annee}
+              href={`/api/exports/marges?annee=${annee}`}
+              className="inline-flex h-10 items-center rounded-md border px-4 text-sm font-medium hover:bg-accent"
+            >
+              Télécharger marges {annee} (CSV)
+            </a>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Détail et export</CardTitle>
           <CardDescription>
             Les encaissements comptés dans la période, pour vérification,

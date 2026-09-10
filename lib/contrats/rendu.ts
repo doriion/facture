@@ -43,6 +43,7 @@ export const CHAMPS_PRESTATAIRE = [
   "mediateur_site_web",
   "decennale_valide_jusquau",
   "fluides_valide_jusquau",
+  "assujetti_tva",
 ] as const;
 
 export type PrestataireSnapshot = Partial<
