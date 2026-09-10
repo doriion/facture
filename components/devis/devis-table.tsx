@@ -86,7 +86,7 @@ export function DevisTable({ devis }: { devis: DevisRow[] }) {
             <TableHead>Client</TableHead>
             <TableHead>Activité</TableHead>
             <TableHead>Statut</TableHead>
-            <TableHead className="text-right">Total HT</TableHead>
+            <TableHead className="text-right">Total</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

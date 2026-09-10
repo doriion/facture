@@ -190,7 +190,7 @@ export default async function ClientDetailPage({
                   <TableHead>Numéro</TableHead>
                   <TableHead>Émission</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Total HT</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -249,7 +249,7 @@ export default async function ClientDetailPage({
                   <TableHead>Émission</TableHead>
                   <TableHead>Validité</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Total HT</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

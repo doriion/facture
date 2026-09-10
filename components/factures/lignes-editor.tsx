@@ -73,6 +73,7 @@ export function LignesEditor<T extends FieldValues>({
   errors,
   produits,
   fieldName = "lignes" as Path<T>,
+  assujettiTva = false,
 }: {
   control: Control<T>;
   register: UseFormRegister<T>;
@@ -80,6 +81,7 @@ export function LignesEditor<T extends FieldValues>({
   errors: FieldErrors<T>;
   produits: Produit[];
   fieldName?: Path<T>;
+  assujettiTva?: boolean;
 }) {
   const { fields, append, remove } = useFieldArray<T>({
     control,
@@ -215,7 +217,7 @@ export function LignesEditor<T extends FieldValues>({
           <div className="hidden border-b bg-muted/30 px-3 py-2 sm:flex sm:items-center sm:gap-2 sm:text-xs sm:font-medium sm:uppercase sm:tracking-wide sm:text-muted-foreground">
             <div className="flex-1">Désignation</div>
             <div className="w-20 text-right">Qté</div>
-            <div className="w-24 text-right">P.U. HT</div>
+            <div className="w-24 text-right">{assujettiTva ? "P.U. HT" : "P.U."}</div>
             <div className="w-24 text-right">Total</div>
             <div className="w-9" />
           </div>
@@ -319,7 +321,7 @@ export function LignesEditor<T extends FieldValues>({
                     </div>
                     <div className="space-y-1 sm:w-24">
                       <span className="block text-[11px] text-muted-foreground sm:hidden">
-                        P.U. HT (€)
+                        {assujettiTva ? "P.U. HT (€)" : "P.U. (€)"}
                       </span>
                       <Input
                         type="text"
@@ -422,7 +424,7 @@ export function LignesEditor<T extends FieldValues>({
           </div>
           <div className="flex items-center justify-between gap-4 border-t bg-muted/30 px-4 py-3 sm:justify-end">
             <span className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-              Total HT
+              {assujettiTva ? "Total HT" : "Total"}
             </span>
             <span className="text-lg font-semibold tabular-nums">
               {formatEuros(totalHt)}
