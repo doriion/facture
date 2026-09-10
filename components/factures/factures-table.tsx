@@ -94,7 +94,7 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
             <TableHead>Client</TableHead>
             <TableHead>Activité</TableHead>
             <TableHead>Statut</TableHead>
-            <TableHead className="text-right">Total HT</TableHead>
+            <TableHead className="text-right">Total</TableHead>
             <TableHead className="w-0" />
           </TableRow>
         </TableHeader>

@@ -1233,6 +1233,7 @@ export type Database = {
           rappels_fenetre_jours: number;
           automatisations_simulation: boolean;
           auto_email_taches_active: boolean;
+          assujetti_tva: boolean;
           banque_nom: string | null;
           bic: string | null;
           calendar_token: string | null;
@@ -1283,6 +1284,7 @@ export type Database = {
           rappels_fenetre_jours?: number;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
+          assujetti_tva?: boolean;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;
@@ -1333,6 +1335,7 @@ export type Database = {
           rappels_fenetre_jours?: number;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
+          assujetti_tva?: boolean;
           banque_nom?: string | null;
           bic?: string | null;
           calendar_token?: string | null;

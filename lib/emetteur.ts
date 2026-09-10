@@ -40,6 +40,9 @@ export const CHAMPS_EMETTEUR = [
   "num_rm",
   "num_rge_qualipac",
   "num_attestation_fluides_frigo",
+  // Affichage TVA figé à l'émission : basculer le réglage plus tard
+  // ne doit jamais changer un document déjà émis.
+  "assujetti_tva",
 ] as const;
 
 export type EmetteurSnapshot = Partial<
