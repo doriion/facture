@@ -49,6 +49,8 @@ const lignes: DevisLigneRow[] = [
     total_ht: 3800,
     nature_fiscale: "bic_prestations",
     type: "ligne",
+    prix_achat_ttc_unitaire: null,
+    fournisseur: null,
     created_at: "2026-03-15T09:00:00Z",
   },
   {
@@ -62,6 +64,8 @@ const lignes: DevisLigneRow[] = [
     total_ht: 700,
     nature_fiscale: "bic_ventes",
     type: "ligne",
+    prix_achat_ttc_unitaire: null,
+    fournisseur: null,
     created_at: "2026-03-15T09:00:00Z",
   },
 ];

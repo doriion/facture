@@ -606,6 +606,8 @@ export type Database = {
           type: string;
           ordre: number;
           prix_unitaire_ht: number;
+          prix_achat_ttc_unitaire: number | null;
+          fournisseur: string | null;
           quantite: number;
           total_ht: number;
           user_id: string;
@@ -619,6 +621,8 @@ export type Database = {
           type?: string;
           ordre?: number;
           prix_unitaire_ht: number;
+          prix_achat_ttc_unitaire?: number | null;
+          fournisseur?: string | null;
           quantite?: number;
           total_ht: number;
           user_id: string;
@@ -627,6 +631,8 @@ export type Database = {
           created_at?: string;
           designation?: string;
           devis_id?: string;
+          prix_achat_ttc_unitaire?: number | null;
+          fournisseur?: string | null;
           id?: string;
           nature_fiscale?: string;
           type?: string;
@@ -751,6 +757,8 @@ export type Database = {
           type: string;
           ordre: number;
           prix_unitaire_ht: number;
+          prix_achat_ttc_unitaire: number | null;
+          fournisseur: string | null;
           quantite: number;
           total_ht: number;
           user_id: string;
@@ -764,6 +772,8 @@ export type Database = {
           type?: string;
           ordre?: number;
           prix_unitaire_ht: number;
+          prix_achat_ttc_unitaire?: number | null;
+          fournisseur?: string | null;
           quantite?: number;
           total_ht: number;
           user_id: string;
@@ -772,6 +782,8 @@ export type Database = {
           created_at?: string;
           designation?: string;
           facture_id?: string;
+          prix_achat_ttc_unitaire?: number | null;
+          fournisseur?: string | null;
           id?: string;
           nature_fiscale?: string;
           type?: string;

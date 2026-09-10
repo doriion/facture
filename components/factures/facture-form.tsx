@@ -93,6 +93,11 @@ export function FactureForm({
         designation: l.designation,
         quantite: Number(l.quantite),
         prix_unitaire_ht: Number(l.prix_unitaire_ht),
+        prix_achat_ttc_unitaire:
+          l.prix_achat_ttc_unitaire === null || l.prix_achat_ttc_unitaire === undefined
+            ? null
+            : Number(l.prix_achat_ttc_unitaire),
+        fournisseur: l.fournisseur ?? "",
         nature_fiscale: (l.nature_fiscale ?? "bic_prestations") as NatureFiscale,
         type: (l.type ?? "ligne") as "ligne" | "titre",
       }))

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { renderToStream } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
+import { payloadLignesPdf } from "@/lib/pdf-payload";
 import { DevisPdf } from "@/components/devis/devis-pdf";
 
 export const runtime = "nodejs";
@@ -94,7 +95,8 @@ export async function GET(
   const stream = await renderToStream(
     DevisPdf({
       devis: devisClean,
-      lignes: lignesRes.data ?? [],
+      // Liste blanche : exclut les coûts privés (prix d'achat, fournisseur)
+      lignes: payloadLignesPdf(lignesRes.data ?? []),
       client,
       profil: profilRes.data,
       logoData,
