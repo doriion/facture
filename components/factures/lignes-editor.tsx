@@ -26,11 +26,10 @@ import {
 } from "@/components/ui/select";
 import { formatEuros, parseMoneyInput } from "@/lib/format";
 import { margeLigne, totauxMarges } from "@/lib/marges";
+import { ecrireAfficherCouts, lireAfficherCouts } from "@/lib/afficher-couts";
 import { contientMateriel } from "@/lib/sections";
 import type { Database } from "@/types/database";
 
-/** Clé localStorage du toggle « Afficher mes coûts » (privé, off par défaut). */
-const CLE_AFFICHER_COUTS = "facture-ae:afficher-couts";
 
 /** Convertit une valeur de champ (string tolérant FR/EN) en number sûr. */
 function toNum(v: number | string | null | undefined): number {
@@ -96,19 +95,11 @@ export function LignesEditor<T extends FieldValues>({
   // restent dans le formulaire même toggle éteint.
   const [afficherCouts, setAfficherCouts] = useState(false);
   useEffect(() => {
-    try {
-      setAfficherCouts(localStorage.getItem(CLE_AFFICHER_COUTS) === "1");
-    } catch {
-      // localStorage indisponible : reste masqué
-    }
+    setAfficherCouts(lireAfficherCouts());
   }, []);
   function basculerCouts() {
     setAfficherCouts((v) => {
-      try {
-        localStorage.setItem(CLE_AFFICHER_COUTS, v ? "0" : "1");
-      } catch {
-        // tant pis pour la persistance
-      }
+      ecrireAfficherCouts(!v);
       return !v;
     });
   }
@@ -163,8 +154,14 @@ export function LignesEditor<T extends FieldValues>({
       designation,
       quantite: 1,
       prix_unitaire_ht: Number(p.prix_ht),
-      prix_achat_ttc_unitaire: null,
-      fournisseur: "",
+      // Coûts repris du catalogue (modifiables ligne par ligne) :
+      // sans ça, la marge d'une ligne issue du catalogue repartait
+      // toujours de zéro.
+      prix_achat_ttc_unitaire:
+        p.prix_achat_ttc === null || p.prix_achat_ttc === undefined
+          ? null
+          : Number(p.prix_achat_ttc),
+      fournisseur: p.fournisseur ?? "",
       nature_fiscale: p.nature_fiscale ?? "bic_prestations",
       type: "ligne",
     } as unknown as FieldArray<T, ArrayPath<T>>);

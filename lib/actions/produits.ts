@@ -66,6 +66,8 @@ export async function createProduitAction(
       designation: v.designation,
       description: v.description || null,
       prix_ht: v.prix_ht,
+      prix_achat_ttc: v.prix_achat_ttc ?? null,
+      fournisseur: v.fournisseur || null,
       unite: v.unite,
       categorie: v.categorie,
       nature_fiscale: v.nature_fiscale,
@@ -101,6 +103,8 @@ export async function updateProduitAction(
       designation: v.designation,
       description: v.description || null,
       prix_ht: v.prix_ht,
+      prix_achat_ttc: v.prix_achat_ttc ?? null,
+      fournisseur: v.fournisseur || null,
       unite: v.unite,
       categorie: v.categorie,
       nature_fiscale: v.nature_fiscale,
@@ -144,8 +148,14 @@ export async function duplicateProduitAction(
       designation: `${source.designation} (copie)`,
       description: source.description,
       prix_ht: source.prix_ht,
+      prix_achat_ttc: source.prix_achat_ttc,
+      fournisseur: source.fournisseur,
       unite: source.unite,
       categorie: source.categorie,
+      // nature_fiscale était oubliée : la copie retombait sur le défaut
+      // « prestation », faussant la ventilation URSSAF des lignes créées
+      // depuis elle.
+      nature_fiscale: source.nature_fiscale,
       tva_taux_suggere: source.tva_taux_suggere,
       actif: source.actif,
     })
