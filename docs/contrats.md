@@ -88,15 +88,45 @@ l'écran d'authentification Vercel avant l'app).
    existants (brouillons compris, tant qu'ils portent 1) restent
    rendus avec v1.
 
-## Phase 2 prévue (non implémentée)
+## Automatisations branchées
 
-Les colonnes existent déjà, prêtes à brancher sur le cron quotidien
-(`lib/cron/registre.ts`, même patron que relances/rappels) :
+Deux jobs dans le cron quotidien (`lib/cron/registre.ts`), dans cet
+ordre — la reconduction doit passer AVANT l'avis, sinon un contrat au
+terme dépassé reste invisible pour la fenêtre de l'avis suivant.
 
-- `rappel_chatel_envoye_pour` : email loi Chatel au client
-  particulier, à envoyer entre 3 mois et 1 mois avant
-  `date_echeance` (obligation L. 215-1 — viser J-60) ; anti-doublon
-  par échéance, `date_echeance` avancée d'un an à chaque reconduction.
+**`reconduction-contrats`** (toujours actif, aucun contact client).
+Avance `date_echeance` d'un an sur les contrats `signe`/`actif` dont le
+terme est passé, comme l'article 7 le prévoit. Idempotent, rattrape
+plusieurs années d'un coup, ne réécrit pas une échéance modifiée
+entre-temps. Sélection pure : `lib/contrats/reconduction.ts`.
+
+**`avis-chatel`** (interrupteur `auto_chatel_active`, livré à `false`,
+soumis au mode simulation). Informe le client PARTICULIER de sa
+faculté de ne pas reconduire — obligation des articles L. 215-1 et
+suivants du code de la consommation, rappelée par l'article 7 du
+contrat. Fenêtre : envoi visé à J-60, rattrapage jusqu'à J-32 ; les
+deux bornes gardent une marge sur les bornes légales (J-90 / J-30)
+parce que le cron peut sauter un jour et qu'un avis hors délai ne vaut
+pas information. Anti-doublon par `rappel_chatel_envoye_pour`,
+mémorisé AVANT la copie à l'artisan. Destinataire lu dans
+`client_snapshot` (l'adresse du contrat signé, pas la fiche client
+modifiée depuis). Sélection pure : `lib/contrats/chatel.ts`.
+
+### PDF signé manquant
+
+Si le dépôt du PDF échoue au moment de la signature, la signature
+reste acquise et `pdf_path` reste nul. Le contrat apparaît alors sur
+le tableau de bord (« Contrats signés sans PDF archivé ») et sur sa
+propre fiche, avec un bouton de régénération
+(`regenererPdfContratAction`) qui n'écrit que `pdf_path` et
+`pdf_sha256` — jamais la signature, le statut ni le contenu.
+
+L'empreinte est reproductible : les dates du document PDF sont figées
+sur `signed_at`, sinon react-pdf tamponne l'instant du rendu et
+l'empreinte changerait à chaque génération.
+
+## Reste à faire
+
 - `rappel_visite_envoye_pour` : rappel interne de planification de la
   visite annuelle.
 - Après signature, le bouton « Passer en actif » peut être complété

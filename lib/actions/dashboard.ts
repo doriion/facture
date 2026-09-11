@@ -95,6 +95,16 @@ export type DashboardData = {
     intitule: string | null;
     client_nom: string | null;
   }>;
+  /**
+   * Contrats signés dont le PDF archivé manque (upload échoué au
+   * moment de la signature) — régénérable depuis la fiche contrat.
+   */
+  contratsPdfManquant: Array<{
+    id: string;
+    numero: string | null;
+    signed_at: string;
+    client_nom: string | null;
+  }>;
   /** Attestations à renouveler (décennale, fluides) — alerte J-30, rouge si dépassée */
   attestations: Array<{
     label: string;
@@ -497,6 +507,31 @@ export async function getDashboardData(): Promise<DashboardData> {
     client_nom: c.client?.nom ?? null,
   }));
 
+  // Contrats signés sans PDF archivé : la signature est acquise mais
+  // le fichier n'a pas pu être déposé. Régénérable sans toucher à la
+  // signature (cf. regenererPdfContratAction).
+  const { data: contratsSansPdf } = await supabase
+    .from("contrats")
+    .select("id, numero, signed_at, client:clients(nom)")
+    .in("statut", ["signe", "actif"])
+    .not("signed_at", "is", null)
+    .not("signature_path", "is", null)
+    .is("pdf_path", null)
+    .order("signed_at", { ascending: false })
+    .limit(8);
+
+  const contratsPdfManquant = ((contratsSansPdf ?? []) as Array<{
+    id: string;
+    numero: string | null;
+    signed_at: string;
+    client: { nom: string } | null;
+  }>).map((c) => ({
+    id: c.id,
+    numero: c.numero,
+    signed_at: c.signed_at,
+    client_nom: c.client?.nom ?? null,
+  }));
+
   // Alertes de validité des attestations (logique testée dans
   // lib/attestations) — affichées 30 j avant l'échéance, rouge après.
   const attestations: DashboardData["attestations"] = [];
@@ -534,6 +569,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     facturesEnRetard,
     devisExpirantBientot,
     prochainesVisitesMaintenance,
+    contratsPdfManquant,
     attestations,
   };
 }

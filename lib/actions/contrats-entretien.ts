@@ -15,7 +15,18 @@ import {
   expirationToken,
   TEMPLATE_VERSION_COURANTE,
 } from "@/lib/contrats/logic";
-import { buildPrestataireSnapshot } from "@/lib/contrats/rendu";
+import * as Sentry from "@sentry/nextjs";
+
+import {
+  buildPrestataireSnapshot,
+  prestataireEffectif,
+  type ClientSnapshot,
+} from "@/lib/contrats/rendu";
+import {
+  chargerLogoDataUri,
+  chargerSignatureDataUri,
+  rendreContratSigne,
+} from "@/lib/contrats/pdf-helpers";
 import { buildLienContratEmail, isEmailConfigured, sendEmail } from "@/lib/email";
 import { formatDateFr } from "@/lib/format";
 
@@ -418,4 +429,105 @@ export async function changerStatutContratAction(
   revalidatePath("/contrats");
   revalidatePath(`/contrats/${id}`);
   return { ok: true, data: undefined };
+}
+
+/**
+ * Régénère le PDF archivé d'un contrat SIGNÉ dont le fichier manque
+ * (échec de l'upload au moment de la signature : la signature a bien
+ * été enregistrée, mais le PDF n'a pas pu être déposé).
+ *
+ * Ne touche NI à la signature, NI au statut, NI aux données du
+ * contrat : seuls pdf_path et pdf_sha256 sont écrits. Le PDF est
+ * reconstruit à partir des données archivées et de l'image de
+ * signature du bucket immuable, avec les dates du document figées sur
+ * l'horodatage de signature — l'empreinte obtenue est donc la même que
+ * celle du document présenté au signataire.
+ */
+export async function regenererPdfContratAction(
+  id: string,
+): Promise<ActionResult<{ sha256: string }>> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const { data: contrat } = await supabase
+    .from("contrats")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (!contrat) return { ok: false, error: "Contrat introuvable." };
+  if (!contrat.signed_at || !contrat.signature_path) {
+    return {
+      ok: false,
+      error: "Ce contrat n'est pas signé — il n'y a pas de PDF signé à régénérer.",
+    };
+  }
+  if (contrat.pdf_path) {
+    return {
+      ok: false,
+      error: "Le PDF signé de ce contrat est déjà archivé.",
+    };
+  }
+
+  const { data: profil } = await supabase
+    .from("profil_entreprise")
+    .select("logo_url")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const clientSnapshot: ClientSnapshot =
+    contrat.client_snapshot && typeof contrat.client_snapshot === "object"
+      ? (contrat.client_snapshot as ClientSnapshot)
+      : {};
+
+  try {
+    const [logoData, signatureData] = await Promise.all([
+      chargerLogoDataUri(supabase, profil?.logo_url),
+      chargerSignatureDataUri(supabase, contrat.signature_path),
+    ]);
+
+    const { pdf, sha256 } = await rendreContratSigne({
+      contrat,
+      prestataire: prestataireEffectif(null, contrat.prestataire),
+      clientSnapshot,
+      logoData,
+      signatureData,
+    });
+
+    const pdfPath = `${contrat.user_id}/contrats/${contrat.id}/contrat-${contrat.numero ?? contrat.id}-signe.pdf`;
+    const { error: uploadErr } = await supabase.storage
+      .from("pdfs")
+      .upload(pdfPath, pdf, { contentType: "application/pdf", upsert: true });
+    if (uploadErr) {
+      return { ok: false, error: `Dépôt du PDF : ${uploadErr.message}` };
+    }
+
+    // `.is("pdf_path", null)` : ne jamais écraser un PDF archivé entre-temps.
+    const { error: updateErr } = await supabase
+      .from("contrats")
+      .update({
+        pdf_path: pdfPath,
+        pdf_sha256: sha256,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .is("pdf_path", null);
+    if (updateErr) return { ok: false, error: updateErr.message };
+
+    revalidatePath("/contrats");
+    revalidatePath(`/contrats/${id}`);
+    revalidatePath("/dashboard");
+    return { ok: true, data: { sha256 } };
+  } catch (e) {
+    Sentry.captureException(e);
+    return {
+      ok: false,
+      error:
+        e instanceof Error
+          ? `Génération du PDF : ${e.message}`
+          : "Génération du PDF impossible.",
+    };
+  }
 }
