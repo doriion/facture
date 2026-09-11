@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
+import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
 import {
   conversionDevisAutorisee,
   motifVerrouDevis,
@@ -336,30 +337,26 @@ export async function updateDevisAction(
 
   if (updateErr) return { ok: false, error: updateErr.message };
 
-  // Remplacement intégral des lignes
-  const { error: deleteErr } = await supabase
-    .from("devis_lignes")
-    .delete()
-    .eq("devis_id", id);
-  if (deleteErr) return { ok: false, error: deleteErr.message };
-
-  const lignesPayload = v.lignes.map((l, idx) => ({
-    user_id: user.id,
-    devis_id: id,
-    ordre: idx,
-    designation: l.designation,
-    nature_fiscale: l.nature_fiscale ?? "bic_prestations",
-    type: l.type ?? "ligne",
-    quantite: l.quantite,
-    prix_unitaire_ht: l.prix_unitaire_ht,
-    prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire ?? null,
-    fournisseur: l.fournisseur || null,
-    total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
-  }));
-  const { error: insertErr } = await supabase
-    .from("devis_lignes")
-    .insert(lignesPayload);
-  if (insertErr) return { ok: false, error: insertErr.message };
+  // Remplacement intégral des lignes, en UNE transaction côté base :
+  // un échec ne peut plus laisser le devis sans aucune ligne.
+  const remplacement = await remplacerLignesDocument(
+    supabase,
+    "devis",
+    id,
+    user.id,
+    v.lignes.map((l, idx) => ({
+      ordre: idx,
+      designation: l.designation,
+      nature_fiscale: l.nature_fiscale ?? "bic_prestations",
+      type: l.type ?? "ligne",
+      quantite: l.quantite,
+      prix_unitaire_ht: l.prix_unitaire_ht,
+      prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire ?? null,
+      fournisseur: l.fournisseur || null,
+      total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
+    })),
+  );
+  if (!remplacement.ok) return { ok: false, error: remplacement.error };
 
   revalidatePath("/devis");
   revalidatePath(`/devis/${id}`);
