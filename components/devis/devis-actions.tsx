@@ -50,6 +50,7 @@ export function DevisActions({
   clientEmail,
   clientNom,
   estModele = false,
+  signee = false,
 }: {
   devisId: string;
   numero: string;
@@ -58,6 +59,8 @@ export function DevisActions({
   clientEmail?: string | null;
   clientNom?: string;
   estModele?: boolean;
+  /** Signature « Bon pour accord » enregistrée → devis figé. */
+  signee?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
@@ -200,18 +203,22 @@ export function DevisActions({
         </Link>
       </Button>
 
-      <Button
-        variant="outline"
-        onClick={() => onToggleModele(true)}
-        disabled={pending === "modele"}
-      >
-        {pending === "modele" ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <Bookmark className="size-4" />
-        )}
-        Enregistrer comme modèle
-      </Button>
+      {/* Un devis signé ou converti est un document engageant : il ne
+          part pas dans les modèles (où il sortirait des statistiques). */}
+      {!signee && !factureId && (
+        <Button
+          variant="outline"
+          onClick={() => onToggleModele(true)}
+          disabled={pending === "modele"}
+        >
+          {pending === "modele" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Bookmark className="size-4" />
+          )}
+          Enregistrer comme modèle
+        </Button>
+      )}
 
       {factureId && (
         <Button variant="outline" asChild>
