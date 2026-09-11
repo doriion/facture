@@ -4,6 +4,8 @@ import type { JobDef } from "@/lib/cron/jobs";
 import { jobSauvegarde } from "@/lib/cron/jobs/sauvegarde";
 import { jobRelances } from "@/lib/cron/jobs/relances";
 import { jobRappels } from "@/lib/cron/jobs/rappels";
+import { jobReconduction } from "@/lib/cron/jobs/reconduction";
+import { jobChatel } from "@/lib/cron/jobs/chatel";
 import { jobEmailTaches } from "@/lib/cron/jobs/taches";
 
 /**
@@ -15,5 +17,10 @@ export const JOBS: JobDef[] = [
   jobSauvegarde,
   jobRelances,
   jobRappels,
+  // ORDRE IMPORTANT : la reconduction avance les échéances échues
+  // AVANT que l'avis loi Chatel ne calcule sa fenêtre — sinon un
+  // contrat au terme dépassé resterait invisible pour l'avis suivant.
+  jobReconduction,
+  jobChatel,
   jobEmailTaches,
 ];
