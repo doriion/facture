@@ -256,8 +256,9 @@ export function DevisForm({
         <CardHeader>
           <CardTitle>Client et dates</CardTitle>
           <CardDescription>
-            Validité par défaut : {dureeValidite} jours (réglable dans
-            Paramètres, modifiable ici).
+            {isEdit
+              ? "Modifiez les dates si besoin."
+              : `Validité par défaut : ${dureeValidite} jours (réglable dans Paramètres, modifiable ici).`}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">

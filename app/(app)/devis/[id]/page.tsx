@@ -7,7 +7,11 @@ import { listProduits } from "@/lib/actions/produits";
 import { getDevis } from "@/lib/actions/devis";
 import { getProfil } from "@/lib/actions/profil";
 import { statutAffichageDevis } from "@/lib/validations/devis";
-import { assujettiTvaEffectif } from "@/lib/tva-garde";
+import {
+  assujettiTvaEffectif,
+  documentEmis,
+  explicationMoteurTva,
+} from "@/lib/tva-garde";
 import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { DevisForm } from "@/components/devis/devis-form";
 import { DevisActions } from "@/components/devis/devis-actions";
@@ -35,6 +39,13 @@ export default async function EditDevisPage({
 
   const statutAffiche = statutAffichageDevis(devis.statut, devis.date_validite);
   const isLocked = !!devis.facture_id;
+
+  // Garde TVA : la route PDF répond 501, mais un `<a download>` avale le
+  // corps de la réponse — on explique donc côté page.
+  const assujettiTva = assujettiTvaEffectif(profil, devis.emetteur);
+  const pdfBloqueMotif = assujettiTva
+    ? explicationMoteurTva(documentEmis(devis.emetteur))
+    : null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -91,6 +102,7 @@ export default async function EditDevisPage({
               clientEmail={client?.email ?? null}
               clientNom={client?.nom ?? "le client"}
               estModele={devis.est_modele}
+              pdfBloqueMotif={pdfBloqueMotif}
             />
           </div>
         </div>
@@ -107,7 +119,8 @@ export default async function EditDevisPage({
           devis={devis}
           lignes={lignes}
           defaultConditions={profil?.conditions_paiement_default}
-          assujettiTva={assujettiTvaEffectif(profil, devis.emetteur)}
+          dureeValiditeJours={profil?.duree_validite_devis_jours}
+          assujettiTva={assujettiTva}
         />
       )}
     </div>

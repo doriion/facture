@@ -20,7 +20,11 @@ import { FactureActions } from "@/components/factures/facture-actions";
 import { StatutBadge } from "@/components/factures/statut-badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr, formatEuros } from "@/lib/format";
-import { assujettiTvaEffectif } from "@/lib/tva-garde";
+import {
+  assujettiTvaEffectif,
+  documentEmis,
+  explicationMoteurTva,
+} from "@/lib/tva-garde";
 import type { StatutFacture } from "@/lib/validations/facture";
 
 export const metadata = { title: "Édition facture — Facture AE" };
@@ -57,6 +61,11 @@ export default async function EditFacturePage({
   const isLocked = facture.statut === "annulee";
   // Libellés « HT » figés avec le document (snapshot émetteur).
   const assujettiTva = assujettiTvaEffectif(profil, facture.emetteur);
+  // Garde TVA : la route PDF répond 501, mais un `<a download>` avale le
+  // corps de la réponse — on explique donc côté page.
+  const pdfBloqueMotif = assujettiTva
+    ? explicationMoteurTva(documentEmis(facture.emetteur))
+    : null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -95,6 +104,7 @@ export default async function EditFacturePage({
               statut={facture.statut as StatutFacture}
               clientEmail={client?.email ?? null}
               clientNom={client?.nom ?? "le client"}
+              pdfBloqueMotif={pdfBloqueMotif}
             />
           </div>
         </div>

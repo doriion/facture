@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   assujettiTvaEffectif,
+  documentEmis,
   estErreurMoteurTva,
+  explicationMoteurTva,
   MESSAGE_MOTEUR_TVA,
   MoteurTvaNonImplementeError,
   verifierMoteurTva,
@@ -82,6 +84,36 @@ describe("verifierMoteurTva", () => {
     expect((erreur as MoteurTvaNonImplementeError).explication).toContain(
       MESSAGE_MOTEUR_TVA,
     );
+  });
+});
+
+describe("explicationMoteurTva", () => {
+  it("brouillon : conseille de décocher le réglage", () => {
+    const texte = explicationMoteurTva(false);
+    expect(texte).toContain("brouillon");
+    expect(texte).toContain("décochez");
+  });
+
+  it("document émis : ne promet PAS que décocher débloquera ce document", () => {
+    const texte = explicationMoteurTva(true);
+    expect(texte).toContain("figées");
+    expect(texte).toContain("ne débloquera pas celui-ci");
+  });
+
+  it("l'erreur choisit le message selon la présence du snapshot", () => {
+    expect(
+      new MoteurTvaNonImplementeError({ assujetti_tva: true }).explication,
+    ).toBe(explicationMoteurTva(true));
+    expect(new MoteurTvaNonImplementeError(null).explication).toBe(
+      explicationMoteurTva(false),
+    );
+  });
+
+  it("documentEmis ne retient que les snapshots exploitables", () => {
+    expect(documentEmis({ siret: "x" })).toBe(true);
+    expect(documentEmis(null)).toBe(false);
+    expect(documentEmis(undefined)).toBe(false);
+    expect(documentEmis("texte")).toBe(false);
   });
 });
 
