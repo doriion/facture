@@ -66,7 +66,7 @@ export function ProduitsTable({ produits }: { produits: Produit[] }) {
           <TableRow>
             <TableHead>Désignation</TableHead>
             <TableHead>Catégorie</TableHead>
-            <TableHead className="text-right">Prix HT</TableHead>
+            <TableHead className="text-right">Prix unitaire</TableHead>
             <TableHead>Unité</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead className="w-[160px] text-right">Actions</TableHead>

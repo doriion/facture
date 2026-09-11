@@ -20,6 +20,7 @@ import { FactureActions } from "@/components/factures/facture-actions";
 import { StatutBadge } from "@/components/factures/statut-badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr, formatEuros } from "@/lib/format";
+import { assujettiTvaEffectif } from "@/lib/tva-garde";
 import type { StatutFacture } from "@/lib/validations/facture";
 
 export const metadata = { title: "Édition facture — Facture AE" };
@@ -54,6 +55,8 @@ export default async function EditFacturePage({
   ]);
 
   const isLocked = facture.statut === "annulee";
+  // Libellés « HT » figés avec le document (snapshot émetteur).
+  const assujettiTva = assujettiTvaEffectif(profil, facture.emetteur);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -143,6 +146,7 @@ export default async function EditFacturePage({
           facture={facture}
           lignes={lignes}
           defaultConditionsPaiement={profil?.conditions_paiement_default}
+          assujettiTva={assujettiTva}
         />
       )}
 
@@ -162,6 +166,7 @@ export default async function EditFacturePage({
             factureId={facture.id}
             totalParent={Number(facture.total_ht)}
             enfants={enfants}
+            assujettiTva={assujettiTva}
           />
         )}
 

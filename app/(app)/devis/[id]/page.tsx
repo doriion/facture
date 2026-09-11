@@ -7,6 +7,7 @@ import { listProduits } from "@/lib/actions/produits";
 import { getDevis } from "@/lib/actions/devis";
 import { getProfil } from "@/lib/actions/profil";
 import { statutAffichageDevis } from "@/lib/validations/devis";
+import { assujettiTvaEffectif } from "@/lib/tva-garde";
 import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { DevisForm } from "@/components/devis/devis-form";
 import { DevisActions } from "@/components/devis/devis-actions";
@@ -106,6 +107,7 @@ export default async function EditDevisPage({
           devis={devis}
           lignes={lignes}
           defaultConditions={profil?.conditions_paiement_default}
+          assujettiTva={assujettiTvaEffectif(profil, devis.emetteur)}
         />
       )}
     </div>

@@ -55,7 +55,7 @@ export default async function FacturesPage({
               style: "currency",
               currency: "EUR",
             })}{" "}
-            HT cumulés
+            cumulés
           </p>
         </div>
         {/* Desktop : CTA en haut à droite. Mobile : barre fixe en bas. */}

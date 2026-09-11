@@ -63,6 +63,7 @@ export function DevisForm({
   defaultConditions,
   dureeValiditeJours,
   prefill,
+  assujettiTva = false,
 }: {
   clients: Client[];
   produits: Produit[];
@@ -71,6 +72,8 @@ export function DevisForm({
   defaultConditions?: string | null;
   /** Réglage duree_validite_devis_jours (défaut 30) */
   dureeValiditeJours?: number | null;
+  /** Libellés « HT » uniquement si le document est assujetti (snapshot). */
+  assujettiTva?: boolean;
   prefill?: {
     devis: Partial<Devis>;
     lignes: Array<{
@@ -409,6 +412,7 @@ export function DevisForm({
             watch={watch}
             errors={errors}
             produits={produits}
+            assujettiTva={assujettiTva}
           />
         </CardContent>
       </Card>
