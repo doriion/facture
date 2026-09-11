@@ -32,7 +32,9 @@ export default async function NouveauDevisPage({
   if (searchParams.source) {
     const { devis: source, lignes } = await getDevis(searchParams.source);
     if (source) {
-      prefill = buildDevisDuplicata(source, lignes);
+      prefill = buildDevisDuplicata(source, lignes, {
+        dureeValiditeJours: profil?.duree_validite_devis_jours,
+      });
       sourceNumero = source.numero;
     }
   }
