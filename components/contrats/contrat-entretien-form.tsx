@@ -25,6 +25,12 @@ import {
   netAPayer,
 } from "@/lib/contrats/logic";
 import { equipementsDe } from "@/lib/contrats/rendu";
+import {
+  equipementsContratDepuisCalcul,
+  type BaremeEntretien,
+  type ResultatCalcul,
+} from "@/lib/bareme-entretien";
+import { CalculateurEntretienDialog } from "@/components/entretien/calculateur-entretien-dialog";
 import { mentionTvaFranchise } from "@/lib/legal-text";
 import { formatEuros, parseMoneyInput } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -69,10 +75,13 @@ export function ContratEntretienForm({
   clients,
   contrat,
   clientIdInitial,
+  baremeEntretien = null,
 }: {
   clients: Client[];
   contrat?: ContratEntretienRow;
   clientIdInitial?: string;
+  /** Barème d'entretien : « Calculer avec le barème » remplit redevance + équipements. */
+  baremeEntretien?: BaremeEntretien | null;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -84,6 +93,7 @@ export function ContratEntretienForm({
     handleSubmit,
     control,
     setValue,
+    getValues,
     watch,
     formState: { errors },
   } = useForm<ContratEntretienFormInput, unknown, ContratEntretienFormValues>({
@@ -105,10 +115,35 @@ export function ContratEntretienForm({
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "equipements",
   });
+
+  /**
+   * Chiffrage du calculateur → redevance annuelle (total net) et
+   * section « Installation couverte » : une ligne par unité chiffrée,
+   * à compléter (marque, n° de série). Les lignes déjà renseignées sont
+   * conservées, seules les lignes vides sont remplacées.
+   */
+  function appliquerCalcul(calcul: ResultatCalcul) {
+    setValue("redevance", String(calcul.total).replace(".", ","), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    const existants = getValues("equipements").filter(
+      (e) => (e.type ?? "").trim() !== "",
+    );
+    const ajoutes = equipementsContratDepuisCalcul(calcul);
+    const liste = [...existants, ...ajoutes];
+    replace(liste.length > 0 ? liste : [{ ...EQUIPEMENT_VIDE }]);
+    toast.success(`Redevance annuelle : ${formatEuros(calcul.total)} net`, {
+      description:
+        ajoutes.length > 0
+          ? `${ajoutes.length} équipement${ajoutes.length > 1 ? "s" : ""} ajouté${ajoutes.length > 1 ? "s" : ""} à l'installation couverte — complétez marque et n° de série.`
+          : undefined,
+    });
+  }
 
   const clientId = watch("client_id");
   const qualite = watch("qualite_client");
@@ -344,6 +379,16 @@ export function ContratEntretienForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
+          {baremeEntretien && (
+            <div className="sm:col-span-3">
+              <CalculateurEntretienDialog
+                bareme={baremeEntretien}
+                libelleValider="Reporter dans le contrat"
+                description="Indiquez les équipements et la zone : le total net devient la redevance annuelle et chaque unité chiffrée est ajoutée à l'installation couverte."
+                onValider={appliquerCalcul}
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="redevance">Redevance annuelle (net) *</Label>
             <Input

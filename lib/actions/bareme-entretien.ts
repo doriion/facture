@@ -74,6 +74,13 @@ export async function getBaremeEntretien(): Promise<BaremeEntretien> {
     supabase.from("bareme_entretien_reglages").select("*").maybeSingle(),
   ]);
 
+  // Tables absentes (migration pas encore appliquée) ou erreur de
+  // lecture : le calculateur fonctionne avec le barème par défaut, en
+  // lecture seule — les réglages, eux, signalent l'erreur à la sauvegarde.
+  if (postesRes.error || zonesRes.error || reglagesRes.error) {
+    return BAREME_PAR_DEFAUT;
+  }
+
   let postesRows = postesRes.data ?? [];
   if (postesRows.length === 0) {
     const { data } = await supabase
