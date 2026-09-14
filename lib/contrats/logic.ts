@@ -1,4 +1,5 @@
 import { TEMPLATE_CONTRAT_V1 } from "@/lib/contrats/template-v1";
+import { TEMPLATE_CONTRAT_V2 } from "@/lib/contrats/template-v2";
 import type {
   BlocContrat,
   CondAffichage,
@@ -16,10 +17,17 @@ import type {
 
 const TEMPLATES: Record<number, TemplateContrat> = {
   1: TEMPLATE_CONTRAT_V1,
+  2: TEMPLATE_CONTRAT_V2,
 };
 
-/** Version utilisée pour tout NOUVEAU contrat. */
-export const TEMPLATE_VERSION_COURANTE = 1;
+/**
+ * Version utilisée pour tout NOUVEAU contrat.
+ *
+ * Les contrats existants gardent la version inscrite dans leur ligne
+ * (contrats.template_version) : déplacer cette constante n'affecte que
+ * les contrats créés ensuite.
+ */
+export const TEMPLATE_VERSION_COURANTE = 2;
 
 /**
  * Le texte d'une version donnée. Lève si la version est inconnue :

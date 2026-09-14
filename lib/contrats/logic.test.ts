@@ -40,13 +40,43 @@ describe("template versionné", () => {
     expect(() => getTemplateContrat(99)).toThrow("Version de contrat inconnue");
   });
 
-  it("aucun calcul de TVA : le texte porte la mention 293 B", () => {
-    const t = getTemplateContrat(1);
-    const article6 = t.articles.find((a) => a.numero === 6)!;
+  it("la v1 reste FIGÉE sur son ancienne mention de TVA", () => {
+    // Les contrats signés portent template_version = 1 : leur texte ne
+    // doit jamais changer, mention de TVA comprise.
+    const article6 = getTemplateContrat(1).articles.find(
+      (a) => a.numero === 6,
+    )!;
     const textes = article6.blocs
       .map((b) => ("texte" in b ? b.texte : ""))
       .join(" ");
     expect(textes).toContain("TVA non applicable, article 293 B");
+    expect(textes).not.toContain("{mentionTvaFranchise}");
+  });
+
+  it("la v2 délègue sa mention de TVA à lib/legal-text", () => {
+    const article6 = getTemplateContrat(2).articles.find(
+      (a) => a.numero === 6,
+    )!;
+    const textes = article6.blocs
+      .map((b) => ("texte" in b ? b.texte : ""))
+      .join(" ");
+    expect(textes).toContain("{mentionTvaFranchise}");
+    expect(textes).not.toContain("293 B");
+  });
+
+  it("aucune version ne calcule de TVA", () => {
+    for (const v of [1, 2]) {
+      const tous = getTemplateContrat(v)
+        .articles.flatMap((a) => a.blocs)
+        .map((b) => ("texte" in b ? b.texte : ""))
+        .join(" ");
+      expect(tous).toContain("franchise en base de TVA");
+    }
+  });
+
+  it("les nouveaux contrats naissent sur la version courante", () => {
+    expect(TEMPLATE_VERSION_COURANTE).toBe(2);
+    expect(() => getTemplateContrat(TEMPLATE_VERSION_COURANTE)).not.toThrow();
   });
 });
 

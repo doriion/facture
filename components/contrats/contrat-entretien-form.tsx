@@ -25,6 +25,7 @@ import {
   netAPayer,
 } from "@/lib/contrats/logic";
 import { equipementsDe } from "@/lib/contrats/rendu";
+import { mentionTvaFranchise } from "@/lib/legal-text";
 import { formatEuros, parseMoneyInput } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
@@ -339,7 +340,7 @@ export function ContratEntretienForm({
         <CardHeader>
           <CardTitle>Conditions financières (art. 2.2 et 6)</CardTitle>
           <CardDescription>
-            Montants nets — TVA non applicable, art. 293 B du CGI.
+            Montants nets — {mentionTvaFranchise()}.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">

@@ -3,6 +3,7 @@ import { CheckCircle2, Clock, FileWarning } from "lucide-react";
 import { getContratParToken } from "@/lib/contrats/public";
 import { retractationApplicable } from "@/lib/contrats/logic";
 import {
+  mentionTvaContrat,
   nomAffichagePrestataire,
   type ClientSnapshot,
 } from "@/lib/contrats/rendu";
@@ -161,7 +162,7 @@ export default async function SignatureContratPage({
 
         <p className="pb-6 text-center text-xs text-muted-foreground">
           Signature électronique enregistrée avec horodatage — document remis
-          aux deux parties. TVA non applicable, art. 293 B du CGI.
+          aux deux parties. {mentionTvaContrat(contrat)}.
         </p>
       </div>
     </Coquille>
