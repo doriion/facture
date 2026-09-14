@@ -59,7 +59,7 @@ export function ContratsTable({ contrats }: { contrats: ContratRow[] }) {
             <TableHead>Fréquence</TableHead>
             <TableHead>Prochaine visite</TableHead>
             <TableHead>Statut</TableHead>
-            <TableHead className="text-right">Prix annuel HT</TableHead>
+            <TableHead className="text-right">Prix annuel</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

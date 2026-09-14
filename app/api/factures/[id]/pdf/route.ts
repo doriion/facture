@@ -3,6 +3,7 @@ import { renderToStream } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
 import { payloadLignesPdf } from "@/lib/pdf-payload";
+import { estErreurMoteurTva, verifierMoteurTva } from "@/lib/tva-garde";
 import { FacturePdf } from "@/components/factures/facture-pdf";
 
 export const runtime = "nodejs";
@@ -55,6 +56,18 @@ export async function GET(
   };
   const factureRaw = factureRes.data as FactureWithClient;
   const client = factureRaw.client ?? null;
+
+  // Garde-fou : pas de rendu d'un document assujetti à la TVA tant que
+  // l'app ne sait pas la calculer (snapshot émetteur prioritaire).
+  try {
+    verifierMoteurTva(profilRes.data, factureRaw.emetteur);
+  } catch (e) {
+    if (!estErreurMoteurTva(e)) throw e;
+    return new NextResponse(e.explication, {
+      status: 501,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
 
   // Téléchargement du logo (si présent) → data URI pour embed
   let logoData: string | null = null;

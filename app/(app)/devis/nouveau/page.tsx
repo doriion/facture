@@ -6,6 +6,7 @@ import { listProduits } from "@/lib/actions/produits";
 import { getProfil } from "@/lib/actions/profil";
 import { getDevis } from "@/lib/actions/devis";
 import { buildDevisDuplicata, type DevisPrefill } from "@/lib/devis-prefill";
+import { assujettiTvaEffectif } from "@/lib/tva-garde";
 import { Button } from "@/components/ui/button";
 import { DevisForm } from "@/components/devis/devis-form";
 
@@ -32,7 +33,9 @@ export default async function NouveauDevisPage({
   if (searchParams.source) {
     const { devis: source, lignes } = await getDevis(searchParams.source);
     if (source) {
-      prefill = buildDevisDuplicata(source, lignes);
+      prefill = buildDevisDuplicata(source, lignes, {
+        dureeValiditeJours: profil?.duree_validite_devis_jours,
+      });
       sourceNumero = source.numero;
     }
   }
@@ -83,6 +86,7 @@ export default async function NouveauDevisPage({
           defaultConditions={profil?.conditions_paiement_default}
           dureeValiditeJours={profil?.duree_validite_devis_jours}
           prefill={prefill}
+          assujettiTva={assujettiTvaEffectif(profil, null)}
         />
       )}
     </div>
