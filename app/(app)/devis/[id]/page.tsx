@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { listClients } from "@/lib/actions/clients";
 import { listProduits } from "@/lib/actions/produits";
 import { getDevis } from "@/lib/actions/devis";
+import { getBaremeEntretien } from "@/lib/actions/bareme-entretien";
 import { getProfil } from "@/lib/actions/profil";
 import { statutAffichageDevis } from "@/lib/validations/devis";
 import { motifVerrouDevis } from "@/lib/devis-transitions";
@@ -33,10 +34,11 @@ export default async function EditDevisPage({
   const { devis, lignes, client } = await getDevis(params.id);
   if (!devis) notFound();
 
-  const [clients, produits, profil] = await Promise.all([
+  const [clients, produits, profil, baremeEntretien] = await Promise.all([
     listClients(),
     listProduits({ inclureInactifs: false }),
     getProfil(),
+    getBaremeEntretien(),
   ]);
 
   const statutAffiche = statutAffichageDevis(devis.statut, devis.date_validite);
@@ -149,6 +151,7 @@ export default async function EditDevisPage({
           defaultConditions={profil?.conditions_paiement_default}
           dureeValiditeJours={profil?.duree_validite_devis_jours}
           assujettiTva={assujettiTva}
+          baremeEntretien={baremeEntretien}
         />
       )}
     </div>
