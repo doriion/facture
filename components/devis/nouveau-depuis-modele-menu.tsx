@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, ChevronDown, FilePlus2 } from "lucide-react";
+import { Bookmark, ChevronDown, FilePlus2, Settings2 } from "lucide-react";
 
 import { nomModeleAffiche, type ModeleNommable } from "@/lib/modeles-devis";
 import { Button, type ButtonProps } from "@/components/ui/button";
@@ -61,6 +61,15 @@ export function NouveauDepuisModeleMenu({
             </DropdownMenuItem>
           ))
         )}
+        {/* Gestion (renommer, supprimer…) hors de la vue principale :
+            une entrée discrète en bas du menu, vers une petite page. */}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/devis/modeles" className="text-muted-foreground">
+            <Settings2 />
+            Gérer mes modèles
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
