@@ -411,6 +411,7 @@ export function DevisForm({
             control={control}
             register={register}
             watch={watch}
+            setValue={setValue}
             errors={errors}
             produits={produits}
             assujettiTva={assujettiTva}
