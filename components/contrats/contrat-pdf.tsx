@@ -28,11 +28,14 @@ import {
   type PrestataireSnapshot,
 } from "@/lib/contrats/rendu";
 import type { BlocContrat } from "@/lib/contrats/types";
+import * as PALETTE from "@/lib/theme";
 
-const PRIMARY = "#2A7D5B";
-const TEXT = "#1c1f24";
-const MUTED = "#6b7280";
-const BORDER = "#e5e7eb";
+// Palette de marque : lib/theme est la SEULE source. Les alias courts
+// gardent le reste du fichier lisible sans réintroduire de valeur en dur.
+const PRIMARY = PALETTE.PRINCIPAL;
+const TEXT = PALETTE.TEXTE;
+const MUTED = PALETTE.TEXTE_DOUX;
+const BORDER = PALETTE.BORDURE;
 
 const styles = StyleSheet.create({
   page: {
@@ -118,7 +121,7 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     textTransform: "uppercase",
     color: MUTED,
-    backgroundColor: "#f6f7f9",
+    backgroundColor: PALETTE.FOND_NEUTRE,
     borderRight: `0.75pt solid ${BORDER}`,
   },
   td: {

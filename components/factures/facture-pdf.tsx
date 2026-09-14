@@ -33,15 +33,18 @@ type Facture = Database["public"]["Tables"]["factures"]["Row"];
 // Liste blanche : le PDF ne connaît QUE les champs destinés au client
 // (jamais prix_achat_ttc_unitaire / fournisseur — cf. lib/pdf-payload).
 import type { LignePdf } from "@/lib/pdf-payload";
+import * as PALETTE from "@/lib/theme";
 
 type Ligne = LignePdf;
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Profil = Database["public"]["Tables"]["profil_entreprise"]["Row"];
 
-const PRIMARY = "#2A7D5B";
-const TEXT = "#1c1f24";
-const MUTED = "#6b7280";
-const BORDER = "#e5e7eb";
+// Palette de marque : lib/theme est la SEULE source. Les alias courts
+// gardent le reste du fichier lisible sans réintroduire de valeur en dur.
+const PRIMARY = PALETTE.PRINCIPAL;
+const TEXT = PALETTE.TEXTE;
+const MUTED = PALETTE.TEXTE_DOUX;
+const BORDER = PALETTE.BORDURE;
 
 const styles = StyleSheet.create({
   page: {
@@ -114,7 +117,7 @@ const styles = StyleSheet.create({
   table: { marginTop: 8, borderTop: `1pt solid ${BORDER}` },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#f6f7f9",
+    backgroundColor: PALETTE.FOND_NEUTRE,
     borderBottom: `1pt solid ${BORDER}`,
     paddingVertical: 6,
     paddingHorizontal: 6,
@@ -137,7 +140,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 6,
     borderBottom: `1pt solid ${BORDER}`,
-    backgroundColor: "#f6f7f9",
+    backgroundColor: PALETTE.FOND_NEUTRE,
   },
   sectionTitreText: {
     fontWeight: 700,
@@ -189,8 +192,8 @@ const styles = StyleSheet.create({
   equipementBox: {
     marginTop: 16,
     padding: 10,
-    backgroundColor: "#f6fbf8",
-    border: `1pt solid #cfe7d9`,
+    backgroundColor: PALETTE.FOND_PALE,
+    border: `1pt solid ${PALETTE.BORDURE_BLEUE}`,
     borderRadius: 4,
   },
   equipementTitle: {
