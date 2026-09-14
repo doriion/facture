@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { AlertCircle, CalendarClock, Clock } from "lucide-react";
+import { AlertCircle, CalendarClock, Clock, FileWarning } from "lucide-react";
+
+import { RegenererPdfButton } from "@/components/contrats/regenerer-pdf-button";
 
 import {
   Card,
@@ -33,17 +35,25 @@ type Props = {
     intitule: string | null;
     client_nom: string | null;
   }>;
+  contratsPdfManquant?: Array<{
+    id: string;
+    numero: string | null;
+    signed_at: string;
+    client_nom: string | null;
+  }>;
 };
 
 export function AlertesSection({
   facturesEnRetard,
   devisExpirantBientot,
   prochainesVisitesMaintenance,
+  contratsPdfManquant = [],
 }: Props) {
   const hasAny =
     facturesEnRetard.length > 0 ||
     devisExpirantBientot.length > 0 ||
-    prochainesVisitesMaintenance.length > 0;
+    prochainesVisitesMaintenance.length > 0 ||
+    contratsPdfManquant.length > 0;
 
   if (!hasAny) {
     return (
@@ -63,6 +73,48 @@ export function AlertesSection({
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
+      {contratsPdfManquant.length > 0 && (
+        <Card className="border-destructive/30 bg-destructive/5 lg:col-span-3">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileWarning className="size-4 text-destructive" />
+              Contrats signés sans PDF archivé
+            </CardTitle>
+            <CardDescription>
+              La signature est bien enregistrée, mais le document n&apos;a pas
+              pu être déposé. Régénérez-le : la signature, le statut et le
+              contenu ne changent pas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1.5">
+            {contratsPdfManquant.map((c) => (
+              <div
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/contrats/${c.id}`}
+                    className="font-mono text-xs font-medium hover:underline"
+                  >
+                    {c.numero ?? "Contrat"}
+                  </Link>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {c.client_nom ?? "—"} · signé le{" "}
+                    {formatDateFr(c.signed_at.slice(0, 10))}
+                  </p>
+                </div>
+                <RegenererPdfButton
+                  contratId={c.id}
+                  numero={c.numero}
+                  size="sm"
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {facturesEnRetard.length > 0 && (
         <Card className="border-destructive/30 bg-destructive/5">
           <CardHeader className="pb-3">

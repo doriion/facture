@@ -77,6 +77,7 @@ export function AutomatisationsCard({
       | "auto_sauvegarde_active"
       | "auto_relances_active"
       | "auto_rappels_active"
+      | "auto_chatel_active"
       | "auto_email_taches_active"
       | "automatisations_simulation",
     titre: string,
@@ -190,6 +191,12 @@ export function AutomatisationsCard({
             </span>
           </div>
         </div>
+
+        {switchRow(
+          "auto_chatel_active",
+          "Avis de reconduction (loi Chatel)",
+          "Chaque matin : contrats d'entretien signés de clients PARTICULIERS dont l'échéance annuelle approche (visé 60 jours avant, rattrapage jusqu'à 32 jours). Informe le client qu'il peut ne pas reconduire — c'est une obligation légale (art. L. 215-1 c. conso.), à défaut il peut résilier gratuitement après la reconduction. Un seul avis par échéance, copie pour vous.",
+        )}
 
         {switchRow(
           "auto_email_taches_active",

@@ -375,6 +375,15 @@ export function ContratPdf({
     <Document
       title={`Contrat d'entretien ${contrat.numero ?? ""}`.trim()}
       author={nomPresta}
+      // Dates FIGÉES sur l'horodatage de signature : sans elles,
+      // react-pdf tamponne l'instant du rendu et l'empreinte SHA-256
+      // change à chaque génération. Un contrat régénéré depuis les
+      // données archivées redonne ainsi exactement la même empreinte,
+      // ce qui rend la preuve vérifiable.
+      creationDate={contrat.signed_at ? new Date(contrat.signed_at) : undefined}
+      modificationDate={
+        contrat.signed_at ? new Date(contrat.signed_at) : undefined
+      }
     >
       <Page size="A4" style={styles.page}>
         {/* En-tête */}

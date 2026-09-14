@@ -315,3 +315,85 @@ ${args.expediteurNom}
 
   return { subject, html, text };
 }
+
+/**
+ * Avis de reconduction « loi Chatel » (art. L. 215-1 et suivants du
+ * code de la consommation) — client PARTICULIER uniquement.
+ *
+ * Le texte reprend l'information exigée par l'article 7 du contrat
+ * type : faculté de ne pas reconduire, date d'échéance, préavis de
+ * deux mois par lettre recommandée, et conséquence d'un défaut
+ * d'information. Le contrat type lui-même (lib/contrats/template-v1)
+ * n'est PAS modifié — ce message le rappelle, il ne le remplace pas.
+ */
+export function buildAvisChatelEmail(args: {
+  clientNom: string;
+  expediteurNom: string;
+  /** Numéro du contrat (ex. « 2026-001 ») */
+  numero: string;
+  /** Échéance annuelle, déjà formatée (ex. « 10 novembre 2026 ») */
+  dateEcheanceText: string;
+  /** Date limite de dénonciation (échéance − 2 mois), déjà formatée */
+  dateLimiteText: string;
+  telephone?: string | null;
+  emailPro?: string | null;
+  /** Copie destinée à l'artisan (récapitulatif) plutôt qu'au client */
+  pourArtisan?: boolean;
+}): { subject: string; html: string; text: string } {
+  const subject = args.pourArtisan
+    ? `Copie — avis de reconduction envoyé (contrat ${args.numero})`
+    : `Votre contrat d'entretien ${args.numero} — reconduction annuelle`;
+
+  const coordonnees = [
+    args.telephone ? `par téléphone au ${args.telephone}` : null,
+    args.emailPro ? `par email à ${args.emailPro}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ou ");
+
+  const enTeteHtml = args.pourArtisan
+    ? `<p style="background:#f4f4f5; padding:10px; border-radius:6px; font-size:13px;">Copie de l'avis envoyé au client ${escapeHtml(args.clientNom)}. Aucune action de votre part n'est nécessaire.</p>`
+    : "";
+
+  const contactHtml = coordonnees
+    ? `<p>Pour toute question, vous pouvez me joindre ${escapeHtml(coordonnees)}, ou simplement répondre à ce message.</p>`
+    : `<p>Pour toute question, vous pouvez simplement répondre à ce message.</p>`;
+
+  const html = `<!doctype html>
+<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
+${enTeteHtml}
+<p>Bonjour ${escapeHtml(args.clientNom)},</p>
+<p>Votre contrat d'entretien n° <strong>${escapeHtml(args.numero)}</strong> arrive à son échéance annuelle le <strong>${escapeHtml(args.dateEcheanceText)}</strong>. Sauf opposition de votre part, il sera reconduit pour un an.</p>
+<p>Conformément aux articles L. 215-1 et suivants du code de la consommation, je vous informe que <strong>vous pouvez choisir de ne pas le reconduire</strong>. Pour cela, adressez-moi une lettre recommandée avec accusé de réception au plus tard le <strong>${escapeHtml(args.dateLimiteText)}</strong>, soit deux mois avant l'échéance.</p>
+<p>Si vous souhaitez au contraire poursuivre, vous n'avez aucune démarche à faire.</p>
+${contactHtml}
+<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
+<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
+<p style="font-size:12px; color:#666;">Envoyé via Facture AE. TVA non applicable, art. 293 B du CGI.</p>
+</body></html>`;
+
+  const enTeteText = args.pourArtisan
+    ? `Copie de l'avis envoyé au client ${args.clientNom}. Aucune action de votre part n'est nécessaire.\n\n`
+    : "";
+
+  const contactText = coordonnees
+    ? `Pour toute question, vous pouvez me joindre ${coordonnees}, ou simplement répondre à ce message.`
+    : `Pour toute question, vous pouvez simplement répondre à ce message.`;
+
+  const text = `${enTeteText}Bonjour ${args.clientNom},
+
+Votre contrat d'entretien n° ${args.numero} arrive à son échéance annuelle le ${args.dateEcheanceText}. Sauf opposition de votre part, il sera reconduit pour un an.
+
+Conformément aux articles L. 215-1 et suivants du code de la consommation, je vous informe que vous pouvez choisir de ne pas le reconduire. Pour cela, adressez-moi une lettre recommandée avec accusé de réception au plus tard le ${args.dateLimiteText}, soit deux mois avant l'échéance.
+
+Si vous souhaitez au contraire poursuivre, vous n'avez aucune démarche à faire.
+
+${contactText}
+
+Cordialement,
+${args.expediteurNom}
+
+— Envoyé via Facture AE. TVA non applicable, art. 293 B du CGI.`;
+
+  return { subject, html, text };
+}

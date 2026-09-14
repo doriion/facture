@@ -1243,6 +1243,7 @@ export type Database = {
           relances_delai_jours: number;
           auto_rappels_active: boolean;
           rappels_fenetre_jours: number;
+          auto_chatel_active: boolean;
           automatisations_simulation: boolean;
           auto_email_taches_active: boolean;
           duree_validite_devis_jours: number;
@@ -1295,6 +1296,7 @@ export type Database = {
           relances_delai_jours?: number;
           auto_rappels_active?: boolean;
           rappels_fenetre_jours?: number;
+          auto_chatel_active?: boolean;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
           duree_validite_devis_jours?: number;
@@ -1347,6 +1349,7 @@ export type Database = {
           relances_delai_jours?: number;
           auto_rappels_active?: boolean;
           rappels_fenetre_jours?: number;
+          auto_chatel_active?: boolean;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
           duree_validite_devis_jours?: number;

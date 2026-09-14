@@ -67,6 +67,7 @@ export default async function DashboardPage() {
         facturesEnRetard={data.facturesEnRetard}
         devisExpirantBientot={data.devisExpirantBientot}
         prochainesVisitesMaintenance={data.prochainesVisitesMaintenance}
+        contratsPdfManquant={data.contratsPdfManquant}
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
