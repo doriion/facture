@@ -8,6 +8,7 @@ import { getDevis } from "@/lib/actions/devis";
 import { getProfil } from "@/lib/actions/profil";
 import { statutAffichageDevis } from "@/lib/validations/devis";
 import { motifVerrouDevis } from "@/lib/devis-transitions";
+import { modeleSansNom, nomModeleAffiche } from "@/lib/modeles-devis";
 import {
   assujettiTvaEffectif,
   documentEmis,
@@ -77,6 +78,16 @@ export default async function EditDevisPage({
                 <StatutBadgeDevis statut={statutAffiche} />
               )}
             </div>
+            {devis.est_modele && (
+              <p className="mt-1 text-base font-medium">
+                {nomModeleAffiche(devis)}
+                {modeleSansNom(devis) && (
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    — donnez-lui un nom pour le retrouver plus vite
+                  </span>
+                )}
+              </p>
+            )}
             <p className="mt-1 text-sm text-muted-foreground">
               Émis le {formatDateFr(devis.date_emission)} — valide jusqu'au{" "}
               {formatDateFr(devis.date_validite)} —{" "}
@@ -111,6 +122,7 @@ export default async function EditDevisPage({
               clientEmail={client?.email ?? null}
               clientNom={client?.nom ?? "le client"}
               estModele={devis.est_modele}
+              nomModele={devis.nom_modele}
               signee={signee}
               pdfBloqueMotif={pdfBloqueMotif}
             />

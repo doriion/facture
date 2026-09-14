@@ -13,6 +13,7 @@ import {
   FileText,
   FileWarning,
   Loader2,
+  Pencil,
   Send,
   ThumbsDown,
   Trash2,
@@ -23,11 +24,13 @@ import { toast } from "sonner";
 import {
   convertirDevisEnFactureAction,
   deleteDevisAction,
+  renommerModeleDevisAction,
   setDevisModeleAction,
   setDevisStatutAction,
 } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
 import { EmailDocumentButton } from "@/components/email-document-button";
+import { NomModeleDialog } from "@/components/devis/nom-modele-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +54,7 @@ export function DevisActions({
   clientEmail,
   clientNom,
   estModele = false,
+  nomModele = null,
   signee = false,
   pdfBloqueMotif = null,
 }: {
@@ -61,6 +65,8 @@ export function DevisActions({
   clientEmail?: string | null;
   clientNom?: string;
   estModele?: boolean;
+  /** Nom du modèle (null pour un modèle d'avant la migration, à nommer). */
+  nomModele?: string | null;
   /** Signature « Bon pour accord » enregistrée → devis figé. */
   signee?: boolean;
   /**
@@ -99,21 +105,14 @@ export function DevisActions({
     </Button>
   );
 
-  async function onToggleModele(next: boolean) {
+  async function onRetirerDesModeles() {
     setPending("modele");
-    const result = await setDevisModeleAction(devisId, next);
+    const result = await setDevisModeleAction(devisId, false);
     setPending(null);
     if (result.ok) {
-      toast.success(
-        next
-          ? `${numero} enregistré comme modèle`
-          : `${numero} retiré des modèles`,
-        {
-          description: next
-            ? "Il n'apparaît plus dans la liste des devis ni dans les stats."
-            : "Il réapparaît dans la liste des devis.",
-        },
-      );
+      toast.success(`${numero} retiré des modèles`, {
+        description: "Il réapparaît dans la liste des devis.",
+      });
       router.refresh();
     } else {
       toast.error("Erreur", { description: result.error });
@@ -172,10 +171,24 @@ export function DevisActions({
             Utiliser ce modèle
           </Link>
         </Button>
+        <NomModeleDialog
+          trigger={
+            <Button variant="outline">
+              <Pencil className="size-4" />
+              {nomModele ? "Renommer" : "Nommer ce modèle"}
+            </Button>
+          }
+          titre={nomModele ? "Renommer le modèle" : "Nommer le modèle"}
+          description="Le nom sert uniquement à retrouver le modèle : il n'apparaît sur aucun document."
+          nomInitial={nomModele ?? ""}
+          libelleValider={nomModele ? "Renommer" : "Nommer"}
+          onValider={(nom) => renommerModeleDevisAction(devisId, nom)}
+          messageSucces={(nom) => `Modèle renommé « ${nom} »`}
+        />
         {boutonPdf}
         <Button
           variant="outline"
-          onClick={() => onToggleModele(false)}
+          onClick={onRetirerDesModeles}
           disabled={pending === "modele"}
         >
           {pending === "modele" ? (
@@ -216,18 +229,25 @@ export function DevisActions({
       {/* Un devis signé ou converti est un document engageant : il ne
           part pas dans les modèles (où il sortirait des statistiques). */}
       {!signee && !factureId && (
-        <Button
-          variant="outline"
-          onClick={() => onToggleModele(true)}
-          disabled={pending === "modele"}
-        >
-          {pending === "modele" ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Bookmark className="size-4" />
-          )}
-          Enregistrer comme modèle
-        </Button>
+        <NomModeleDialog
+          trigger={
+            <Button variant="outline">
+              <Bookmark className="size-4" />
+              Enregistrer comme modèle
+            </Button>
+          }
+          titre="Enregistrer comme modèle"
+          description={
+            <>
+              Le devis <span className="font-mono">{numero}</span> deviendra un
+              modèle nommé : il quitte la liste des devis et les statistiques,
+              et sert de point de départ à vos prochains devis.
+            </>
+          }
+          libelleValider="Enregistrer"
+          onValider={(nom) => setDevisModeleAction(devisId, true, nom)}
+          messageSucces={(nom) => `Modèle « ${nom} » enregistré`}
+        />
       )}
 
       {factureId && (

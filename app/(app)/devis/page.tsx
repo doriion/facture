@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { Bookmark, FilePlus2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { listDevis, listModelesDevis } from "@/lib/actions/devis";
-import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
-import { formatEuros } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DevisTable } from "@/components/devis/devis-table";
 import { DevisToolbar } from "@/components/devis/devis-toolbar";
+import { ModelesDevisSection } from "@/components/devis/modeles-devis-section";
+import { NouveauDepuisModeleMenu } from "@/components/devis/nouveau-depuis-modele-menu";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 
 export const metadata = { title: "Devis — NG Gestion" };
@@ -32,6 +31,13 @@ export default async function DevisPage({
   const conversionRate =
     sent + accepted > 0 ? Math.round((accepted / (sent + accepted)) * 100) : 0;
 
+  // Le menu ne reçoit que ce qui sert à lister par nom.
+  const modelesMenu = modeles.map((m) => ({
+    id: m.id,
+    numero: m.numero,
+    nom_modele: m.nom_modele,
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -52,65 +58,18 @@ export default async function DevisPage({
             )}
           </p>
         </div>
-        <Button asChild className="max-md:hidden">
-          <Link href="/devis/nouveau">
-            <Plus className="size-4" />
-            Nouveau devis
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2 max-md:hidden">
+          <NouveauDepuisModeleMenu modeles={modelesMenu} />
+          <Button asChild>
+            <Link href="/devis/nouveau">
+              <Plus className="size-4" />
+              Nouveau devis
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {modeles.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bookmark className="size-4 text-primary" />
-              Modèles de devis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {modeles.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex flex-col justify-between gap-3 rounded-md border bg-muted/30 px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <Link
-                      href={`/devis/${m.id}`}
-                      className="font-mono text-sm font-medium hover:underline"
-                    >
-                      {m.numero}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">
-                      {LABELS_TYPE_ACTIVITE[
-                        m.type_activite as keyof typeof LABELS_TYPE_ACTIVITE
-                      ] ?? m.type_activite}{" "}
-                      · {formatEuros(Number(m.total_ht))}
-                    </p>
-                    {m.notes && (
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {m.notes}
-                      </p>
-                    )}
-                  </div>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`/devis/nouveau?source=${m.id}`}>
-                      <FilePlus2 className="size-4" />
-                      Nouveau devis depuis ce modèle
-                    </Link>
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Les modèles n&apos;apparaissent ni dans la liste ci-dessous, ni
-              dans les statistiques. Pour créer un modèle : ouvrez un devis
-              puis « Enregistrer comme modèle ».
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <ModelesDevisSection modeles={modeles} />
 
       <DevisToolbar
         initialSearch={search}
@@ -121,6 +80,12 @@ export default async function DevisPage({
       <DevisTable devis={devis} />
 
       <MobileActionBar>
+        <NouveauDepuisModeleMenu
+          modeles={modelesMenu}
+          size="lg"
+          className="px-3"
+          libelle="Depuis un modèle"
+        />
         <Button asChild size="lg">
           <Link href="/devis/nouveau">
             <Plus className="size-4" />

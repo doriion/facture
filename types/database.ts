@@ -509,6 +509,7 @@ export type Database = {
           facture_id: string | null;
           id: string;
           notes: string | null;
+          nom_modele: string | null;
           numero: string;
           pdf_url: string | null;
           performances_energetiques: Json;
@@ -540,6 +541,7 @@ export type Database = {
           facture_id?: string | null;
           id?: string;
           notes?: string | null;
+          nom_modele?: string | null;
           numero: string;
           pdf_url?: string | null;
           performances_energetiques?: Json;
@@ -571,6 +573,7 @@ export type Database = {
           facture_id?: string | null;
           id?: string;
           notes?: string | null;
+          nom_modele?: string | null;
           numero?: string;
           pdf_url?: string | null;
           performances_energetiques?: Json;
