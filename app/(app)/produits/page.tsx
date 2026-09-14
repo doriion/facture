@@ -3,7 +3,7 @@ import { ProduitFormDialog } from "@/components/produits/produit-form-dialog";
 import { ProduitsTable } from "@/components/produits/produits-table";
 import { ProduitsToolbar } from "@/components/produits/produits-toolbar";
 
-export const metadata = { title: "Catalogue — Facture AE" };
+export const metadata = { title: "Catalogue — NG Gestion" };
 
 /**
  * Catalogue de prestations réutilisables (plomberie, clim, PAC, entretien, dépannage).

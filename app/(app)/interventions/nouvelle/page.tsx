@@ -5,7 +5,7 @@ import { listClients } from "@/lib/actions/clients";
 import { Button } from "@/components/ui/button";
 import { InterventionForm } from "@/components/interventions/intervention-form";
 
-export const metadata = { title: "Nouvelle intervention — Facture AE" };
+export const metadata = { title: "Nouvelle intervention — NG Gestion" };
 
 export default async function NouvelleInterventionPage() {
   const clients = await listClients();

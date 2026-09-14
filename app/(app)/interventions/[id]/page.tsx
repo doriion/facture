@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { formatDateFr } from "@/lib/format";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
 
-export const metadata = { title: "Édition intervention — Facture AE" };
+export const metadata = { title: "Édition intervention — NG Gestion" };
 
 export default async function EditInterventionPage({
   params,

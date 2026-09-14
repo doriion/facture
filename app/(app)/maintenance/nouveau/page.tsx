@@ -5,7 +5,7 @@ import { listClients } from "@/lib/actions/clients";
 import { Button } from "@/components/ui/button";
 import { ContratForm } from "@/components/maintenance/contrat-form";
 
-export const metadata = { title: "Nouveau contrat — Facture AE" };
+export const metadata = { title: "Nouveau contrat — NG Gestion" };
 
 export default async function NouveauContratPage() {
   const clients = await listClients();

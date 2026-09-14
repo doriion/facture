@@ -5,7 +5,7 @@ import {
   type PrefillTache,
 } from "@/components/taches/tache-quick-add";
 
-export const metadata = { title: "À faire — Facture AE" };
+export const metadata = { title: "À faire — NG Gestion" };
 
 /**
  * Le pense-bête : trois vues (Aujourd'hui / À venir / Faites) pilotées

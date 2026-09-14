@@ -1,13 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
   <!--
-    Favicon provisoire aux couleurs de la charte (#0165D9).
-    À REMPLACER par le logo dès que public/logo.png est déposé :
-    les icônes PNG (192, 512, maskable, apple-touch) doivent être
-    régénérées depuis ce fichier pour que la marque soit cohérente
-    partout. Voir docs/charte-graphique.md.
+    Favicon provisoire : monogramme NG aux couleurs de la charte.
+    À REMPLACER par le logo dès que le fichier est déposé dans
+    public/logo.png — les icônes PNG (192, 512, maskable, apple-touch)
+    devront être régénérées depuis lui. Voir docs/charte-graphique.md.
   -->
   <rect width="32" height="32" rx="7" fill="#0165D9"/>
   <text x="50%" y="50%" dy=".05em" text-anchor="middle" dominant-baseline="central"
-        font-family="Helvetica, Arial, sans-serif" font-weight="900"
-        font-size="20" fill="#ffffff">F</text>
+        font-family="Helvetica, Arial, sans-serif" font-weight="700"
+        font-size="13" letter-spacing="0.5" fill="#ffffff">NG</text>
 </svg>

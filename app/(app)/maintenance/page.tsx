@@ -17,7 +17,7 @@ import { ContratsTable } from "@/components/maintenance/contrats-table";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { formatDateFr } from "@/lib/format";
 
-export const metadata = { title: "Maintenance — Facture AE" };
+export const metadata = { title: "Maintenance — NG Gestion" };
 
 export default async function MaintenancePage() {
   const [contrats, prochaines] = await Promise.all([

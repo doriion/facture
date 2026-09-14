@@ -8,7 +8,7 @@ import { InterventionsToolbar } from "@/components/interventions/interventions-t
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export const metadata = { title: "Interventions — Facture AE" };
+export const metadata = { title: "Interventions — NG Gestion" };
 
 export default async function InterventionsPage({
   searchParams,

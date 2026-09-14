@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { FactureForm } from "@/components/factures/facture-form";
 import type { Database, Json } from "@/types/database";
 
-export const metadata = { title: "Nouvelle facture — Facture AE" };
+export const metadata = { title: "Nouvelle facture — NG Gestion" };
 
 type Facture = Database["public"]["Tables"]["factures"]["Row"];
 

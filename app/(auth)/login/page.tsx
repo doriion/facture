@@ -1,7 +1,8 @@
 import { LoginForm } from "@/components/login-form";
+import { NOM_APPLICATION, titrePage } from "@/lib/marque";
 
 export const metadata = {
-  title: "Connexion — Facture AE",
+  title: titrePage("Connexion"),
 };
 
 /**
@@ -21,7 +22,7 @@ export default function LoginPage({
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-primary">
-            Facture AE
+            {NOM_APPLICATION}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Gestion factures &amp; devis — Auto-entrepreneur BTP

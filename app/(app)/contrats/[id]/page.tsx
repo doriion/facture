@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateFr } from "@/lib/format";
 
-export const metadata = { title: "Contrat d'entretien — Facture AE" };
+export const metadata = { title: "Contrat d'entretien — NG Gestion" };
 
 /**
  * Fiche d'un contrat : aperçu complet (exactement le texte que verra

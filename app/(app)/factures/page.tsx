@@ -10,7 +10,7 @@ import { RecategoriserBanner } from "@/components/factures/recategoriser-dialog"
 import { RelancesSection } from "@/components/factures/relances-section";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 
-export const metadata = { title: "Factures — Facture AE" };
+export const metadata = { title: "Factures — NG Gestion" };
 
 export default async function FacturesPage({
   searchParams,

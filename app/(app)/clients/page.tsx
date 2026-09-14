@@ -7,7 +7,7 @@ import { ClientsToolbar } from "@/components/clients/clients-toolbar";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
 
-export const metadata = { title: "Clients — Facture AE" };
+export const metadata = { title: "Clients — NG Gestion" };
 
 /**
  * Liste des clients avec recherche, filtre par type, et création inline.

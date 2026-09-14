@@ -7,6 +7,7 @@ import { ServiceWorkerRegister } from "@/components/sw-register";
 import "./globals.css";
 import { PRINCIPAL } from "@/lib/theme";
 import { scriptAppliquerTheme } from "@/lib/theme-mode";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,14 +16,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Facture AE",
+  title: NOM_APPLICATION,
   description: "Gestion factures et devis — auto-entrepreneur BTP",
   manifest: "/manifest.json",
-  applicationName: "Facture AE",
+  applicationName: NOM_APPLICATION,
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Facture AE",
+    title: NOM_APPLICATION,
     startupImage: "/apple-touch-icon.png",
   },
   icons: {

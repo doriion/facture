@@ -14,7 +14,7 @@ import {
   FacturesRecentesCard,
 } from "@/components/dashboard/recents-lists";
 
-export const metadata = { title: "Tableau de bord — Facture AE" };
+export const metadata = { title: "Tableau de bord — NG Gestion" };
 
 export default async function DashboardPage() {
   const [data, tachesDuJour] = await Promise.all([

@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export const metadata = { title: "Export comptable — Facture AE" };
+export const metadata = { title: "Export comptable — NG Gestion" };
 
 export const dynamic = "force-dynamic";
 

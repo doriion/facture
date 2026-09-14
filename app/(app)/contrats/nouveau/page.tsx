@@ -5,7 +5,7 @@ import { listClients } from "@/lib/actions/clients";
 import { ContratEntretienForm } from "@/components/contrats/contrat-entretien-form";
 import { Button } from "@/components/ui/button";
 
-export const metadata = { title: "Nouveau contrat — Facture AE" };
+export const metadata = { title: "Nouveau contrat — NG Gestion" };
 
 export default async function NouveauContratPage({
   searchParams,

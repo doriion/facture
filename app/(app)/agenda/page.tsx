@@ -7,7 +7,7 @@ import { getProfil } from "@/lib/actions/profil";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import { AgendaCalendar } from "@/components/agenda/agenda-calendar";
 
-export const metadata = { title: "Agenda — Facture AE" };
+export const metadata = { title: "Agenda — NG Gestion" };
 
 export const dynamic = "force-dynamic";
 

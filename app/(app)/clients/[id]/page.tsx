@@ -33,7 +33,7 @@ import {
   TYPES_CLIENT,
 } from "@/lib/format";
 
-export const metadata = { title: "Détail client — Facture AE" };
+export const metadata = { title: "Détail client — NG Gestion" };
 
 /**
  * Page de détail d'un client : infos + historique factures et devis.
