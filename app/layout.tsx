@@ -24,16 +24,19 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: NOM_APPLICATION,
-    startupImage: "/apple-touch-icon.png",
+    startupImage: "/icones/vague-apple-180.png",
   },
+  // Icônes sous un NOUVEAU chemin : un téléphone garde l'icône d'accueil
+  // en cache tant que son URL ne change pas — renommer est le seul moyen
+  // sûr de chasser l'ancienne. Générées par scripts/icones.mjs.
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/icones/vague.svg", type: "image/svg+xml" },
+      { url: "/icones/vague-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icones/vague-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    apple: [{ url: "/icones/vague-apple-180.png", sizes: "180x180" }],
   },
 };
 

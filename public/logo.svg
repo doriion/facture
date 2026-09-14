@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    Vague de la marque — tracé vectoriel redessiné d'après le logo
+    original (deux vagues bleues, dégradé du marine au bleu clair,
+    reflet clair sur le dessus). Fond transparent.
+
+    C'est la SOURCE de toutes les icônes (public/icones/), produites par
+    scripts/icones.mjs. Pour revenir au dessin original : remplacer ce
+    fichier par un SVG (ou adapter le script pour un PNG), puis relancer
+    le script.
+  -->
+  <defs>
+    <linearGradient id="corps" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0"    stop-color="#003DA8"/>
+      <stop offset="0.4"  stop-color="#0165D9"/>
+      <stop offset="0.72" stop-color="#0194FB"/>
+      <stop offset="1"    stop-color="#98EEFB"/>
+    </linearGradient>
+    <linearGradient id="reflet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"   stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Vague du haut : queue fine à gauche, corps qui s'enroule en pointe vers le haut -->
+  <g>
+    <path fill="url(#corps)" d="
+      M 40 330
+      C 110 262, 185 218, 255 214
+      C 305 211, 345 222, 385 178
+      C 408 152, 418 110, 416 62
+      C 462 110, 486 165, 468 210
+      C 446 262, 385 284, 305 280
+      C 215 276, 120 292, 40 330 Z"/>
+    <path fill="url(#reflet)" d="
+      M 40 330
+      C 110 262, 185 218, 255 214
+      C 305 211, 345 222, 385 178
+      C 408 152, 418 110, 416 62
+      C 436 100, 440 140, 428 170
+      C 385 210, 300 222, 225 230
+      C 150 238, 92 275, 40 330 Z"/>
+  </g>
+
+  <!-- Vague du bas : même mouvement, plus long, pointe vers la droite -->
+  <g>
+    <path fill="url(#corps)" d="
+      M 22 442
+      C 88 372, 158 316, 240 304
+      C 312 293, 366 334, 424 316
+      C 460 305, 480 272, 490 232
+      C 500 284, 486 336, 444 372
+      C 392 416, 300 420, 200 416
+      C 128 413, 66 428, 22 442 Z"/>
+    <path fill="url(#reflet)" d="
+      M 22 442
+      C 88 372, 158 316, 240 304
+      C 312 293, 366 334, 424 316
+      C 460 305, 480 272, 490 232
+      C 486 272, 470 304, 446 324
+      C 385 350, 292 352, 200 348
+      C 130 346, 70 386, 22 442 Z"/>
+  </g>
+</svg>
