@@ -7,6 +7,7 @@ import {
   coordonneesEmetteur,
   enseigneEmetteur,
   joursDeValidite,
+  ligneAcompte,
   ligneePiedDePage,
   MODELE_DEVIS_HISTORIQUE,
   MODELE_DEVIS_SIMPLE,
@@ -130,6 +131,50 @@ describe("joursDeValidite", () => {
   });
 });
 
+describe("ligneAcompte", () => {
+  it("pourcentage : montant, solde et pourcentage du solde", () => {
+    expect(ligneAcompte(4500, 40, null)).toBe(
+      "Acompte 40 % à la commande : 1 800,00 € — solde 60 % : 2 700,00 € à la fin des travaux",
+    );
+  });
+
+  it("montant fixe : aucun pourcentage affiché", () => {
+    expect(ligneAcompte(1000, null, 250)).toBe(
+      "Acompte à la commande : 250,00 € — solde : 750,00 € à la fin des travaux",
+    );
+  });
+
+  it("le pourcentage prime sur le montant fixe", () => {
+    expect(ligneAcompte(1000, 30, 900)).toContain("300,00 €");
+  });
+
+  it("rien à afficher sans acompte, ou sur un total nul", () => {
+    expect(ligneAcompte(1000, null, null)).toBeNull();
+    expect(ligneAcompte(1000, 0, 0)).toBeNull();
+    expect(ligneAcompte(0, 40, null)).toBeNull();
+    expect(ligneAcompte(-10, 40, null)).toBeNull();
+  });
+
+  it("arrondit au centime et ne produit jamais de solde négatif", () => {
+    expect(ligneAcompte(1234.57, 40, null)).toContain("493,83 €");
+    expect(ligneAcompte(1234.57, 40, null)).toContain("740,74 €");
+    const borne = ligneAcompte(500, null, 900)!;
+    expect(borne).toContain("500,00 €");
+    expect(borne).toContain("0,00 €");
+    expect(borne).not.toContain("-");
+  });
+
+  it("gère un pourcentage décimal des deux côtés", () => {
+    const l = ligneAcompte(1000, 33.5, null)!;
+    expect(l).toContain("33,5 %");
+    expect(l).toContain("66,5 %");
+  });
+
+  it("tient sur une seule ligne", () => {
+    expect(ligneAcompte(4500, 40, null)).not.toContain("\n");
+  });
+});
+
 /**
  * GARDE-FOU STATIQUE : la séparation entre modèle historique et modèle
  * simple est ce qui garantit qu'un devis déjà émis se réimprime à
@@ -169,6 +214,11 @@ describe("garde-fou : aiguillage et contenu du modèle simple", () => {
     }
   });
 
+  it("la ligne d'acompte passe par le helper, jamais recalculée dans le JSX", () => {
+    expect(simple).toContain("ligneAcompte(");
+    expect(simple).not.toContain("/ 100");
+  });
+
   it("aucune mention de TVA écrite en dur dans le modèle simple", () => {
     expect(simple).toContain("mentionTvaFranchise(");
     expect(simple).not.toContain("293 B");
@@ -176,10 +226,10 @@ describe("garde-fou : aiguillage et contenu du modèle simple", () => {
   });
 
   it("le modèle simple ne réintroduit aucune section écartée", () => {
+    // « Acompte » n'est PAS interdit : la ligne d'acompte est demandée.
     for (const interdit of [
       "Conditions de l'offre",
       "Gestion des déchets",
-      "Acompte",
       "Assurances et qualifications",
     ]) {
       expect(simple).not.toContain(interdit);

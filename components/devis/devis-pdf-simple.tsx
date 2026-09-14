@@ -26,6 +26,7 @@ import {
   coordonneesEmetteur,
   enseigneEmetteur,
   joursDeValidite,
+  ligneAcompte,
   ligneePiedDePage,
 } from "@/lib/devis-modele";
 import type { Database } from "@/types/database";
@@ -159,7 +160,15 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
-  bas: { flexDirection: "row", gap: 14, marginTop: 14 },
+  acompteLigne: {
+    marginTop: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderLeft: `2pt solid ${PRIMARY}`,
+    fontSize: 9.5,
+  },
+
+  bas: { flexDirection: "row", gap: 14, marginTop: 12 },
   rib: {
     width: 215,
     border: `1pt solid ${BORDER}`,
@@ -180,6 +189,9 @@ const styles = StyleSheet.create({
     border: `1pt solid ${PRIMARY}`,
     borderRadius: 4,
     padding: 9,
+    // Hauteur mini : laisse un espace blanc réellement signable sous la
+    // date. Ne pas réduire pour gagner une ligne de tableau — le cadre
+    // deviendrait trop bas pour une signature manuscrite.
     minHeight: 96,
   },
   accordTitre: {
@@ -262,6 +274,13 @@ export function DevisPdfSimple({
   const pied = ligneePiedDePage(profil);
   const validiteJours = joursDeValidite(devis.date_emission, devis.date_validite);
   const totalHt = Number(devis.total_ht);
+  // null quand aucun acompte n'est renseigné : rien n'est imprimé,
+  // pas même une ligne vide.
+  const acompte = ligneAcompte(
+    totalHt,
+    devis.acompte_pct !== null ? Number(devis.acompte_pct) : null,
+    devis.acompte_montant !== null ? Number(devis.acompte_montant) : null,
+  );
   const { sections } = computeSections(lignes);
 
   return (
@@ -405,6 +424,12 @@ export function DevisPdfSimple({
             {mentionTvaFranchise(devis.date_emission)}
           </Text>
         </View>
+
+        {acompte && (
+          <View style={styles.acompteLigne}>
+            <Text>{acompte}</Text>
+          </View>
+        )}
 
         <View style={styles.bas}>
           {(profil?.iban || profil?.bic) && (

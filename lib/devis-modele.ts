@@ -8,7 +8,7 @@
  * un devis déjà émis se réimprime donc à l'identique, indéfiniment.
  */
 
-import { formatSiret } from "@/lib/format";
+import { formatEuros, formatSiret } from "@/lib/format";
 
 /** Modèle d'origine — rend tous les devis émis avant la migration. */
 export const MODELE_DEVIS_HISTORIQUE = 1;
@@ -103,4 +103,52 @@ export function joursDeValidite(
   if (Number.isNaN(debut) || Number.isNaN(fin)) return null;
   const jours = Math.round((fin - debut) / (24 * 3600 * 1000));
   return jours > 0 ? jours : null;
+}
+
+/**
+ * Ligne d'acompte affichée sous les totaux, sur UNE ligne :
+ *   « Acompte 40 % à la commande : 1 800,00 € — solde 60 % : 2 700,00 €
+ *     à la fin des travaux »
+ *
+ * Le pourcentage prime sur le montant fixe, comme partout ailleurs
+ * dans l'application. Sans acompte renseigné, renvoie null : le PDF
+ * n'imprime alors rien du tout, pas même une ligne vide.
+ */
+export function ligneAcompte(
+  totalHt: number,
+  acomptePct: number | null | undefined,
+  acompteMontant: number | null | undefined,
+): string | null {
+  const total = Number(totalHt);
+  if (!Number.isFinite(total) || total <= 0) return null;
+
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  let montant: number | null = null;
+  let pct: number | null = null;
+
+  if (acomptePct !== null && acomptePct !== undefined && Number(acomptePct) > 0) {
+    pct = Number(acomptePct);
+    montant = round2((total * pct) / 100);
+  } else if (
+    acompteMontant !== null &&
+    acompteMontant !== undefined &&
+    Number(acompteMontant) > 0
+  ) {
+    montant = round2(Number(acompteMontant));
+  }
+  if (montant === null) return null;
+
+  // Un acompte supérieur au total n'a pas de sens : on le borne pour
+  // ne jamais imprimer un solde négatif.
+  montant = Math.min(montant, total);
+  const solde = round2(total - montant);
+
+  const enPct = (v: number) =>
+    Number.isInteger(v) ? String(v) : v.toLocaleString("fr-FR");
+
+  if (pct === null) {
+    return `Acompte à la commande : ${formatEuros(montant)} — solde : ${formatEuros(solde)} à la fin des travaux`;
+  }
+  const soldePct = round2(100 - pct);
+  return `Acompte ${enPct(pct)} % à la commande : ${formatEuros(montant)} — solde ${enPct(soldePct)} % : ${formatEuros(solde)} à la fin des travaux`;
 }
