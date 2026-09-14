@@ -13,6 +13,8 @@
 
 import { Resend } from "resend";
 
+import { mentionTvaFranchise } from "@/lib/legal-text";
+
 type SendEmailParams = {
   to: string;
   subject: string;
@@ -359,6 +361,13 @@ export function buildAvisChatelEmail(args: {
     ? `<p>Pour toute question, vous pouvez me joindre ${escapeHtml(coordonnees)}, ou simplement répondre à ce message.</p>`
     : `<p>Pour toute question, vous pouvez simplement répondre à ce message.</p>`;
 
+  // Mention de franchise : valeur centralisée dans lib/legal-text,
+  // jamais écrite en dur ici. Sans argument, elle prend la date du
+  // jour — c'est la bonne : ce pied de page décrit le régime de
+  // l'expéditeur au moment où le message part, pas celui d'un
+  // document passé.
+  const mentionTva = mentionTvaFranchise();
+
   const html = `<!doctype html>
 <html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
 ${enTeteHtml}
@@ -369,7 +378,7 @@ ${enTeteHtml}
 ${contactHtml}
 <p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
 <hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via Facture AE. TVA non applicable, art. 293 B du CGI.</p>
+<p style="font-size:12px; color:#666;">Envoyé via Facture AE. ${escapeHtml(mentionTva)}.</p>
 </body></html>`;
 
   const enTeteText = args.pourArtisan
@@ -393,7 +402,7 @@ ${contactText}
 Cordialement,
 ${args.expediteurNom}
 
-— Envoyé via Facture AE. TVA non applicable, art. 293 B du CGI.`;
+— Envoyé via Facture AE. ${mentionTva}.`;
 
   return { subject, html, text };
 }
