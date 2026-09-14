@@ -44,7 +44,21 @@ export async function POST(
     );
   }
 
-  const service = createServiceClient();
+  // Configuration serveur manquante : 503 propre plutôt qu'un crash
+  let service: ReturnType<typeof createServiceClient>;
+  try {
+    service = createServiceClient();
+  } catch (e) {
+    console.error("Signature contrat — service indisponible :", e);
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "Service momentanément indisponible — réessayez dans quelques minutes.",
+      },
+      { status: 503 },
+    );
+  }
   const { data: contratData } = await service
     .from("contrats")
     .select("*")

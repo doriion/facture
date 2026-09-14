@@ -25,7 +25,16 @@ export async function getContratParToken(token: string): Promise<{
     return { etat: "introuvable", contrat: null, prestataire: {} };
   }
 
-  const service = createServiceClient();
+  // Une panne de configuration serveur (SUPABASE_SERVICE_ROLE_KEY
+  // absente…) ne doit pas planter la page du client : état
+  // « indisponible » propre, l'erreur part quand même à Sentry.
+  let service: ReturnType<typeof createServiceClient>;
+  try {
+    service = createServiceClient();
+  } catch (e) {
+    console.error("Lien public contrat — service indisponible :", e);
+    return { etat: "indisponible", contrat: null, prestataire: {} };
+  }
   const { data } = await service
     .from("contrats")
     .select("*")

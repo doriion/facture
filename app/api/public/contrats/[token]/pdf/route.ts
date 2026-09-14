@@ -20,7 +20,15 @@ export async function GET(
     return new NextResponse("Lien invalide", { status: 404 });
   }
 
-  const service = createServiceClient();
+  let service: ReturnType<typeof createServiceClient>;
+  try {
+    service = createServiceClient();
+  } catch (e) {
+    console.error("PDF public contrat — service indisponible :", e);
+    return new NextResponse("Service momentanément indisponible", {
+      status: 503,
+    });
+  }
   const { data: contrat } = await service
     .from("contrats")
     .select("statut, numero, pdf_path")

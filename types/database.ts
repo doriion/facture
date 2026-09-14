@@ -1395,6 +1395,15 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       next_document_number: { Args: { p_type: string }; Returns: string };
+      remplacer_lignes_document: {
+        Args: {
+          p_type: string;
+          p_document_id: string;
+          p_lignes: Json;
+        };
+        /** Nombre de lignes insérées. */
+        Returns: number;
+      };
       ensure_calendar_token: {
         Args: { p_force?: boolean };
         Returns: string;

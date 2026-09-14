@@ -26,9 +26,9 @@ export const produitSchema = z.object({
   prix_ht: z.preprocess(
     moneyInput,
     z
-      .number({ error: "Prix HT invalide." })
+      .number({ error: "Prix invalide." })
       .min(0, "Le prix ne peut pas être négatif.")
-      .max(1_000_000, "Prix HT trop élevé."),
+      .max(1_000_000, "Prix trop élevé."),
   ),
   unite: z.enum(UNITES),
   categorie: z.enum(categorieValues),

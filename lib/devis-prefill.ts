@@ -9,6 +9,7 @@
  * aucune trace.
  */
 
+import { dateValiditeDevis } from "@/lib/devis-validite";
 import type { Database } from "@/types/database";
 
 type DevisRow = Database["public"]["Tables"]["devis"]["Row"];
@@ -22,25 +23,35 @@ export type DevisPrefill = {
     prix_unitaire_ht: number;
     nature_fiscale: string;
     type: string;
+    /** Coût réel privé (TTC payé au fournisseur) — jamais côté client. */
+    prix_achat_ttc_unitaire: number | null;
+    fournisseur: string;
   }>;
+};
+
+export type OptionsDuplicata = {
+  /** Réglage profil_entreprise.duree_validite_devis_jours (défaut 30). */
+  dureeValiditeJours?: unknown;
+  /** Injectable pour les tests. */
+  now?: Date;
 };
 
 /**
  * Construit la copie de travail d'un devis source : reprise complète
- * des lignes, de l'équipement, des performances énergétiques, des
- * aides et des conditions — mais SANS le client (à choisir) et avec
- * les dates remises à aujourd'hui (validité +90 jours), comme pour un
- * devis neuf.
+ * des lignes (coûts privés inclus — ils restent invisibles du client),
+ * de l'équipement, des performances énergétiques, des aides et des
+ * conditions — mais SANS le client (à choisir) et avec les dates
+ * remises à aujourd'hui. La validité suit le réglage du profil
+ * (lib/devis-validite), comme pour un devis neuf.
  */
 export function buildDevisDuplicata(
   source: DevisRow,
   lignes: DevisLigneRow[],
-  now: Date = new Date(),
+  options: OptionsDuplicata = {},
 ): DevisPrefill {
+  const now = options.now ?? new Date();
   const today = now.toISOString().slice(0, 10);
-  const validite = new Date(now.getTime() + 90 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  const validite = dateValiditeDevis(today, options.dureeValiditeJours);
 
   return {
     devis: {
@@ -62,6 +73,12 @@ export function buildDevisDuplicata(
       prix_unitaire_ht: Number(l.prix_unitaire_ht),
       nature_fiscale: l.nature_fiscale ?? "bic_prestations",
       type: l.type ?? "ligne",
+      prix_achat_ttc_unitaire:
+        l.prix_achat_ttc_unitaire === null ||
+        l.prix_achat_ttc_unitaire === undefined
+          ? null
+          : Number(l.prix_achat_ttc_unitaire),
+      fournisseur: l.fournisseur ?? "",
     })),
   };
 }

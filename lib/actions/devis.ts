@@ -4,8 +4,15 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
+import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
+import {
+  conversionDevisAutorisee,
+  motifVerrouDevis,
+  transitionDevisAutorisee,
+} from "@/lib/devis-transitions";
 import {
   devisSchema,
+  statutAffichageDevis,
   type DevisFormValues,
 } from "@/lib/validations/devis";
 import { computeTotalHt } from "@/lib/validations/facture";
@@ -41,8 +48,19 @@ export async function listDevis(params?: {
     const s = `%${params.search}%`;
     query = query.or(`numero.ilike.${s},notes.ilike.${s}`);
   }
+  // « expire » n'est jamais stocké : c'est un devis envoyé dont la
+  // validité est dépassée. Sans ce cas particulier, le filtre
+  // « Expiré » ne renvoyait jamais rien, et le filtre « Envoyé »
+  // ramenait aussi des devis affichés « Expiré ».
+  const aujourdhui = new Date().toISOString().slice(0, 10);
   if (params?.statut && params.statut !== "tous") {
-    query = query.eq("statut", params.statut);
+    if (params.statut === "expire") {
+      query = query.eq("statut", "envoye").lt("date_validite", aujourdhui);
+    } else if (params.statut === "envoye") {
+      query = query.eq("statut", "envoye").gte("date_validite", aujourdhui);
+    } else {
+      query = query.eq("statut", params.statut);
+    }
   }
   if (params?.type && params.type !== "tous") {
     query = query.eq("type_activite", params.type);
@@ -52,12 +70,10 @@ export async function listDevis(params?: {
   }
 
   const { data } = await query;
-  const today = new Date().toISOString().slice(0, 10);
-  const result = (data ?? []).map((d) => {
-    const isExpired =
-      d.statut === "envoye" && d.date_validite && d.date_validite < today;
-    return { ...d, statut_affichage: isExpired ? "expire" : d.statut };
-  });
+  const result = (data ?? []).map((d) => ({
+    ...d,
+    statut_affichage: statutAffichageDevis(d.statut, d.date_validite),
+  }));
   return result;
 }
 
@@ -86,6 +102,21 @@ export async function setDevisModeleAction(
   estModele: boolean,
 ): Promise<ActionResult> {
   const supabase = createClient();
+  const { data: existant } = await supabase
+    .from("devis")
+    .select("signature_client_url, facture_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existant) return { ok: false, error: "Devis introuvable." };
+
+  // Un devis signé ou converti est un document engageant : il ne peut
+  // pas être rangé dans les modèles (où il sortirait des statistiques).
+  const verrou = motifVerrouDevis({
+    signee: !!existant.signature_client_url,
+    convertie: !!existant.facture_id,
+  });
+  if (verrou) return { ok: false, error: verrou };
+
   const { error } = await supabase
     .from("devis")
     .update({ est_modele: estModele })
@@ -268,16 +299,18 @@ export async function updateDevisAction(
 
   const { data: existing } = await supabase
     .from("devis")
-    .select("statut, facture_id")
+    .select("statut, facture_id, signature_client_url")
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Devis introuvable." };
-  if (existing.facture_id) {
-    return {
-      ok: false,
-      error: "Ce devis a été converti en facture et ne peut plus être modifié.",
-    };
-  }
+
+  // Verrou : un devis converti en facture, ou signé par le client, ne
+  // se modifie plus — la signature porte sur ce contenu précis.
+  const verrou = motifVerrouDevis({
+    signee: !!existing.signature_client_url,
+    convertie: !!existing.facture_id,
+  });
+  if (verrou) return { ok: false, error: verrou };
 
   const total_ht = computeTotalHt(v.lignes);
 
@@ -304,30 +337,26 @@ export async function updateDevisAction(
 
   if (updateErr) return { ok: false, error: updateErr.message };
 
-  // Remplacement intégral des lignes
-  const { error: deleteErr } = await supabase
-    .from("devis_lignes")
-    .delete()
-    .eq("devis_id", id);
-  if (deleteErr) return { ok: false, error: deleteErr.message };
-
-  const lignesPayload = v.lignes.map((l, idx) => ({
-    user_id: user.id,
-    devis_id: id,
-    ordre: idx,
-    designation: l.designation,
-    nature_fiscale: l.nature_fiscale ?? "bic_prestations",
-    type: l.type ?? "ligne",
-    quantite: l.quantite,
-    prix_unitaire_ht: l.prix_unitaire_ht,
-    prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire ?? null,
-    fournisseur: l.fournisseur || null,
-    total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
-  }));
-  const { error: insertErr } = await supabase
-    .from("devis_lignes")
-    .insert(lignesPayload);
-  if (insertErr) return { ok: false, error: insertErr.message };
+  // Remplacement intégral des lignes, en UNE transaction côté base :
+  // un échec ne peut plus laisser le devis sans aucune ligne.
+  const remplacement = await remplacerLignesDocument(
+    supabase,
+    "devis",
+    id,
+    user.id,
+    v.lignes.map((l, idx) => ({
+      ordre: idx,
+      designation: l.designation,
+      nature_fiscale: l.nature_fiscale ?? "bic_prestations",
+      type: l.type ?? "ligne",
+      quantite: l.quantite,
+      prix_unitaire_ht: l.prix_unitaire_ht,
+      prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire ?? null,
+      fournisseur: l.fournisseur || null,
+      total_ht: Math.round(l.quantite * l.prix_unitaire_ht * 100) / 100,
+    })),
+  );
+  if (!remplacement.ok) return { ok: false, error: remplacement.error };
 
   revalidatePath("/devis");
   revalidatePath(`/devis/${id}`);
@@ -342,11 +371,41 @@ export async function setDevisStatutAction(
   statut: "brouillon" | "envoye" | "accepte" | "refuse",
 ): Promise<ActionResult> {
   const supabase = createClient();
-  const { error } = await supabase
+  const { data: existant } = await supabase
+    .from("devis")
+    .select(
+      "statut, date_validite, facture_id, signature_client_url, est_modele",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (!existant) return { ok: false, error: "Devis introuvable." };
+
+  // Le contrôle porte sur le statut AFFICHÉ (un devis « envoyé » dont
+  // la validité est dépassée s'affiche « Expiré » et n'accepte que le
+  // retour en brouillon).
+  const depuis = statutAffichageDevis(existant.statut, existant.date_validite);
+  const autorisee = transitionDevisAutorisee(depuis, statut, {
+    signee: !!existant.signature_client_url,
+    convertie: !!existant.facture_id,
+    modele: existant.est_modele,
+  });
+  if (!autorisee.ok) return { ok: false, error: autorisee.error };
+
+  // `.eq("statut", …)` + `.select` : la transition n'est appliquée que
+  // si le devis est toujours dans l'état lu (deux onglets ouverts).
+  const { data: modifie, error } = await supabase
     .from("devis")
     .update({ statut })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("statut", existant.statut)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!modifie || modifie.length === 0) {
+    return {
+      ok: false,
+      error: "Le devis a changé entre-temps — rechargez la page.",
+    };
+  }
 
   // Le devis quitte le brouillon : fige les mentions émetteur.
   if (statut !== "brouillon") {
@@ -370,10 +429,19 @@ export async function deleteDevisAction(id: string): Promise<ActionResult> {
   const supabase = createClient();
   const { data: existing } = await supabase
     .from("devis")
-    .select("statut")
+    .select("statut, facture_id, signature_client_url")
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Devis introuvable." };
+
+  // Verrou d'abord : le message « devis signé » est plus parlant que
+  // « seuls les brouillons… » si la signature est la vraie raison.
+  const verrou = motifVerrouDevis({
+    signee: !!existing.signature_client_url,
+    convertie: !!existing.facture_id,
+  });
+  if (verrou) return { ok: false, error: verrou };
+
   if (existing.statut !== "brouillon") {
     return {
       ok: false,
@@ -407,12 +475,14 @@ export async function convertirDevisEnFactureAction(
     .eq("id", devisId)
     .maybeSingle();
   if (!devis) return { ok: false, error: "Devis introuvable." };
-  if (devis.facture_id) {
-    return {
-      ok: false,
-      error: "Ce devis a déjà été converti en facture.",
-    };
-  }
+
+  // Seul un devis accepté se convertit (la signature client le passe
+  // déjà en accepté, le flux signé reste donc direct).
+  const autorisee = conversionDevisAutorisee(devis.statut, {
+    convertie: !!devis.facture_id,
+    modele: devis.est_modele,
+  });
+  if (!autorisee.ok) return { ok: false, error: autorisee.error };
 
   const { data: lignes } = await supabase
     .from("devis_lignes")
@@ -499,11 +569,24 @@ export async function convertirDevisEnFactureAction(
     return { ok: false, error: lignesErr.message };
   }
 
-  // Lien devis → facture + statut accepté
-  await supabase
+  // Lien devis → facture. `.is("facture_id", null)` + contrôle du
+  // résultat : deux conversions simultanées ne peuvent pas créer deux
+  // factures pour le même devis — la seconde est annulée proprement.
+  const { data: lie, error: lienErr } = await supabase
     .from("devis")
     .update({ facture_id: facture.id, statut: "accepte" })
-    .eq("id", devisId);
+    .eq("id", devisId)
+    .is("facture_id", null)
+    .select("id");
+  if (lienErr || !lie || lie.length === 0) {
+    await supabase.from("factures_lignes").delete().eq("facture_id", facture.id);
+    await supabase.from("factures").delete().eq("id", facture.id);
+    return {
+      ok: false,
+      error:
+        lienErr?.message ?? "Ce devis vient d'être converti dans un autre onglet.",
+    };
+  }
 
   // Devis accepté = engageant : mentions émetteur figées.
   await figerEmetteurDocument(supabase, "devis", devisId);
