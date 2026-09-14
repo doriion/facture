@@ -209,7 +209,7 @@ export function DevisActions({
       <Button variant="outline" asChild>
         <Link href={`/devis/nouveau?source=${devisId}`}>
           <Copy className="size-4" />
-          Dupliquer
+          Refaire un devis similaire
         </Link>
       </Button>
 

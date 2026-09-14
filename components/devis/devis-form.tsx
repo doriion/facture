@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LignesEditor } from "@/components/factures/lignes-editor";
+import { ClientPicker } from "@/components/clients/client-picker";
 
 import type { Database } from "@/types/database";
 import type { NatureFiscale } from "@/lib/fiscal";
@@ -218,40 +219,9 @@ export function DevisForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* Type d'activité */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Type d'activité</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select
-            value={currentType}
-            onValueChange={(v) =>
-              setValue("type_activite", v as DevisFormInput["type_activite"], {
-                shouldValidate: true,
-              })
-            }
-          >
-            <SelectTrigger className="md:max-w-md">
-              <SelectValue placeholder="Choisir le type d'activité…" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(LABELS_TYPE_ACTIVITE).map(([k, label]) => (
-                <SelectItem key={k} value={k}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.type_activite && (
-            <p className="mt-1 text-xs text-destructive">
-              {errors.type_activite.message}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Client + dates */}
+      {/* Client d'abord : un devis commence par « pour qui ».
+          Recherche instantanée, et création en dialogue pour ne pas
+          casser le fil quand c'est un nouveau client. */}
       <Card>
         <CardHeader>
           <CardTitle>Client et dates</CardTitle>
@@ -264,35 +234,39 @@ export function DevisForm({
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5 md:col-span-2">
             <Label htmlFor="client_id">Client *</Label>
-            <Select
+            <ClientPicker
+              clients={clients}
               value={watch("client_id")}
-              onValueChange={(v) =>
+              onChange={(v) =>
                 setValue("client_id", v, { shouldValidate: true })
               }
+              error={errors.client_id?.message}
+            />
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label htmlFor="type_activite">Type d'activité *</Label>
+            <Select
+              value={currentType}
+              onValueChange={(v) =>
+                setValue("type_activite", v as DevisFormInput["type_activite"], {
+                  shouldValidate: true,
+                })
+              }
             >
-              <SelectTrigger id="client_id">
-                <SelectValue placeholder="Sélectionner un client" />
+              <SelectTrigger id="type_activite" className="md:max-w-md">
+                <SelectValue placeholder="Choisir le type d'activité…" />
               </SelectTrigger>
               <SelectContent>
-                {clients.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    Aucun client. Créez-en un d'abord.
-                  </div>
-                ) : (
-                  clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nom}
-                      {c.ville && (
-                        <span className="text-muted-foreground"> · {c.ville}</span>
-                      )}
-                    </SelectItem>
-                  ))
-                )}
+                {Object.entries(LABELS_TYPE_ACTIVITE).map(([k, label]) => (
+                  <SelectItem key={k} value={k}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            {errors.client_id && (
+            {errors.type_activite && (
               <p className="text-xs text-destructive">
-                {errors.client_id.message}
+                {errors.type_activite.message}
               </p>
             )}
           </div>

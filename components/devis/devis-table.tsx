@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { CopyPlus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import {
   Table,
@@ -87,6 +90,9 @@ export function DevisTable({ devis }: { devis: DevisRow[] }) {
             <TableHead>Activité</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead className="text-right">Total</TableHead>
+            <TableHead className="w-10 text-right">
+              <span className="sr-only">Refaire</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -133,6 +139,25 @@ export function DevisTable({ devis }: { devis: DevisRow[] }) {
               </TableCell>
               <TableCell className="text-right font-medium tabular-nums">
                 {formatEuros(Number(d.total_ht))}
+              </TableCell>
+              {/* Refaire un devis similaire : le geste le plus
+                  fréquent après « le même mais pour quelqu'un
+                  d'autre ». Il n'existait que sur la fiche, donc à
+                  deux clics et un chargement de page. */}
+              <TableCell className="text-right">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  asChild
+                  title={`Refaire un devis similaire à ${d.numero}`}
+                >
+                  <Link href={`/devis/nouveau?source=${d.id}`}>
+                    <CopyPlus className="size-4 text-muted-foreground" />
+                    <span className="sr-only">
+                      Refaire un devis similaire à {d.numero}
+                    </span>
+                  </Link>
+                </Button>
               </TableCell>
             </TableRow>
           ))}
