@@ -1,10 +1,9 @@
 import { z } from "zod";
 
 import { parseMoneyInput } from "@/lib/format";
+import { prixSaisi, quantiteSaisie } from "@/lib/lignes-saisie";
 
-/** Préprocesseur pour montants saisis comme texte (FR/EN tolérant). */
-const moneyInput = (v: unknown) =>
-  v === "" || v === null || v === undefined ? v : parseMoneyInput(v);
+/** Préprocesseur pour montants optionnels saisis comme texte (FR/EN). */
 const moneyInputOrNull = (v: unknown) =>
   v === "" || v === null || v === undefined ? null : parseMoneyInput(v);
 
@@ -41,15 +40,18 @@ export const ligneFactureSchema = z.object({
     .trim()
     .min(1, "La désignation est obligatoire.")
     .max(500),
+  // Champs laissés VIDES dans le formulaire (saisie directe, sans
+  // effacer un « 1 » ou un « 0 ») : quantité vide = 1, prix vide = 0.
+  // Voir lib/lignes-saisie.ts. Le calcul quantité × prix ne change pas.
   quantite: z.preprocess(
-    moneyInput,
+    quantiteSaisie,
     z
       .number({ error: "Quantité invalide." })
       .positive("La quantité doit être positive.")
       .max(100000, "Quantité trop élevée."),
   ),
   prix_unitaire_ht: z.preprocess(
-    moneyInput,
+    prixSaisi,
     z
       .number({ error: "Prix unitaire invalide." })
       .min(0, "Le prix ne peut pas être négatif.")
