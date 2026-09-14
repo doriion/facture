@@ -20,6 +20,7 @@ import {
 import {
   adresseAffichagePrestataire,
   equipementsDe,
+  mentionTvaContrat,
   nomAffichagePrestataire,
   valeursTemplate,
   type ClientSnapshot,
@@ -232,7 +233,11 @@ export function ContratPdf({
   const nomPresta = nomAffichagePrestataire(prestataire);
   const adressePresta = adresseAffichagePrestataire(prestataire);
   const footerLigne1 = `${nomPresta} — Entreprise individuelle — ${adressePresta || "……"}`;
-  const footerLigne2 = `SIRET ${prestataire.siret ? formatSiret(prestataire.siret) : "……"} — APE ${prestataire.code_ape ?? "……"} — TVA non applicable, art. 293 B du CGI${prestataire.email_pro ? ` — ${prestataire.email_pro}` : ""}`;
+  // Mention de franchise : décidée par mentionTvaContrat (version du
+  // contrat, puis date) — jamais écrite en dur ici, et toujours
+  // identique à celle du corps du texte.
+  const mentionTva = mentionTvaContrat(contrat);
+  const footerLigne2 = `SIRET ${prestataire.siret ? formatSiret(prestataire.siret) : "……"} — APE ${prestataire.code_ape ?? "……"} — ${mentionTva}${prestataire.email_pro ? ` — ${prestataire.email_pro}` : ""}`;
 
   const renderBloc = (bloc: BlocContrat, i: number) => {
     switch (bloc.kind) {

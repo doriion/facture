@@ -1,4 +1,8 @@
 import { formatDateFr, formatEuros } from "@/lib/format";
+import {
+  MENTION_TVA_FRANCHISE_CGI,
+  mentionTvaFranchise,
+} from "@/lib/legal-text";
 import type { Database } from "@/types/database";
 import type { EquipementContrat } from "@/lib/contrats/types";
 
@@ -111,13 +115,62 @@ export function adresseAffichagePrestataire(p: PrestataireSnapshot): string {
 }
 
 /**
+ * Date qui fait foi pour les mentions légales datées d'un contrat
+ * (aujourd'hui : la seule mention de franchise de TVA, dont la
+ * rédaction a changé le 01/09/2026 — voir lib/legal-text).
+ *
+ * On retient la signature si elle a eu lieu, sinon l'envoi au client,
+ * sinon rien : un brouillon prend alors la date du jour. Le contrat
+ * porte ainsi la rédaction en vigueur au moment où il a été conclu, et
+ * un contrat ancien régénéré ne se voit pas réécrire sa mention.
+ *
+ * `date_effet` est volontairement ignorée : elle peut être future.
+ */
+export function dateReferenceContrat(contrat: {
+  signed_at?: string | null;
+  sent_at?: string | null;
+}): string | null {
+  const horodatage = contrat.signed_at || contrat.sent_at;
+  return horodatage ? horodatage.slice(0, 10) : null;
+}
+
+/**
+ * Mention de franchise de TVA d'un contrat — le SEUL endroit qui en
+ * décide, pour le corps du texte comme pour le pied de page du PDF.
+ *
+ * Elle suit la VERSION du contrat avant de suivre sa date :
+ *
+ * - version 1 : le texte de l'article 6.1 porte l'ancienne rédaction
+ *   écrite en dur dans un fichier figé. Le pied de page doit dire la
+ *   même chose, sans quoi un contrat régénéré se contredirait d'une
+ *   page à l'autre. Un contrat v1 se réimprime donc exactement comme
+ *   le client l'a reçu, y compris s'il a été signé après la bascule.
+ * - version 2 et au-delà : la mention vient de lib/legal-text, choisie
+ *   d'après la date du contrat, exactement comme les devis et les
+ *   factures.
+ */
+export function mentionTvaContrat(contrat: {
+  template_version: number;
+  signed_at?: string | null;
+  sent_at?: string | null;
+}): string {
+  if (Number(contrat.template_version) <= 1) return MENTION_TVA_FRANCHISE_CGI;
+  return mentionTvaFranchise(dateReferenceContrat(contrat));
+}
+
+/**
  * Les valeurs qui remplissent les espaces réservés {commeCeci} du
  * template (voir remplirTexte). Clé absente → pointillés au rendu.
  */
 export function valeursTemplate(args: {
   contrat: Pick<
     ContratRow,
-    "numero" | "plafond_pieces" | "date_effet"
+    | "numero"
+    | "plafond_pieces"
+    | "date_effet"
+    | "signed_at"
+    | "sent_at"
+    | "template_version"
   >;
   prestataire: PrestataireSnapshot;
 }): Record<string, string> {
@@ -144,6 +197,10 @@ export function valeursTemplate(args: {
     prestataireNom: nomAffichagePrestataire(prestataire),
     prestataireAdresse: adresseAffichagePrestataire(prestataire),
     prestataireEmail: prestataire.email_pro ?? "",
+    // Espace réservé du template v2. Jamais écrit en dur dans un
+    // texte de contrat — le template v1, figé, reste l'exception
+    // historique, et il n'utilise pas cet espace réservé.
+    mentionTvaFranchise: mentionTvaContrat(contrat),
   };
 }
 
