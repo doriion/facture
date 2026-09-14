@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Save } from "lucide-react";
+import { ChevronRight, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -15,6 +15,8 @@ import {
 import { isClimPac, type TypeActivite } from "@/lib/validations/facture";
 import { dateValiditeDevis, dureeValiditeSure } from "@/lib/devis-validite";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
+import { ligneAcompte } from "@/lib/devis-modele";
+import { parseMoneyInput } from "@/lib/format";
 import {
   createDevisAction,
   updateDevisAction,
@@ -194,6 +196,41 @@ export function DevisForm({
   const showEquipement = isClimPac(currentType);
   const showPerformances = isClimPac(currentType);
 
+  // Les détails techniques s'ouvrent d'emblée si le devis en porte
+  // déjà (édition, duplication, modèle) : replier des champs remplis
+  // les rendrait invisibles sans les supprimer, ce qui est pire que
+  // de les afficher. Calculé une fois, à l'ouverture du formulaire.
+  const [detailsRemplis] = useState(() =>
+    [equip, perfs, aides].some((o) =>
+      Object.values(o).some((v) => v !== null && v !== undefined && v !== ""),
+    ),
+  );
+
+  // Total et acompte en direct. Les lignes de type « titre » ne portent
+  // pas de montant : on les exclut, comme le fait le PDF.
+  const lignesSaisies = watch("lignes") ?? [];
+  const totalHtSaisi = lignesSaisies.reduce((somme, l) => {
+    if ((l as { type?: string })?.type === "titre") return somme;
+    const q = parseMoneyInput(String(l?.quantite ?? 0));
+    const p = parseMoneyInput(String(l?.prix_unitaire_ht ?? 0));
+    return somme + (Number.isFinite(q) ? q : 0) * (Number.isFinite(p) ? p : 0);
+  }, 0);
+
+  const acomptePctSaisi = watch("acompte_pct");
+  const acompteMontantSaisi = watch("acompte_montant");
+  const nombreOuNull = (v: unknown) => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = parseMoneyInput(String(v));
+    return Number.isFinite(n) ? n : null;
+  };
+  // Même fonction que celle du PDF : l'aperçu ne peut pas diverger du
+  // document imprimé.
+  const ligneAcompteApercu = ligneAcompte(
+    totalHtSaisi,
+    nombreOuNull(acomptePctSaisi),
+    nombreOuNull(acompteMontantSaisi),
+  );
+
   async function onSubmit(values: DevisFormValues) {
     setSubmitting(true);
     if (isEdit) {
@@ -350,9 +387,25 @@ export function DevisForm({
               {...register("acompte_montant")}
             />
             <p className="text-xs text-muted-foreground">
-              Le PDF affiche « Acompte à la commande… solde à réception de
-              facture ». Le % prime si les deux sont remplis.
+              Le % prime si les deux sont remplis.
             </p>
+          </div>
+          {/* Acompte recalculé pendant la saisie, à partir du total des
+              lignes : plus besoin de sortir la calculatrice pour
+              vérifier ce que le client va devoir verser. Exactement la
+              phrase qu'imprimera le PDF. */}
+          <div className="md:col-span-2">
+            {ligneAcompteApercu ? (
+              <p className="rounded-md border-l-2 border-primary bg-muted/40 px-3 py-2 text-sm">
+                {ligneAcompteApercu}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {totalHtSaisi > 0
+                  ? "Aucun acompte : le PDF n'affichera pas de ligne d'acompte."
+                  : "Le montant s'affichera ici dès que les prestations seront saisies."}
+              </p>
+            )}
           </div>
           <label className="flex items-start gap-2 text-sm md:col-span-2">
             <input
@@ -393,163 +446,181 @@ export function DevisForm({
         </CardContent>
       </Card>
 
-      {/* Équipement clim/PAC */}
-      {showEquipement && (
+      {/* Détails techniques : utiles pour un dossier clim/PAC ou
+          MaPrimeRénov', encombrants pour un dépannage. Repliés par
+          défaut, dépliables d'un clic, et le contenu reste MONTÉ —
+          un champ déjà rempli (duplication, modèle, édition) ne
+          disparaît donc pas du formulaire quand le bloc est fermé. */}
+      <details className="group rounded-lg border bg-card" open={detailsRemplis}>
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-6 py-4 font-semibold">
+          <ChevronRight className="size-4 shrink-0 transition-transform group-open:rotate-90" />
+          Détails techniques (optionnel)
+          <span className="ml-auto text-xs font-normal text-muted-foreground">
+            {showEquipement
+              ? "équipement, performances, aides financières"
+              : "aides financières"}
+          </span>
+        </summary>
+        <div className="space-y-6 border-t p-6 pt-4">
+        {/* Équipement clim/PAC */}
+        {showEquipement && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Équipement proposé</CardTitle>
+              <CardDescription>
+                Caractéristiques de l'équipement à installer.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="equip_marque">Marque</Label>
+                <Input id="equip_marque" {...register("equipement.marque")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="equip_modele">Modèle</Label>
+                <Input id="equip_modele" {...register("equipement.modele")} />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="equip_serie">Numéro de série</Label>
+                <Input id="equip_serie" {...register("equipement.num_serie")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="equip_fluide_type">Type de fluide</Label>
+                <Input
+                  id="equip_fluide_type"
+                  placeholder="R32, R454B, R290…"
+                  {...register("equipement.fluide_frigo_type")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="equip_fluide_kg">
+                  Charge fluide frigorigène (kg)
+                </Label>
+                <Input
+                  id="equip_fluide_kg"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="1,4"
+                  {...register("equipement.fluide_frigo_kg")}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Performances énergétiques */}
+        {showPerformances && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Performances énergétiques</CardTitle>
+              <CardDescription>
+                Apparaissent sur le devis. Indispensables pour les dossiers
+                MaPrimeRénov'/CEE et pour informer le client.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="perf_cop">COP</Label>
+                <Input
+                  id="perf_cop"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="Ex : 4,2"
+                  {...register("performances_energetiques.cop")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Coefficient de performance instantané.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="perf_scop">SCOP</Label>
+                <Input
+                  id="perf_scop"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="Ex : 4,0"
+                  {...register("performances_energetiques.scop")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Coefficient saisonnier (chauffage).
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="perf_seer">SEER</Label>
+                <Input
+                  id="perf_seer"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="Ex : 7,5"
+                  {...register("performances_energetiques.seer")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Efficacité énergétique saisonnière (refroidissement).
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="perf_classe">Classe énergétique</Label>
+                <Input
+                  id="perf_classe"
+                  placeholder="A++, A+, A…"
+                  {...register("performances_energetiques.classe_energetique")}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Aides financières */}
         <Card>
           <CardHeader>
-            <CardTitle>Équipement proposé</CardTitle>
+            <CardTitle>Aides financières (information client)</CardTitle>
             <CardDescription>
-              Caractéristiques de l'équipement à installer.
+              Estimations qui apparaîtront sur le devis pour informer votre
+              client du reste à charge.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
+          <CardContent className="grid gap-4 md:grid-cols-3">
             <div className="space-y-1.5">
-              <Label htmlFor="equip_marque">Marque</Label>
-              <Input id="equip_marque" {...register("equipement.marque")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="equip_modele">Modèle</Label>
-              <Input id="equip_modele" {...register("equipement.modele")} />
-            </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <Label htmlFor="equip_serie">Numéro de série</Label>
-              <Input id="equip_serie" {...register("equipement.num_serie")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="equip_fluide_type">Type de fluide</Label>
+              <Label htmlFor="aide_mpr">MaPrimeRénov'</Label>
               <Input
-                id="equip_fluide_type"
-                placeholder="R32, R454B, R290…"
-                {...register("equipement.fluide_frigo_type")}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="equip_fluide_kg">
-                Charge fluide frigorigène (kg)
-              </Label>
-              <Input
-                id="equip_fluide_kg"
+                id="aide_mpr"
                 type="text"
                 inputMode="decimal"
                 autoComplete="off"
-                placeholder="1,4"
-                {...register("equipement.fluide_frigo_kg")}
+                placeholder="0,00 €"
+                {...register("aides_financieres.maprimerenov")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="aide_cee">Certificats d'Économie d'Énergie</Label>
+              <Input
+                id="aide_cee"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0,00 €"
+                {...register("aides_financieres.cee")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="aide_ecoptz">Eco-PTZ</Label>
+              <Input
+                id="aide_ecoptz"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0,00 €"
+                {...register("aides_financieres.eco_ptz")}
               />
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Performances énergétiques */}
-      {showPerformances && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Performances énergétiques</CardTitle>
-            <CardDescription>
-              Apparaissent sur le devis. Indispensables pour les dossiers
-              MaPrimeRénov'/CEE et pour informer le client.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="perf_cop">COP</Label>
-              <Input
-                id="perf_cop"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="Ex : 4,2"
-                {...register("performances_energetiques.cop")}
-              />
-              <p className="text-xs text-muted-foreground">
-                Coefficient de performance instantané.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="perf_scop">SCOP</Label>
-              <Input
-                id="perf_scop"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="Ex : 4,0"
-                {...register("performances_energetiques.scop")}
-              />
-              <p className="text-xs text-muted-foreground">
-                Coefficient saisonnier (chauffage).
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="perf_seer">SEER</Label>
-              <Input
-                id="perf_seer"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="Ex : 7,5"
-                {...register("performances_energetiques.seer")}
-              />
-              <p className="text-xs text-muted-foreground">
-                Efficacité énergétique saisonnière (refroidissement).
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="perf_classe">Classe énergétique</Label>
-              <Input
-                id="perf_classe"
-                placeholder="A++, A+, A…"
-                {...register("performances_energetiques.classe_energetique")}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Aides financières */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Aides financières (information client)</CardTitle>
-          <CardDescription>
-            Estimations qui apparaîtront sur le devis pour informer votre
-            client du reste à charge.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="aide_mpr">MaPrimeRénov'</Label>
-            <Input
-              id="aide_mpr"
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder="0,00 €"
-              {...register("aides_financieres.maprimerenov")}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="aide_cee">Certificats d'Économie d'Énergie</Label>
-            <Input
-              id="aide_cee"
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder="0,00 €"
-              {...register("aides_financieres.cee")}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="aide_ecoptz">Eco-PTZ</Label>
-            <Input
-              id="aide_ecoptz"
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder="0,00 €"
-              {...register("aides_financieres.eco_ptz")}
-            />
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </details>
 
       {/* Conditions + Notes */}
       <Card>
