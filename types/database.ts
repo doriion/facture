@@ -420,6 +420,111 @@ export type Database = {
           },
         ];
       };
+      bareme_entretien_postes: {
+        Row: {
+          id: string;
+          user_id: string;
+          code: string;
+          groupe: string;
+          libelle: string;
+          unite: string;
+          tranches: Json;
+          ordre: number;
+          actif: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          code: string;
+          groupe: string;
+          libelle: string;
+          unite?: string;
+          tranches?: Json;
+          ordre?: number;
+          actif?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          code?: string;
+          groupe?: string;
+          libelle?: string;
+          unite?: string;
+          tranches?: Json;
+          ordre?: number;
+          actif?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      bareme_entretien_zones: {
+        Row: {
+          id: string;
+          user_id: string;
+          code: string;
+          libelle: string;
+          distance_km: number;
+          peage: number;
+          temps_route_h: number;
+          ordre: number;
+          actif: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          code: string;
+          libelle: string;
+          distance_km?: number;
+          peage?: number;
+          temps_route_h?: number;
+          ordre?: number;
+          actif?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          code?: string;
+          libelle?: string;
+          distance_km?: number;
+          peage?: number;
+          temps_route_h?: number;
+          ordre?: number;
+          actif?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      bareme_entretien_reglages: {
+        Row: {
+          user_id: string;
+          tarif_km: number;
+          taux_horaire: number;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          tarif_km?: number;
+          taux_horaire?: number;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          tarif_km?: number;
+          taux_horaire?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       taches_photos: {
         Row: {
           id: string;

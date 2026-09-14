@@ -46,6 +46,12 @@ import {
 } from "@/lib/catalogue-recherche";
 import { ajouterLigneAuCatalogueAction } from "@/lib/actions/produits";
 import { DesignationAutocomplete } from "@/components/factures/designation-autocomplete";
+import { CalculateurEntretienDialog } from "@/components/entretien/calculateur-entretien-dialog";
+import {
+  lignesDocumentDepuisCalcul,
+  type BaremeEntretien,
+  type ResultatCalcul,
+} from "@/lib/bareme-entretien";
 import type { Database } from "@/types/database";
 
 
@@ -97,6 +103,7 @@ export function LignesEditor<T extends FieldValues>({
   produits,
   fieldName = "lignes" as Path<T>,
   assujettiTva = false,
+  baremeEntretien = null,
 }: {
   control: Control<T>;
   register: UseFormRegister<T>;
@@ -107,6 +114,8 @@ export function LignesEditor<T extends FieldValues>({
   produits: Produit[];
   fieldName?: Path<T>;
   assujettiTva?: boolean;
+  /** Barème d'entretien : affiche « Calculer un entretien » (devis). */
+  baremeEntretien?: BaremeEntretien | null;
 }) {
   const { fields, append, remove } = useFieldArray<T>({
     control,
@@ -256,6 +265,22 @@ export function LignesEditor<T extends FieldValues>({
       nature_fiscale: "bic_prestations",
       type: "titre",
     } as unknown as FieldArray<T, ArrayPath<T>>);
+  }
+
+  /**
+   * Chiffrage du calculateur d'entretien → une ligne par poste retenu
+   * et une pour le déplacement (lib/bareme-entretien). Ajoutées à la
+   * suite des lignes existantes, sans rien écraser.
+   */
+  function ajouterEntretien(calcul: ResultatCalcul) {
+    const nouvelles = lignesDocumentDepuisCalcul(calcul);
+    for (const l of nouvelles) {
+      append(l as unknown as FieldArray<T, ArrayPath<T>>);
+    }
+    toast.success(
+      `${nouvelles.length} ligne${nouvelles.length > 1 ? "s" : ""} d'entretien ajoutée${nouvelles.length > 1 ? "s" : ""}`,
+      { description: `Total ${formatEuros(calcul.total)} net — ajustable ligne par ligne.` },
+    );
   }
 
   function addFromCatalog(produitId: string) {
@@ -669,6 +694,17 @@ export function LignesEditor<T extends FieldValues>({
           <Plus className="size-4" />
           Titre de section
         </Button>
+
+        {/* Calculateur d'entretien (barème) : les postes cochés
+            deviennent des lignes ordinaires, ajustables ensuite. */}
+        {baremeEntretien && (
+          <CalculateurEntretienDialog
+            bareme={baremeEntretien}
+            libelleValider="Ajouter au devis"
+            description="Indiquez les équipements et la zone : les lignes correspondantes sont ajoutées au document avec leurs montants nets, puis restent modifiables comme n'importe quelle ligne."
+            onValider={ajouterEntretien}
+          />
+        )}
 
         {catalogue.length > 0 && (
           <div className="flex flex-col gap-1">

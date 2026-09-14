@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Calculator, Plus } from "lucide-react";
 
 import { listContratsEntretien } from "@/lib/actions/contrats-entretien";
 import {
@@ -36,12 +36,20 @@ export default async function ContratsPage({
             Créez, envoyez et faites signer vos contrats en ligne.
           </p>
         </div>
-        <Button asChild className="max-md:hidden">
-          <Link href="/contrats/nouveau">
-            <Plus className="size-4" />
-            Nouveau contrat
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2 max-md:hidden">
+          <Button variant="outline" asChild>
+            <Link href="/contrats/calculateur">
+              <Calculator className="size-4" />
+              Calculateur d'entretien
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/contrats/nouveau">
+              <Plus className="size-4" />
+              Nouveau contrat
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <ContratsEntretienToolbar

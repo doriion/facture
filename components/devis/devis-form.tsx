@@ -45,6 +45,7 @@ import { ClientPicker } from "@/components/clients/client-picker";
 
 import type { Database } from "@/types/database";
 import type { NatureFiscale } from "@/lib/fiscal";
+import type { BaremeEntretien } from "@/lib/bareme-entretien";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Produit = Database["public"]["Tables"]["produits_services"]["Row"];
@@ -68,6 +69,7 @@ export function DevisForm({
   dureeValiditeJours,
   prefill,
   assujettiTva = false,
+  baremeEntretien = null,
 }: {
   clients: Client[];
   produits: Produit[];
@@ -78,6 +80,8 @@ export function DevisForm({
   dureeValiditeJours?: number | null;
   /** Libellés « HT » uniquement si le document est assujetti (snapshot). */
   assujettiTva?: boolean;
+  /** Barème d'entretien pour « Calculer un entretien » (lignes auto). */
+  baremeEntretien?: BaremeEntretien | null;
   prefill?: {
     devis: Partial<Devis>;
     lignes: Array<{
@@ -446,6 +450,7 @@ export function DevisForm({
             errors={errors}
             produits={produits}
             assujettiTva={assujettiTva}
+            baremeEntretien={baremeEntretien}
           />
         </CardContent>
       </Card>

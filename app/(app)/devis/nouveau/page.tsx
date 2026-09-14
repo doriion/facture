@@ -5,6 +5,7 @@ import { listClients } from "@/lib/actions/clients";
 import { listProduits } from "@/lib/actions/produits";
 import { getProfil } from "@/lib/actions/profil";
 import { getDevis } from "@/lib/actions/devis";
+import { getBaremeEntretien } from "@/lib/actions/bareme-entretien";
 import { buildDevisDuplicata, type DevisPrefill } from "@/lib/devis-prefill";
 import { nomModeleAffiche } from "@/lib/modeles-devis";
 import { assujettiTvaEffectif } from "@/lib/tva-garde";
@@ -18,10 +19,11 @@ export default async function NouveauDevisPage({
 }: {
   searchParams: { source?: string };
 }) {
-  const [clients, produits, profil] = await Promise.all([
+  const [clients, produits, profil, baremeEntretien] = await Promise.all([
     listClients(),
     listProduits({ inclureInactifs: false }),
     getProfil(),
+    getBaremeEntretien(),
   ]);
 
   // Duplication / création depuis un modèle : ?source=<devisId> ouvre
@@ -100,6 +102,7 @@ export default async function NouveauDevisPage({
           dureeValiditeJours={profil?.duree_validite_devis_jours}
           prefill={prefill}
           assujettiTva={assujettiTvaEffectif(profil, null)}
+          baremeEntretien={baremeEntretien}
         />
       )}
     </div>

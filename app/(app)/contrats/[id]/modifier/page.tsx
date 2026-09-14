@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { getContratEntretien } from "@/lib/actions/contrats-entretien";
 import { listClients } from "@/lib/actions/clients";
+import { getBaremeEntretien } from "@/lib/actions/bareme-entretien";
 import { ContratEntretienForm } from "@/components/contrats/contrat-entretien-form";
 import { Button } from "@/components/ui/button";
 
@@ -14,9 +15,10 @@ export default async function ModifierContratPage({
 }: {
   params: { id: string };
 }) {
-  const [contrat, clients] = await Promise.all([
+  const [contrat, clients, baremeEntretien] = await Promise.all([
     getContratEntretien(params.id),
     listClients(),
+    getBaremeEntretien(),
   ]);
   if (!contrat) notFound();
   // Un contrat envoyé ou signé est figé — retour à sa fiche.
@@ -35,7 +37,11 @@ export default async function ModifierContratPage({
           Modifier le brouillon
         </h1>
       </div>
-      <ContratEntretienForm clients={clients} contrat={contrat} />
+      <ContratEntretienForm
+        clients={clients}
+        contrat={contrat}
+        baremeEntretien={baremeEntretien}
+      />
     </div>
   );
 }

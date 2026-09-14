@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
+import { getBaremeEntretien } from "@/lib/actions/bareme-entretien";
 import { ContratEntretienForm } from "@/components/contrats/contrat-entretien-form";
 import { Button } from "@/components/ui/button";
 
@@ -12,7 +13,10 @@ export default async function NouveauContratPage({
 }: {
   searchParams: { client?: string };
 }) {
-  const clients = await listClients();
+  const [clients, baremeEntretien] = await Promise.all([
+    listClients(),
+    getBaremeEntretien(),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -34,6 +38,7 @@ export default async function NouveauContratPage({
       <ContratEntretienForm
         clients={clients}
         clientIdInitial={searchParams.client}
+        baremeEntretien={baremeEntretien}
       />
     </div>
   );
