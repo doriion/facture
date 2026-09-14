@@ -8,6 +8,7 @@ import { ExternalCalendarCard } from "@/components/parametres/external-calendar-
 import { ResetNumerotationCard } from "@/components/parametres/reset-numerotation-card";
 import { ExportDonneesCard } from "@/components/parametres/export-donnees-card";
 import { TauxCotisationsCard } from "@/components/parametres/taux-cotisations-card";
+import { BaremeEntretienCard } from "@/components/parametres/bareme-entretien-card";
 import { AutomatisationsCard } from "@/components/parametres/automatisations-card";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/card";
 import { getLogoUrl, getProfil } from "@/lib/actions/profil";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
+import { getBaremeEntretien } from "@/lib/actions/bareme-entretien";
 import { getJournalTaches } from "@/lib/actions/automatisations";
 
 export const metadata = { title: "Paramètres — NG Gestion" };
@@ -31,6 +33,7 @@ export default async function ParametresPage() {
   const profil = await getProfil();
   const logoUrl = await getLogoUrl(profil?.logo_url);
   const bareme = await getBaremeCotisations();
+  const baremeEntretien = await getBaremeEntretien();
   const journal = await getJournalTaches();
   const reglages = {
     auto_sauvegarde_active: profil?.auto_sauvegarde_active ?? true,
@@ -93,6 +96,8 @@ export default async function ParametresPage() {
       <AutomatisationsCard reglages={reglages} journal={journal} />
 
       <TauxCotisationsCard bareme={bareme} />
+
+      <BaremeEntretienCard nbPostes={baremeEntretien.postes.length} />
 
       <ExportDonneesCard />
 
