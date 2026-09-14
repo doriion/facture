@@ -16,6 +16,12 @@ type AnyClient = SupabaseClient<Database>;
  * INVARIANT : couvrir TOUTES les tables du schéma public (vérifié le
  * 04/09/2026 : 22/22 avec contrats). Toute migration qui crée une
  * table doit l'ajouter ici.
+ *
+ * CONFIDENTIALITÉ : cette sauvegarde est PRIVÉE (elle part sur votre
+ * adresse et dans votre stockage). Le `select *` embarque donc aussi
+ * les coûts d'achat et les fournisseurs — des lignes de documents
+ * comme du catalogue. C'est voulu : une sauvegarde amputée ne
+ * permettrait pas de restaurer. Ne la transmettez jamais à un client.
  */
 export const TABLES_SAUVEGARDE = [
   "profil_entreprise",

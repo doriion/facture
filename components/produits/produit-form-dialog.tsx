@@ -256,6 +256,51 @@ export function ProduitFormDialog({
             </p>
           </div>
 
+          {/* Coûts PRIVÉS : jamais sur un document client, jamais dans
+              un export client. Repris tels quels sur la ligne créée
+              depuis cette prestation. */}
+          <div className="space-y-1.5">
+            <Label htmlFor="prix_achat_ttc">Prix d&apos;achat TTC (coût réel)</Label>
+            <div className="relative">
+              <Input
+                id="prix_achat_ttc"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0,00"
+                className="pr-10"
+                {...register("prix_achat_ttc")}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                €
+              </span>
+            </div>
+            {errors.prix_achat_ttc && (
+              <p className="text-xs text-destructive">
+                {errors.prix_achat_ttc.message}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Privé — sert au calcul de votre marge, n&apos;apparaît jamais
+              sur un devis, une facture ni un document envoyé au client.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="fournisseur">Fournisseur</Label>
+            <Input
+              id="fournisseur"
+              placeholder="Ex : Yukai, Artiplastic…"
+              autoComplete="off"
+              {...register("fournisseur")}
+            />
+            {errors.fournisseur && (
+              <p className="text-xs text-destructive">
+                {errors.fournisseur.message}
+              </p>
+            )}
+          </div>
+
           <div className="space-y-1.5 md:col-span-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
@@ -303,6 +348,8 @@ function defaultValues(p?: Produit): ProduitFormInput {
     designation: p?.designation ?? "",
     description: p?.description ?? "",
     prix_ht: p?.prix_ht ?? 0,
+    prix_achat_ttc: p?.prix_achat_ttc ?? null,
+    fournisseur: p?.fournisseur ?? "",
     unite: (p?.unite as ProduitFormInput["unite"]) ?? "unité",
     categorie:
       (p?.categorie as ProduitFormInput["categorie"]) ?? "plomberie",

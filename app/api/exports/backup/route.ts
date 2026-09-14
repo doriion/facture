@@ -22,6 +22,11 @@ export const dynamic = "force-dynamic";
  * schéma public (vérifié le 04/09/2026 : 22/22, `select *` embarque
  * aussi les colonnes récentes comme `emetteur` et `nature_fiscale`).
  * Toute migration qui crée une table doit l'ajouter ici.
+ *
+ * CONFIDENTIALITÉ : export PRIVÉ, réservé au propriétaire du compte.
+ * Il contient les coûts d'achat et les fournisseurs (lignes de
+ * documents ET catalogue) — indispensable pour restaurer, à ne jamais
+ * transmettre à un client.
  */
 const TABLES = [
   "profil_entreprise",

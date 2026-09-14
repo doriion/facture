@@ -52,15 +52,23 @@ describe("payloadLignesPdf (liste blanche du rendu client)", () => {
 
 /**
  * GARDE-FOU STATIQUE : aucune surface publique (pages /c/**, routes
- * /api/public/**) ne doit référencer les colonnes de coût privées.
- * Les tables de lignes elles-mêmes restent autorisées : une future
+ * /api/public/**) ne doit référencer les colonnes de coût privées, ni
+ * lire le catalogue (qui porte désormais les mêmes coûts).
+ * Les tables de LIGNES elles-mêmes restent autorisées : une future
  * page publique de devis DOIT pouvoir afficher désignation / qté /
  * P.U. / total — seuls les coûts sont interdits.
  */
 describe("garde-fou : pas de coûts privés dans les surfaces publiques", () => {
   const RACINE = join(__dirname, "..");
   const DOSSIERS_PUBLICS = ["app/c", "app/api/public"];
-  const MOTIFS_INTERDITS = [/prix_achat/i, /\bfournisseur\b/i];
+  const MOTIFS_INTERDITS = [
+    /prix_achat/i,
+    /\bfournisseur\b/i,
+    // Le catalogue porte prix_achat_ttc : aucune surface publique n'a
+    // de raison de le lire, ni directement ni via listProduits.
+    /produits_services/i,
+    /\blistProduits\b/,
+  ];
 
   function fichiersDe(dossier: string): string[] {
     const resultat: string[] = [];
@@ -82,7 +90,7 @@ describe("garde-fou : pas de coûts privés dans les surfaces publiques", () => 
     return resultat;
   }
 
-  it("app/c/** et app/api/public/** ne mentionnent ni prix_achat ni fournisseur", () => {
+  it("app/c/** et app/api/public/** ne mentionnent ni coût privé ni catalogue", () => {
     const fichiers = DOSSIERS_PUBLICS.flatMap(fichiersDe);
     expect(fichiers.length).toBeGreaterThan(0); // les surfaces existent
     const violations: string[] = [];
@@ -93,5 +101,29 @@ describe("garde-fou : pas de coûts privés dans les surfaces publiques", () => 
       }
     }
     expect(violations).toEqual([]);
+  });
+
+  /**
+   * Deuxième garde-fou : tout rendu d'un document client doit passer
+   * par la liste blanche. Un rendu qui recevrait les lignes brutes
+   * embarquerait le prix d'achat et le fournisseur dans le PDF.
+   */
+  it("chaque rendu PDF client passe par payloadLignesPdf", () => {
+    const POINTS_DE_RENDU = [
+      "app/api/devis/[id]/pdf/route.ts",
+      "app/api/factures/[id]/pdf/route.ts",
+      "lib/actions/emails.ts",
+    ];
+    for (const fichier of POINTS_DE_RENDU) {
+      const contenu = readFileSync(join(RACINE, fichier), "utf8");
+      const rendus = (contenu.match(/\b(DevisPdf|FacturePdf)\(/g) ?? []).length;
+      const listesBlanches = (contenu.match(/\bpayloadLignesPdf\(/g) ?? [])
+        .length;
+      expect(rendus, `${fichier} : aucun rendu trouvé`).toBeGreaterThan(0);
+      expect(
+        listesBlanches,
+        `${fichier} : ${rendus} rendu(s) pour ${listesBlanches} liste(s) blanche(s)`,
+      ).toBe(rendus);
+    }
   });
 });

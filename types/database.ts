@@ -1153,6 +1153,8 @@ export type Database = {
           id: string;
           nature_fiscale: string;
           prix_ht: number;
+          prix_achat_ttc: number | null;
+          fournisseur: string | null;
           tva_taux_suggere: number | null;
           unite: string;
           updated_at: string;
@@ -1167,6 +1169,8 @@ export type Database = {
           id?: string;
           nature_fiscale?: string;
           prix_ht: number;
+          prix_achat_ttc?: number | null;
+          fournisseur?: string | null;
           tva_taux_suggere?: number | null;
           unite?: string;
           updated_at?: string;
@@ -1181,6 +1185,8 @@ export type Database = {
           nature_fiscale?: string;
           id?: string;
           prix_ht?: number;
+          prix_achat_ttc?: number | null;
+          fournisseur?: string | null;
           tva_taux_suggere?: number | null;
           unite?: string;
           updated_at?: string;

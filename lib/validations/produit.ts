@@ -30,6 +30,17 @@ export const produitSchema = z.object({
       .min(0, "Le prix ne peut pas être négatif.")
       .max(1_000_000, "Prix trop élevé."),
   ),
+  // Coût réel PRIVÉ, saisi TTC (franchise en base : la TVA sur achats
+  // n'est pas récupérée, le coût c'est le TTC). Jamais exposé au client.
+  prix_achat_ttc: z.preprocess(
+    moneyInputOrNull,
+    z
+      .number({ error: "Prix d'achat invalide." })
+      .min(0, "Le prix d'achat ne peut pas être négatif.")
+      .max(1_000_000, "Prix d'achat trop élevé.")
+      .nullable(),
+  ),
+  fournisseur: z.string().trim().max(120).optional().or(z.literal("")),
   unite: z.enum(UNITES),
   categorie: z.enum(categorieValues),
   // Case URSSAF par défaut des lignes créées depuis ce produit.
