@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatEuros, parseMoneyInput } from "@/lib/format";
-import { margeLigne, totauxMarges } from "@/lib/marges";
+import { margeLigne, margeReelle, totauxMarges } from "@/lib/marges";
 import { ecrireAfficherCouts, lireAfficherCouts } from "@/lib/afficher-couts";
 import { contientMateriel } from "@/lib/sections";
 import {
@@ -266,6 +266,11 @@ export function LignesEditor<T extends FieldValues>({
     const p = toNum(l.prix_unitaire_ht);
     return sum + q * p;
   }, 0);
+
+  // Marge RÉELLE : total HT − achats renseignés. Prend le coût de
+  // `marges` tel quel pour que les deux marges affichées côte à côte
+  // partagent exactement le même coût d'achat.
+  const reelle = margeReelle(totalHt, marges.coutTotal);
 
   // Helper : récupère l'erreur d'une ligne donnée si elle existe
   const lignesErrorObj = errors[fieldName as keyof typeof errors] as
@@ -552,38 +557,84 @@ export function LignesEditor<T extends FieldValues>({
             </span>
           </div>
 
-          {/* Totaux PRIVÉS de marge (toggle actif uniquement) */}
+          {/* Totaux PRIVÉS de marge (toggle actif uniquement). Outil de
+              pilotage pour l'artisan : JAMAIS rendu sur le PDF client
+              (liste blanche lib/pdf-payload + garde-fou statique). */}
           {afficherCouts && (
-            <div className="space-y-1 border-t border-dashed border-amber-300/60 bg-amber-500/5 px-4 py-3 text-sm dark:border-amber-800/60">
+            <div className="space-y-3 border-t border-dashed border-amber-300/60 bg-amber-500/5 px-4 py-3 text-sm dark:border-amber-800/60">
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">
-                  Coût d'achat total (TTC)
+                  Coût d'achat total renseigné (TTC)
                 </span>
                 <span className="tabular-nums">
                   {formatEuros(marges.coutTotal)}
                 </span>
               </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Marge totale</span>
-                <span
-                  className={
-                    marges.margeTotale < 0
-                      ? "font-semibold tabular-nums text-destructive"
-                      : "font-semibold tabular-nums text-green-700 dark:text-green-400"
-                  }
-                >
-                  {formatEuros(marges.margeTotale)}
-                  {marges.tauxMargePct !== null
-                    ? ` (${marges.tauxMargePct.toLocaleString("fr-FR")} %)`
-                    : ""}
-                </span>
+
+              {/* Deux marges côte à côte : elles répondent à deux
+                  questions différentes, d'où deux libellés explicites
+                  et deux sous-titres. */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-md border border-amber-300/60 bg-background/60 p-3 dark:border-amber-800/60">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Marge matériel
+                  </p>
+                  <p
+                    className={
+                      marges.margeTotale < 0
+                        ? "mt-1 text-lg font-semibold tabular-nums text-destructive"
+                        : "mt-1 text-lg font-semibold tabular-nums text-green-700 dark:text-green-400"
+                    }
+                  >
+                    {formatEuros(marges.margeTotale)}
+                    {marges.tauxMargePct !== null && (
+                      <span className="ml-1 text-sm font-normal">
+                        ({marges.tauxMargePct.toLocaleString("fr-FR")} %)
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    sur le matériel dont le prix d&apos;achat est renseigné
+                  </p>
+                  {marges.nbLignesSansPa > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {marges.nbLignesSansPa} ligne(s) sans prix d&apos;achat
+                      exclue(s)
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-md border border-amber-300/60 bg-background/60 p-3 dark:border-amber-800/60">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Marge réelle
+                  </p>
+                  <p
+                    className={
+                      reelle.margeEuros < 0
+                        ? "mt-1 text-lg font-semibold tabular-nums text-destructive"
+                        : "mt-1 text-lg font-semibold tabular-nums text-green-700 dark:text-green-400"
+                    }
+                  >
+                    {formatEuros(reelle.margeEuros)}
+                    {reelle.margePct !== null && (
+                      <span className="ml-1 text-sm font-normal">
+                        ({reelle.margePct.toLocaleString("fr-FR")} %)
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    total encaissé moins vos achats (main-d&apos;œuvre incluse)
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatEuros(reelle.totalHt)} − {formatEuros(reelle.coutRenseigne)}
+                  </p>
+                </div>
               </div>
-              {marges.nbLignesSansPa > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {marges.nbLignesSansPa} ligne(s) sans prix d'achat — exclue(s)
-                  de la marge.
-                </p>
-              )}
+
+              <p className="text-xs text-muted-foreground">
+                Avant cotisations URSSAF — en micro-entreprise, environ 21 % du
+                total encaissé se déduisent ensuite.
+              </p>
             </div>
           )}
         </div>

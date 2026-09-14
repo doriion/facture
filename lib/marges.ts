@@ -89,3 +89,54 @@ export function totauxMarges(lignes: LigneMargeable[]): TotauxMarges {
     nbLignesSansPa,
   };
 }
+
+export type MargeReelle = {
+  /** Total HT du document, toutes lignes (main-d'œuvre incluse) */
+  totalHt: number;
+  /** Coût d'achat total RENSEIGNÉ — le même que TotauxMarges.coutTotal */
+  coutRenseigne: number;
+  /** Total HT − coût renseigné */
+  margeEuros: number;
+  /** En % du total HT, null si le total est 0 */
+  margePct: number | null;
+};
+
+/**
+ * Marge RÉELLE : ce qui reste du total encaissé une fois payés les
+ * achats effectivement saisis. Elle répond à une autre question que
+ * `totauxMarges` :
+ *
+ *   - marge matériel  = vente − achat, sur les seules lignes qui ont
+ *                       un prix d'achat (« est-ce que je marge sur ce
+ *                       que je revends ? ») ;
+ *   - marge réelle    = total HT − achats renseignés (« combien il me
+ *                       reste sur ce devis, main-d'œuvre comprise ? »).
+ *
+ * Elle ne suppose AUCUN coût sur les lignes sans prix d'achat : ces
+ * lignes comptent dans le total (c'est de l'encaissé) mais rien n'est
+ * déduit pour elles. Si un achat n'a pas été saisi, la marge réelle est
+ * donc surestimée — c'est au bloc d'affichage de le rappeler, pas à ce
+ * calcul d'inventer un chiffre.
+ *
+ * Avant cotisations : en micro-entreprise, environ 21 % du total
+ * encaissé se déduisent ensuite. Ce calcul ne les retranche pas, il
+ * mesure la marge brute d'exploitation du document.
+ *
+ * `coutRenseigne` est pris tel quel plutôt que recalculé, pour que les
+ * deux marges affichées côte à côte partagent strictement le même
+ * coût d'achat — une seule source, aucune divergence possible.
+ */
+export function margeReelle(
+  totalHt: number,
+  coutRenseigne: number,
+): MargeReelle {
+  const total = Number(totalHt) || 0;
+  const cout = Number(coutRenseigne) || 0;
+  const marge = total - cout;
+  return {
+    totalHt: arrondi(total),
+    coutRenseigne: arrondi(cout),
+    margeEuros: arrondi(marge),
+    margePct: total === 0 ? null : arrondi((marge / total) * 100),
+  };
+}
