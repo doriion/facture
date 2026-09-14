@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
+import { signatureDevisAutorisee } from "@/lib/devis-transitions";
+import { statutAffichageDevis } from "@/lib/validations/devis";
 
 type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -41,19 +43,24 @@ export async function signerDevisAction(
 
   const { data: devis } = await supabase
     .from("devis")
-    .select("id, statut, est_modele, signature_client_url, facture_id")
+    .select(
+      "id, statut, date_validite, est_modele, signature_client_url, facture_id",
+    )
     .eq("id", devisId)
     .maybeSingle();
   if (!devis) return { ok: false, error: "Devis introuvable." };
-  if (devis.est_modele) {
-    return { ok: false, error: "Un modèle de devis ne se signe pas." };
-  }
-  if (devis.signature_client_url) {
-    return { ok: false, error: "Ce devis est déjà signé (signature immuable)." };
-  }
-  if (devis.statut === "refuse") {
-    return { ok: false, error: "Ce devis est marqué refusé — repassez-le en envoyé avant signature." };
-  }
+
+  // Gardes centralisées (lib/devis-transitions) : modèle, déjà signé,
+  // converti, brouillon jamais transmis, devis refusé, déjà accepté.
+  const autorisee = signatureDevisAutorisee(
+    statutAffichageDevis(devis.statut, devis.date_validite),
+    {
+      signee: !!devis.signature_client_url,
+      convertie: !!devis.facture_id,
+      modele: devis.est_modele,
+    },
+  );
+  if (!autorisee.ok) return { ok: false, error: autorisee.error };
 
   const path = `${user.id}/devis/${devisId}/bon-pour-accord-${Date.now()}.png`;
   const { error: uploadErr } = await supabase.storage

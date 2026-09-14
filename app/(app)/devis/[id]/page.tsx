@@ -7,6 +7,7 @@ import { listProduits } from "@/lib/actions/produits";
 import { getDevis } from "@/lib/actions/devis";
 import { getProfil } from "@/lib/actions/profil";
 import { statutAffichageDevis } from "@/lib/validations/devis";
+import { motifVerrouDevis } from "@/lib/devis-transitions";
 import {
   assujettiTvaEffectif,
   documentEmis,
@@ -38,7 +39,15 @@ export default async function EditDevisPage({
   ]);
 
   const statutAffiche = statutAffichageDevis(devis.statut, devis.date_validite);
-  const isLocked = !!devis.facture_id;
+  // Devis converti OU signé : contenu figé (la signature du client
+  // porte sur ce contenu précis, le modifier après coup la viderait de
+  // son sens). Le motif exact vient de la machine à états.
+  const signee = !!devis.signature_client_url;
+  const motifVerrou = motifVerrouDevis({
+    signee,
+    convertie: !!devis.facture_id,
+  });
+  const isLocked = motifVerrou !== null;
 
   // Garde TVA : la route PDF répond 501, mais un `<a download>` avale le
   // corps de la réponse — on explique donc côté page.
@@ -102,6 +111,7 @@ export default async function EditDevisPage({
               clientEmail={client?.email ?? null}
               clientNom={client?.nom ?? "le client"}
               estModele={devis.est_modele}
+              signee={signee}
               pdfBloqueMotif={pdfBloqueMotif}
             />
           </div>
@@ -110,7 +120,13 @@ export default async function EditDevisPage({
 
       {isLocked ? (
         <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-sm text-muted-foreground">
-          Ce devis a été converti en facture, il n'est plus modifiable.
+          {motifVerrou}
+          {signee && !devis.facture_id && (
+            <span className="mt-2 block">
+              Pour modifier les prestations, dupliquez ce devis : la copie
+              repart en brouillon, signature comprise à refaire.
+            </span>
+          )}
         </div>
       ) : (
         <DevisForm
