@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MobileNav } from "@/components/mobile-nav";
 import { LogoMarque } from "@/components/logo-marque";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
  * Bandeau supérieur. Affiche l'email connecté + menu déconnexion.
@@ -61,6 +62,8 @@ export function Topbar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="truncate">{email}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <ThemeToggle />
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
             <LogOut className="size-4" />

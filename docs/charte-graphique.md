@@ -69,3 +69,32 @@ pas un effet de bord du changement de charte.
 
 Les **contrats signés** ont leur PDF archivé avec son empreinte : ils
 ne changent pas.
+
+## Mode sombre
+
+Les deux jeux de couleurs vivent dans `app/globals.css` ; Tailwind
+bascule sur la classe `.dark` posée sur `<html>`.
+
+Le choix se fait dans le menu du compte, en haut à droite : **Clair**,
+**Sombre**, ou **Système** (le défaut — l'application suit alors le
+réglage de l'ordinateur, et bascule avec lui en direct).
+
+La préférence est retenue dans le navigateur (`facture-ae:theme`).
+Elle est donc propre à chaque appareil, ce qui est le comportement
+attendu : on peut vouloir le sombre sur le portable du soir et le
+clair sur le poste du bureau.
+
+`lib/theme-mode.ts` porte toute la logique, testée. Le script
+anti-scintillement en fait partie : il s'exécute dans le `<head>`
+avant le premier affichage, sinon la page s'ouvrirait en clair puis
+basculerait — un éclair blanc. Vérifié en mesurant la couleur de fond
+au `DOMContentLoaded`.
+
+Contrastes du mode sombre, tous conformes :
+
+| Paire | Ratio |
+| --- | --- |
+| Texte courant sur le fond | 17,76:1 — AAA |
+| Texte secondaire sur une carte | 6,80:1 — AA |
+| Texte du bouton sur le primaire | 6,57:1 — AA |
+| Texte sur fond accent | 9,17:1 — AAA |

@@ -6,6 +6,7 @@ import { ServiceWorkerRegister } from "@/components/sw-register";
 
 import "./globals.css";
 import { PRINCIPAL } from "@/lib/theme";
+import { scriptAppliquerTheme } from "@/lib/theme-mode";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -52,7 +53,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={inter.variable}>
+    // suppressHydrationWarning : le script ci-dessous modifie la
+    // classe de <html> avant que React n'arrive, l'écart avec le HTML
+    // du serveur est donc attendu.
+    <html lang="fr" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Applique le thème AVANT le premier affichage. Sans ce
+            script, la page s'afficherait en clair puis basculerait en
+            sombre — un éclair blanc, précisément ce qu'on évite quand
+            on travaille le soir. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: scriptAppliquerTheme() }}
+        />
+      </head>
       <body className="font-sans antialiased">
         {children}
         <Toaster />
