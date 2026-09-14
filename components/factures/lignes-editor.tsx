@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatEuros, parseMoneyInput } from "@/lib/format";
+import { prixEffectif, quantiteEffective } from "@/lib/lignes-saisie";
 import { margeLigne, margeReelle, totauxMarges } from "@/lib/marges";
 import { ecrireAfficherCouts, lireAfficherCouts } from "@/lib/afficher-couts";
 import { contientMateriel } from "@/lib/sections";
@@ -47,6 +48,11 @@ import { ajouterLigneAuCatalogueAction } from "@/lib/actions/produits";
 import { DesignationAutocomplete } from "@/components/factures/designation-autocomplete";
 import type { Database } from "@/types/database";
 
+
+/** Au focus, tout le contenu est sélectionné : le premier chiffre tapé remplace. */
+function selectionnerTout(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.select();
+}
 
 /** Convertit une valeur de champ (string tolérant FR/EN) en number sûr. */
 function toNum(v: number | string | null | undefined): number {
@@ -211,8 +217,8 @@ export function LignesEditor<T extends FieldValues>({
 
   const lignesPourMarges = lignes.map((l) => ({
     type: l.type,
-    quantite: toNum(l.quantite),
-    prix_unitaire_ht: toNum(l.prix_unitaire_ht),
+    quantite: quantiteEffective(l.quantite),
+    prix_unitaire_ht: prixEffectif(l.prix_unitaire_ht),
     prix_achat_ttc_unitaire:
       l.prix_achat_ttc_unitaire === null ||
       l.prix_achat_ttc_unitaire === undefined ||
@@ -222,11 +228,14 @@ export function LignesEditor<T extends FieldValues>({
   }));
   const marges = totauxMarges(lignesPourMarges);
 
+  // Quantité et prix VIDES au départ (placeholders « 1 » / « 0,00 ») :
+  // on tape directement, sans effacer. Vide = 1 et 0 à l'enregistrement
+  // et dans les totaux en direct (lib/lignes-saisie).
   function addEmptyLine() {
     append({
       designation: "",
-      quantite: 1,
-      prix_unitaire_ht: 0,
+      quantite: "",
+      prix_unitaire_ht: "",
       prix_achat_ttc_unitaire: null,
       fournisseur: "",
       nature_fiscale: "bic_prestations",
@@ -262,8 +271,8 @@ export function LignesEditor<T extends FieldValues>({
   }
 
   const totalHt = lignes.reduce((sum, l) => {
-    const q = toNum(l.quantite);
-    const p = toNum(l.prix_unitaire_ht);
+    const q = quantiteEffective(l.quantite);
+    const p = prixEffectif(l.prix_unitaire_ht);
     return sum + q * p;
   }, 0);
 
@@ -321,7 +330,8 @@ export function LignesEditor<T extends FieldValues>({
             {fields.map((field, index) => {
               const ligne = lignes[index];
               const lineTotal =
-                toNum(ligne?.quantite) * toNum(ligne?.prix_unitaire_ht);
+                quantiteEffective(ligne?.quantite) *
+                prixEffectif(ligne?.prix_unitaire_ht);
               const errDesignation = lineErr(index, "designation");
               const errQuantite = lineErr(index, "quantite");
               const errPrix = lineErr(index, "prix_unitaire_ht");
@@ -433,12 +443,16 @@ export function LignesEditor<T extends FieldValues>({
                       <span className="block text-[11px] text-muted-foreground sm:hidden">
                         Quantité
                       </span>
+                      {/* Focus = tout sélectionné : sur une ligne qui a
+                          déjà une valeur (édition, catalogue), le
+                          premier chiffre tapé la remplace. */}
                       <Input
                         type="text"
                         inputMode="decimal"
                         autoComplete="off"
                         placeholder="1"
                         className="text-right"
+                        onFocus={selectionnerTout}
                         {...register(`${fieldName}.${index}.quantite` as Path<T>)}
                       />
                       {errQuantite && (
@@ -455,6 +469,7 @@ export function LignesEditor<T extends FieldValues>({
                         autoComplete="off"
                         placeholder="0,00"
                         className="text-right"
+                        onFocus={selectionnerTout}
                         {...register(
                           `${fieldName}.${index}.prix_unitaire_ht` as Path<T>,
                         )}

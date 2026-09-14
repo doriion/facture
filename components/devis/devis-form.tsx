@@ -17,6 +17,7 @@ import { dateValiditeDevis, dureeValiditeSure } from "@/lib/devis-validite";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import { ligneAcompte } from "@/lib/devis-modele";
 import { parseMoneyInput } from "@/lib/format";
+import { prixEffectif, quantiteEffective } from "@/lib/lignes-saisie";
 import {
   createDevisAction,
   updateDevisAction,
@@ -211,9 +212,12 @@ export function DevisForm({
   const lignesSaisies = watch("lignes") ?? [];
   const totalHtSaisi = lignesSaisies.reduce((somme, l) => {
     if ((l as { type?: string })?.type === "titre") return somme;
-    const q = parseMoneyInput(String(l?.quantite ?? 0));
-    const p = parseMoneyInput(String(l?.prix_unitaire_ht ?? 0));
-    return somme + (Number.isFinite(q) ? q : 0) * (Number.isFinite(p) ? p : 0);
+    // Même lecture que l'éditeur de lignes : quantité vide = 1, prix
+    // vide = 0 (lib/lignes-saisie).
+    return (
+      somme +
+      quantiteEffective(l?.quantite) * prixEffectif(l?.prix_unitaire_ht)
+    );
   }, 0);
 
   const acomptePctSaisi = watch("acompte_pct");
