@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 
 import "./globals.css";
+import { PRINCIPAL } from "@/lib/theme";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,7 +39,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#2A7D5B",
+  themeColor: PRINCIPAL,
   // Nécessaire pour que env(safe-area-inset-*) soit renseigné en PWA
   // iPhone (encoche / barre home) — les paddings correspondants sont
   // appliqués dans le layout (app) et les barres fixes.

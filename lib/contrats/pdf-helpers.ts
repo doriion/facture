@@ -11,15 +11,21 @@ import type {
   PrestataireSnapshot,
 } from "@/lib/contrats/rendu";
 import type { Database } from "@/types/database";
+import { logoApplication } from "@/lib/logo-app";
 
 type AnySupabase = SupabaseClient<Database>;
 
-/** Télécharge le logo du bucket `logos` en data URI (tolérant à l'échec). */
+/**
+ * Logo du document en data URI. Priorité au logo déposé dans
+ * Paramètres (celui de l'entreprise, archivé avec le profil) ; à
+ * défaut, celui de l'application. Tolérant à l'échec : un document
+ * doit pouvoir sortir même sans logo.
+ */
 export async function chargerLogoDataUri(
   supabase: AnySupabase,
   logoUrl: string | null | undefined,
 ): Promise<string | null> {
-  if (!logoUrl) return null;
+  if (!logoUrl) return logoApplication();
   try {
     const { data: blob } = await supabase.storage
       .from("logos")
@@ -37,7 +43,7 @@ export async function chargerLogoDataUri(
             : "image/png";
     return `data:${mime};base64,${buf.toString("base64")}`;
   } catch {
-    return null;
+    return logoApplication();
   }
 }
 

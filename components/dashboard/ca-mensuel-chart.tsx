@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatEuros } from "@/lib/format";
+import { COULEURS_GRAPHIQUES } from "@/lib/theme";
 
 type Bucket = {
   mois: string;
@@ -31,13 +32,15 @@ type Bucket = {
   total: number;
 };
 
+// L'ordre suit COULEURS_GRAPHIQUES : les trois premières séries
+// prennent les bleus de la marque, du plus foncé au plus clair.
 const seriesConfig = [
-  { dataKey: "plomberie", name: "Plomberie", color: "#2A7D5B" },
-  { dataKey: "clim", name: "Clim", color: "#5B9BD5" },
-  { dataKey: "pac", name: "PAC", color: "#264478" },
-  { dataKey: "entretien", name: "Entretien", color: "#9E480E" },
-  { dataKey: "depannage", name: "Dépannage", color: "#E97132" },
-  { dataKey: "autre", name: "Autre", color: "#A5A5A5" },
+  { dataKey: "plomberie", name: "Plomberie", color: COULEURS_GRAPHIQUES[0] },
+  { dataKey: "clim", name: "Clim", color: COULEURS_GRAPHIQUES[1] },
+  { dataKey: "pac", name: "PAC", color: COULEURS_GRAPHIQUES[2] },
+  { dataKey: "entretien", name: "Entretien", color: COULEURS_GRAPHIQUES[3] },
+  { dataKey: "depannage", name: "Dépannage", color: COULEURS_GRAPHIQUES[4] },
+  { dataKey: "autre", name: "Autre", color: COULEURS_GRAPHIQUES[5] },
 ] as const;
 
 export function CaMensuelChart({ data }: { data: Bucket[] }) {

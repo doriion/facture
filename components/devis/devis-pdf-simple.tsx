@@ -31,17 +31,20 @@ import {
 } from "@/lib/devis-modele";
 import type { Database } from "@/types/database";
 import type { LignePdf } from "@/lib/pdf-payload";
+import * as PALETTE from "@/lib/theme";
 
 type Devis = Database["public"]["Tables"]["devis"]["Row"];
 type Ligne = LignePdf;
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Profil = Database["public"]["Tables"]["profil_entreprise"]["Row"];
 
-// Même palette que le reste de l'application : blanc et vert.
-const PRIMARY = "#2A7D5B";
-const TEXT = "#1c1f24";
-const MUTED = "#6b7280";
-const BORDER = "#e5e7eb";
+
+// Palette de marque : lib/theme est la SEULE source. Les alias courts
+// gardent le reste du fichier lisible sans réintroduire de valeur en dur.
+const PRIMARY = PALETTE.PRINCIPAL;
+const TEXT = PALETTE.TEXTE;
+const MUTED = PALETTE.TEXTE_DOUX;
+const BORDER = PALETTE.BORDURE;
 
 const styles = StyleSheet.create({
   page: {

@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MobileNav } from "@/components/mobile-nav";
+import { LogoMarque } from "@/components/logo-marque";
 
 /**
  * Bandeau supérieur. Affiche l'email connecté + menu déconnexion.
@@ -45,9 +46,7 @@ export function Topbar({
       <div className="flex items-center gap-2">
         <MobileNav badgeTaches={badgeTaches} />
         <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <span className="text-xs font-bold">F</span>
-          </div>
+          <LogoMarque taille={28} />
           <span className="text-sm font-semibold">Facture AE</span>
         </Link>
       </div>

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { payloadLignesPdf } from "@/lib/pdf-payload";
 import { estErreurMoteurTva, verifierMoteurTva } from "@/lib/tva-garde";
 import { DevisPdf } from "@/components/devis/devis-pdf";
+import { logoApplication } from "@/lib/logo-app";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +87,10 @@ export async function GET(
       logoData = null;
     }
   }
+  // À défaut de logo dans Paramètres, celui de l'application : un
+  // document sans aucune marque fait moins sérieux qu'un document
+  // portant le logo générique.
+  logoData = logoData ?? (await logoApplication());
 
   const { client: _client, ...devisClean } = raw;
 

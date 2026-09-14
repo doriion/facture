@@ -4,7 +4,15 @@
 
 /*
  * Thème de couleurs (variables HSL pour Tailwind + shadcn).
- * Couleur primaire : vert #2A7D5B → HSL(154, 50%, 33%).
+ *
+ * Palette de marque relevée sur le logo (vagues bleues). Les mêmes
+ * valeurs, en hexadécimal, vivent dans lib/theme.ts pour les PDF et
+ * les e-mails — un test vérifie que les deux ne divergent pas.
+ *
+ *   --primary  #0165D9  5,43:1 sur blanc (AA)  boutons, texte blanc dessus
+ *   --ring     #0165D9  anneau de focus
+ *   --accent   fond bleu très pâle, texte marine #003DA8 dessus (AAA)
+ *
  * Mode clair par défaut, dark mode activable via classe .dark.
  */
 @layer base {
@@ -18,7 +26,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 14% 12%;
 
-    --primary: 154 50% 33%;
+    --primary: 212 99% 43%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 96%;
@@ -27,15 +35,15 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    --accent: 154 40% 92%;
-    --accent-foreground: 154 50% 22%;
+    --accent: 201 100% 94%;
+    --accent-foreground: 218 100% 33%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 154 50% 33%;
+    --ring: 212 99% 43%;
 
     --radius: 0.5rem;
   }
@@ -50,7 +58,7 @@
     --popover: 222 14% 11%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 154 50% 45%;
+    --primary: 205 99% 55%;
     --primary-foreground: 222 14% 8%;
 
     --secondary: 217 19% 18%;
@@ -59,15 +67,15 @@
     --muted: 217 19% 18%;
     --muted-foreground: 215 16% 65%;
 
-    --accent: 154 30% 22%;
-    --accent-foreground: 154 50% 85%;
+    --accent: 212 60% 22%;
+    --accent-foreground: 199 95% 85%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 210 20% 98%;
 
     --border: 217 19% 22%;
     --input: 217 19% 22%;
-    --ring: 154 50% 45%;
+    --ring: 205 99% 55%;
   }
 
   * {

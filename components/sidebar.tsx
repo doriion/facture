@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
+import { LogoMarque } from "@/components/logo-marque";
 
 /**
  * Sidebar de navigation principale. Met en surbrillance la route active.
@@ -18,9 +19,7 @@ export function Sidebar({ badgeTaches = 0 }: { badgeTaches?: number }) {
     <aside className="hidden w-64 shrink-0 flex-col border-r bg-card md:flex">
       <div className="flex h-16 items-center border-b px-6">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <span className="text-sm font-bold">F</span>
-          </div>
+          <LogoMarque taille={32} />
           <span className="text-base font-semibold">Facture AE</span>
         </Link>
       </div>

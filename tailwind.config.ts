@@ -1,8 +1,9 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Configuration Tailwind avec thème vert sobre (#2A7D5B) en couleur primaire.
- * Variables CSS définies dans app/globals.css (mode clair + dark mode).
+ * Configuration Tailwind. La palette de marque (bleus du logo) vit dans
+ * les variables CSS de app/globals.css pour le web, et dans lib/theme.ts
+ * pour les PDF et les e-mails.
  */
 const config: Config = {
   darkMode: ["class"],
