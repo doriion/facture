@@ -98,9 +98,6 @@ export const BAREME_PAR_DEFAUT: BaremeEntretien = {
     { code: "pac", groupe: "pac", libelle: "Pompe à chaleur", unite: "unité", tranches: t([1, 120], [2, 100], [6, 60]), ordre: 80, actif: true },
     { code: "vmc_simple", groupe: "vmc", libelle: "VMC simple flux", unite: "unité", tranches: t([1, 60], [2, 46], [6, 33]), ordre: 90, actif: true },
     { code: "vmc_double", groupe: "vmc", libelle: "VMC double flux", unite: "unité", tranches: t([1, 128], [2, 100], [6, 60]), ordre: 100, actif: true },
-    // Troisième catégorie VMC du barème (180 / 139 / 100 €) : libellé à
-    // préciser par l'utilisateur, modifiable dans les réglages.
-    { code: "vmc_autre", groupe: "vmc", libelle: "VMC (3e catégorie — libellé à préciser)", unite: "unité", tranches: t([1, 180], [2, 139], [6, 100]), ordre: 110, actif: true },
     { code: "vrv", groupe: "vrv", libelle: "VRV / DRV (groupe)", unite: "unité", tranches: t([1, 380], [2, 285]), ordre: 120, actif: true },
     { code: "ui_vrv_reversible", groupe: "vrv", libelle: "Unité intérieure VRV — réversible", unite: "unité", tranches: t([1, 17]), ordre: 130, actif: true },
     { code: "ui_vrv_froid", groupe: "vrv", libelle: "Unité intérieure VRV — froid seul", unite: "unité", tranches: t([1, 9]), ordre: 140, actif: true },

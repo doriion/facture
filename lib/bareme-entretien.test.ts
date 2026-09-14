@@ -76,7 +76,6 @@ describe("le barème par défaut reproduit les tarifs unitaires du fichier d'ori
     pac: [120, 100, 60],
     vmc_simple: [60, 46, 33],
     vmc_double: [128, 100, 60],
-    vmc_autre: [180, 139, 100],
     vrv: [380, 285],
     ui_vrv_reversible: [17],
     ui_vrv_froid: [9],
