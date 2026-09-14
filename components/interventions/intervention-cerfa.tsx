@@ -334,7 +334,7 @@ export function InterventionCerfa({
                     >
                       <input
                         type="checkbox"
-                        className="size-4 accent-[#2A7D5B]"
+                        className="size-4 accent-primary"
                         checked={natures.includes(key)}
                         onChange={() => toggleNature(key)}
                       />
@@ -347,7 +347,7 @@ export function InterventionCerfa({
               <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
                 <input
                   type="checkbox"
-                  className="size-4 accent-[#2A7D5B]"
+                  className="size-4 accent-primary"
                   checked={systemePermanent}
                   onChange={(e) => setSystemePermanent(e.target.checked)}
                 />
@@ -393,7 +393,7 @@ export function InterventionCerfa({
               <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
                 <input
                   type="checkbox"
-                  className="size-4 accent-[#2A7D5B]"
+                  className="size-4 accent-primary"
                   checked={avecDechets}
                   onChange={(e) => setAvecDechets(e.target.checked)}
                 />

@@ -10,14 +10,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatEuros } from "@/lib/format";
+import { COULEURS_GRAPHIQUES } from "@/lib/theme";
 
+// Même ordre que le graphique de CA mensuel : une activité garde la
+// même couleur d'un graphique à l'autre du tableau de bord.
 const COLORS_BY_ACTIVITE: Record<string, string> = {
-  plomberie: "#2A7D5B",
-  installation_clim: "#5B9BD5",
-  installation_pac: "#264478",
-  entretien: "#9E480E",
-  depannage: "#E97132",
-  autre: "#A5A5A5",
+  plomberie: COULEURS_GRAPHIQUES[0],
+  installation_clim: COULEURS_GRAPHIQUES[1],
+  installation_pac: COULEURS_GRAPHIQUES[2],
+  entretien: COULEURS_GRAPHIQUES[3],
+  depannage: COULEURS_GRAPHIQUES[4],
+  autre: COULEURS_GRAPHIQUES[5],
 };
 
 export function RepartitionActiviteChart({
