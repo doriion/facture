@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -87,9 +87,46 @@ describe("garde-fou : plus d'ancien nom dans l'interface", () => {
     }
   });
 
-  it("le favicon porte le monogramme, pas l'ancienne initiale", () => {
-    const svg = readFileSync(join(RACINE, "public", "favicon.svg"), "utf8");
-    expect(svg).toContain(">NG<");
+  it("les anciennes icônes « F » et « NG » ne peuvent plus être servies", () => {
+    // Un téléphone garde l'icône d'accueil en cache tant que son URL
+    // existe : les anciens fichiers doivent avoir DISPARU, pas juste
+    // avoir été redessinés.
+    for (const ancien of [
+      "favicon.svg",
+      "icon-192.png",
+      "icon-512.png",
+      "icon-maskable-512.png",
+      "apple-touch-icon.png",
+    ]) {
+      expect(existsSync(join(RACINE, "public", ancien))).toBe(false);
+    }
+    // Convention de l'App Router : un app/favicon.ico est servi à
+    // /favicon.ico AVANT public/, et il portait l'ancienne icône. Il
+    // avait échappé à toutes les recherches dans public/ — c'est lui
+    // que l'iPhone continuait d'afficher.
+    expect(existsSync(join(RACINE, "app", "favicon.ico"))).toBe(false);
+  });
+
+  it("les icônes de la vague existent et sont référencées", () => {
+    for (const f of [
+      "icones/vague-192.png",
+      "icones/vague-512.png",
+      "icones/vague-maskable-512.png",
+      "icones/vague-apple-180.png",
+      "icones/vague.svg",
+      "favicon.ico",
+      "logo.svg",
+    ]) {
+      expect(existsSync(join(RACINE, "public", f))).toBe(true);
+    }
+    const manifeste = readFileSync(join(RACINE, "public", "manifest.json"), "utf8");
+    const layout = readFileSync(join(RACINE, "app", "layout.tsx"), "utf8");
+    for (const ancien of ["icon-192", "icon-512", "icon-maskable", "apple-touch-icon", "favicon.svg"]) {
+      expect(manifeste).not.toContain(ancien);
+      expect(layout).not.toContain(ancien);
+    }
+    expect(manifeste).toContain("/icones/vague-maskable-512.png");
+    expect(layout).toContain("/icones/vague-apple-180.png");
   });
 });
 

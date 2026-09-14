@@ -36,29 +36,37 @@ Il n'est plus une couleur de marque, mais reste le signal des états de
 accepté. Tout passer au bleu aurait fait perdre la lecture immédiate
 d'une liste de factures.
 
-## Logo
+## Logo et icônes
 
-Le fichier va dans **`public/logo.png`**.
+La vague vit dans **`public/logo.svg`** — un tracé vectoriel redessiné
+d'après le logo original. Pour revenir au dessin d'origine, remplacer
+ce fichier puis relancer `node scripts/icones.mjs`, qui régénère toutes
+les icônes à partir de lui.
 
-- Interface : `components/logo-marque.tsx` l'affiche dans la barre
-  latérale, la barre du haut et le menu mobile. Sans fichier, il
-  retombe sur le monogramme « F ».
-- Documents : le logo déposé dans **Paramètres** reste prioritaire —
-  c'est celui de l'entreprise, archivé avec le profil.
-  `public/logo.png` sert de repli (`lib/logo-app.ts`).
+Où elle apparaît, et nulle part ailleurs :
 
-Le composant part du monogramme et ne bascule sur l'image qu'une fois
-son chargement confirmé. Ce n'est pas un détour : un `<img>` rendu
-côté serveur déclenche son erreur de chargement avant que React ne
-s'attache au DOM, et un `onError` sur la balise laissait l'icône
-d'image cassée à l'écran.
+- **Barre latérale, barre du haut, menu mobile** : `components/logo-marque.tsx`,
+  la vague seule, le nom « NG Gestion » écrit en HTML à côté.
+- **Icône d'accueil** (iPhone, Android), favicon, manifeste PWA :
+  `public/icones/` et `public/favicon.ico`.
 
-### Reste à faire une fois le fichier déposé
+Les **documents** n'y touchent pas : le logo qui y figure est celui
+déposé dans **Paramètres**, archivé avec le profil. `lib/logo-app.ts`
+cherche un `public/logo.png` de repli qui n'existe pas — c'est voulu,
+les PDF restent hors périmètre.
 
-Les icônes PNG (`icon-192`, `icon-512`, `icon-maskable-512`,
-`apple-touch-icon`) et `favicon.svg` portent encore le monogramme sur
-fond bleu. Elles doivent être régénérées depuis le logo pour que la
-marque soit cohérente jusque sur l'écran d'accueil du téléphone.
+### Pourquoi les icônes ont changé de nom
+
+Un téléphone garde l'icône d'accueil en cache tant que son URL ne
+change pas. Redessiner `icon-192.png` ne suffisait pas : il fallait
+que l'ancienne adresse **disparaisse**. D'où `public/icones/vague-*`
+et la suppression des anciens fichiers. Un test vérifie qu'ils ne
+reviennent pas.
+
+Piège rencontré : **`app/favicon.ico`**. L'App Router sert ce fichier
+à `/favicon.ico` automatiquement, avant `public/`. Il portait
+l'ancienne icône et n'apparaissait dans aucune recherche limitée à
+`public/`. Le même test interdit sa réapparition.
 
 ## Documents déjà émis
 

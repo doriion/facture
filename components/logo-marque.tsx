@@ -1,68 +1,28 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { MONOGRAMME } from "@/lib/marque";
-
-/** Chemin du logo dans `public/`. */
-const CHEMIN_LOGO = "/logo.png";
-
 /**
- * Marque de l'application, utilisée dans la barre latérale, la barre
- * du haut et le menu mobile — trois endroits qui portaient chacun leur
- * propre carré « F » recopié.
+ * Badge de la marque : la vague, seule, à côté du nom de l'application
+ * écrit en HTML. Utilisé dans la barre latérale, la barre du haut et
+ * le menu mobile — trois endroits qui portaient chacun leur propre
+ * carré de lettres recopié.
  *
- * Affiche le logo déposé dans `public/logo.png` s'il existe, et retombe
- * sinon sur le monogramme. Ce repli n'est pas une précaution
- * théorique : il permet de livrer la charte graphique avant que le
- * fichier image ne soit dans le dépôt, et évite un carré cassé si le
- * fichier est un jour renommé ou supprimé.
+ * Le fichier est dans le dépôt (public/logo.svg), il n'y a donc plus
+ * de repli à prévoir : l'ancien mécanisme de préchargement avec
+ * monogramme de secours servait quand l'image n'existait pas encore.
  *
- * POURQUOI UN PRÉCHARGEMENT PLUTÔT QU'UN `onError` SUR LA BALISE.
- * Un `<img>` rendu côté serveur déclenche son erreur de chargement
- * AVANT que React ne s'attache au DOM : le gestionnaire n'était jamais
- * appelé et l'icône d'image cassée restait affichée (constaté en
- * capture avant correction). On part donc du monogramme, et on ne
- * bascule sur le logo qu'une fois son chargement réellement confirmé.
+ * Le logo est décoratif : le nom l'accompagne toujours en toutes
+ * lettres, d'où l'alternative textuelle vide plutôt qu'une description
+ * qui serait lue deux fois par un lecteur d'écran.
  *
- * Le logo est décoratif : le nom de l'application l'accompagne toujours
- * en toutes lettres, d'où l'alternative textuelle vide plutôt qu'une
- * description qui serait lue deux fois.
+ * Composant serveur : aucun état, aucun effet.
  */
 export function LogoMarque({ taille = 32 }: { taille?: number }) {
-  const [charge, setCharge] = useState(false);
-
-  useEffect(() => {
-    let vivant = true;
-    const img = new window.Image();
-    img.onload = () => {
-      if (vivant) setCharge(true);
-    };
-    img.src = CHEMIN_LOGO;
-    return () => {
-      vivant = false;
-    };
-  }, []);
-
-  if (!charge) {
-    return (
-      <div
-        className="flex shrink-0 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground"
-        style={{ height: taille, width: taille, fontSize: taille * 0.34 }}
-        aria-hidden
-      >
-        {MONOGRAMME}
-      </div>
-    );
-  }
-
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- chargement vérifié à la main
+    // eslint-disable-next-line @next/next/no-img-element -- SVG statique, pas d'optimisation utile
     <img
-      src={CHEMIN_LOGO}
+      src="/logo.svg"
       alt=""
       width={taille}
       height={taille}
-      className="shrink-0 rounded-md object-contain"
+      className="shrink-0 object-contain"
       style={{ height: taille, width: taille }}
     />
   );
