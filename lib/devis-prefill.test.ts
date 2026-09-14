@@ -20,7 +20,8 @@ const source: DevisRow = {
   acompte_montant: null,
   signe_a_domicile: false,
   duree_estimee_jours: 3,
-  est_modele: false,
+  est_modele: true,
+  nom_modele: "Pose monosplit",
   type_activite: "installation_clim",
   statut: "accepte",
   total_ht: 4500,
@@ -163,6 +164,11 @@ describe("buildDevisDuplicata", () => {
     expect(copie.devis.facture_id).toBeUndefined();
     expect(copie.devis.email_envoye_le).toBeUndefined();
     expect(copie.devis.id).toBeUndefined();
+  });
+
+  it("un devis créé depuis un modèle est un devis NORMAL : ni est_modele, ni nom_modele repris", () => {
+    expect(copie.devis.est_modele).toBeUndefined();
+    expect(copie.devis.nom_modele).toBeUndefined();
   });
 
   it("fonctionne avec un devis sans lignes", () => {

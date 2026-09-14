@@ -6,6 +6,7 @@ import { listProduits } from "@/lib/actions/produits";
 import { getProfil } from "@/lib/actions/profil";
 import { getDevis } from "@/lib/actions/devis";
 import { buildDevisDuplicata, type DevisPrefill } from "@/lib/devis-prefill";
+import { nomModeleAffiche } from "@/lib/modeles-devis";
 import { assujettiTvaEffectif } from "@/lib/tva-garde";
 import { Button } from "@/components/ui/button";
 import { DevisForm } from "@/components/devis/devis-form";
@@ -29,6 +30,7 @@ export default async function NouveauDevisPage({
   // consommé — tant que l'utilisateur ne valide pas.
   let prefill: DevisPrefill | undefined;
   let sourceNumero: string | undefined;
+  let sourceModele: string | undefined;
 
   if (searchParams.source) {
     const { devis: source, lignes } = await getDevis(searchParams.source);
@@ -37,6 +39,7 @@ export default async function NouveauDevisPage({
         dureeValiditeJours: profil?.duree_validite_devis_jours,
       });
       sourceNumero = source.numero;
+      if (source.est_modele) sourceModele = nomModeleAffiche(source);
     }
   }
 
@@ -61,10 +64,20 @@ export default async function NouveauDevisPage({
         <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           <Copy className="mt-0.5 size-4 shrink-0 text-primary" />
           <p>
-            Formulaire pré-rempli depuis le devis{" "}
-            <strong>{sourceNumero}</strong> (lignes, équipement, performances,
-            conditions). Choisissez le client, ajustez si besoin, puis créez le
-            devis.
+            {sourceModele ? (
+              <>
+                Formulaire pré-rempli depuis le modèle{" "}
+                <strong>« {sourceModele} »</strong>
+              </>
+            ) : (
+              <>
+                Formulaire pré-rempli depuis le devis{" "}
+                <strong>{sourceNumero}</strong>
+              </>
+            )}{" "}
+            (lignes, équipement, performances, conditions). Choisissez le
+            client, ajustez si besoin, puis créez le devis : il reçoit son
+            numéro à l&apos;enregistrement.
           </p>
         </div>
       )}

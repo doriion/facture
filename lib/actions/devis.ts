@@ -10,6 +10,7 @@ import {
   motifVerrouDevis,
   transitionDevisAutorisee,
 } from "@/lib/devis-transitions";
+import { normaliserNomModele, trierModeles } from "@/lib/modeles-devis";
 import {
   devisSchema,
   statutAffichageDevis,
@@ -78,17 +79,19 @@ export async function listDevis(params?: {
 }
 
 /**
- * Liste des devis marqués comme modèles, pour la section « Modèles »
- * et le choix « Nouveau devis depuis un modèle ».
+ * Liste des devis marqués comme modèles, triés par nom (les modèles pas
+ * encore nommés en dernier), pour la section « Mes modèles » et le menu
+ * « Nouveau depuis un modèle ».
  */
 export async function listModelesDevis() {
   const supabase = createClient();
   const { data } = await supabase
     .from("devis")
-    .select("id, numero, type_activite, total_ht, notes, updated_at")
-    .eq("est_modele", true)
-    .order("updated_at", { ascending: false });
-  return data ?? [];
+    .select(
+      "id, numero, nom_modele, statut, type_activite, total_ht, notes, updated_at",
+    )
+    .eq("est_modele", true);
+  return trierModeles(data ?? []);
 }
 
 /**
@@ -96,11 +99,23 @@ export async function listModelesDevis() {
  * sans effet sur le contenu : le devis garde son numéro et ses lignes,
  * il est simplement déplacé entre la liste normale et la section
  * Modèles (exclu des stats et compteurs quand est_modele = true).
+ *
+ * À l'enregistrement, le modèle reçoit un nom lisible (« Pose
+ * monosplit ») ; au retrait, le nom est effacé — un devis normal n'en
+ * porte pas.
  */
 export async function setDevisModeleAction(
   id: string,
   estModele: boolean,
+  nom?: string,
 ): Promise<ActionResult> {
+  let nomModele: string | null = null;
+  if (estModele) {
+    const r = normaliserNomModele(nom);
+    if (!r.ok) return { ok: false, error: r.error };
+    nomModele = r.nom;
+  }
+
   const supabase = createClient();
   const { data: existant } = await supabase
     .from("devis")
@@ -119,13 +134,43 @@ export async function setDevisModeleAction(
 
   const { error } = await supabase
     .from("devis")
-    .update({ est_modele: estModele })
+    .update({ est_modele: estModele, nom_modele: nomModele })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/devis");
   revalidatePath(`/devis/${id}`);
   revalidatePath("/dashboard");
   return { ok: true, data: undefined };
+}
+
+/**
+ * Renomme un modèle existant. Ne touche à rien d'autre : ni numéro,
+ * ni lignes, ni statut. Refusé sur un devis qui n'est pas un modèle.
+ */
+export async function renommerModeleDevisAction(
+  id: string,
+  nom: string,
+): Promise<ActionResult<{ nom: string }>> {
+  const r = normaliserNomModele(nom);
+  if (!r.ok) return { ok: false, error: r.error };
+
+  const supabase = createClient();
+  // `.eq("est_modele", true)` + `.select` : le renommage n'atteint qu'un
+  // modèle — un devis normal (ou retiré des modèles entre-temps) n'est
+  // pas modifié et l'appelant en est informé.
+  const { data: modifie, error } = await supabase
+    .from("devis")
+    .update({ nom_modele: r.nom })
+    .eq("id", id)
+    .eq("est_modele", true)
+    .select("id");
+  if (error) return { ok: false, error: error.message };
+  if (!modifie || modifie.length === 0) {
+    return { ok: false, error: "Ce devis n'est pas (ou plus) un modèle." };
+  }
+  revalidatePath("/devis");
+  revalidatePath(`/devis/${id}`);
+  return { ok: true, data: { nom: r.nom } };
 }
 
 /**

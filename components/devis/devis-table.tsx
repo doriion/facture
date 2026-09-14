@@ -39,18 +39,25 @@ export function DevisTable({ devis }: { devis: DevisRow[] }) {
 
   return (
     <>
-      {/* Mobile (< md) : cartes verticales entièrement tapables */}
+      {/* Mobile (< md) : cartes verticales entièrement tapables. Le lien
+          vers la fiche est « étiré » sur toute la carte (pseudo-élément
+          after) pour que le bouton « Dupliquer », lui, reste un lien
+          distinct — un lien dans un lien n'est pas du HTML valide. */}
       <div className="space-y-2 md:hidden">
         {devis.map((d) => (
-          <Link
+          <div
             key={d.id}
-            href={`/devis/${d.id}`}
-            className="block rounded-lg border bg-card p-4 transition-colors active:bg-accent/50"
+            className="relative rounded-lg border bg-card p-4 transition-colors has-[a:active]:bg-accent/50"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-mono text-sm font-semibold">
-                  {d.numero}
+                  <Link
+                    href={`/devis/${d.id}`}
+                    className="after:absolute after:inset-0 after:content-['']"
+                  >
+                    {d.numero}
+                  </Link>
                   {d.facture_id && (
                     <span className="ml-2 text-[10px] font-sans uppercase tracking-wide text-primary">
                       Facturé
@@ -70,11 +77,25 @@ export function DevisTable({ devis }: { devis: DevisRow[] }) {
                 <p>Émis le {formatDateFr(d.date_emission)}</p>
                 <p>Valide jusqu&apos;au {formatDateFr(d.date_validite)}</p>
               </div>
-              <p className="text-lg font-bold tabular-nums">
-                {formatEuros(Number(d.total_ht))}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-bold tabular-nums">
+                  {formatEuros(Number(d.total_ht))}
+                </p>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  asChild
+                  className="relative z-10 size-10"
+                  title={`Dupliquer ${d.numero}`}
+                >
+                  <Link href={`/devis/nouveau?source=${d.id}`}>
+                    <CopyPlus className="size-4" />
+                    <span className="sr-only">Dupliquer {d.numero}</span>
+                  </Link>
+                </Button>
+              </div>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
 
@@ -91,7 +112,7 @@ export function DevisTable({ devis }: { devis: DevisRow[] }) {
             <TableHead>Statut</TableHead>
             <TableHead className="text-right">Total</TableHead>
             <TableHead className="w-10 text-right">
-              <span className="sr-only">Refaire</span>
+              <span className="sr-only">Dupliquer</span>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -140,22 +161,19 @@ export function DevisTable({ devis }: { devis: DevisRow[] }) {
               <TableCell className="text-right font-medium tabular-nums">
                 {formatEuros(Number(d.total_ht))}
               </TableCell>
-              {/* Refaire un devis similaire : le geste le plus
-                  fréquent après « le même mais pour quelqu'un
-                  d'autre ». Il n'existait que sur la fiche, donc à
-                  deux clics et un chargement de page. */}
+              {/* Dupliquer : nouveau devis pré-rempli depuis celui-ci
+                  (client vide, dates du jour, numéro attribué à
+                  l'enregistrement), sans ouvrir la fiche. */}
               <TableCell className="text-right">
                 <Button
                   variant="ghost"
                   size="icon"
                   asChild
-                  title={`Refaire un devis similaire à ${d.numero}`}
+                  title={`Dupliquer ${d.numero} (nouveau devis pré-rempli)`}
                 >
                   <Link href={`/devis/nouveau?source=${d.id}`}>
                     <CopyPlus className="size-4 text-muted-foreground" />
-                    <span className="sr-only">
-                      Refaire un devis similaire à {d.numero}
-                    </span>
+                    <span className="sr-only">Dupliquer {d.numero}</span>
                   </Link>
                 </Button>
               </TableCell>
