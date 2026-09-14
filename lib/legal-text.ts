@@ -5,7 +5,7 @@
  * Sources :
  * - Article L. 223-3 du CIBS (franchise TVA — ex-art. 293 B du CGI,
  *   recodifié par l'ordonnance 2025-1247 ; bascule retenue au
- *   01/01/2027, voir DATE_BASCULE_MENTION_CIBS)
+ *   01/09/2026, voir DATE_BASCULE_MENTION_CIBS)
  * - Article L441-10 et D441-5 du Code de commerce (pénalités de retard, indemnité 40€)
  * - Loi Hamon 2014 (médiateur de la consommation)
  * - Réglementation F-Gas (fluides frigorigènes)
@@ -16,19 +16,31 @@
 /**
  * Date de bascule CGI → CIBS pour la mention de franchise.
  *
- * CONFIRMÉ (re-vérifié le 02/09/2026) : le report est acté par
- * l'ordonnance n° 2026-671 du 27 juillet 2026 — la recodification TVA
- * dans le CIBS entre en vigueur au 01/01/2027 (et non au 01/09/2026
- * initialement prévu par l'ordonnance 2025-1247). Jusqu'au 31/12/2026,
- * la mention correcte reste « art. 293 B du CGI » ; les références CGI
- * restent tolérées jusqu'au 30/06/2028. Sources : fiscalonline.com,
- * arsene-taxand.com, mathez-compliance.com, synapx.fr, dikoo.fr.
+ * FIXÉE AU 01/09/2026 SUR DEMANDE EXPRESSE DE L'UTILISATEUR
+ * (14/09/2026), qui retient cette date comme celle de l'entrée en
+ * vigueur de la recodification (ordonnance 2025-1247).
+ *
+ * HISTORIQUE À CONSERVER : une vérification faite le 02/09/2026 avait
+ * conclu à un report au 01/01/2027 par l'ordonnance n° 2026-671 du
+ * 27 juillet 2026, et la constante valait alors "2027-01-01".
+ * L'utilisateur, seul responsable de ses mentions légales, a demandé
+ * à trois reprises la bascule au 01/09/2026 ; c'est sa décision qui
+ * s'applique ici. Pour revenir en arrière, il suffit de remettre
+ * "2027-01-01" : aucune autre ligne n'est à toucher.
+ *
+ * EFFET DE BORD MESURÉ AU MOMENT DU CHANGEMENT : les documents émis à
+ * partir du 01/09/2026 se réimpriment désormais avec la mention CIBS
+ * (2 factures et 1 contrat en base, aucun devis). Les documents
+ * antérieurs ne bougent pas.
+ *
+ * Les références au CGI restent tolérées jusqu'au 30/06/2028, donc
+ * aucun document déjà envoyé n'est irrégulier de ce fait.
  */
-export const DATE_BASCULE_MENTION_CIBS = "2027-01-01";
+export const DATE_BASCULE_MENTION_CIBS = "2026-09-01";
 
 /**
- * Rédaction actuelle (art. 293 B du CGI) — utilisée pour les documents
- * émis avant la bascule, et tolérée jusqu'au 31/12/2027.
+ * Rédaction historique (art. 293 B du CGI) — utilisée pour les
+ * documents émis AVANT la bascule, et tolérée jusqu'au 30/06/2028.
  * Ne pas utiliser directement : passer par
  * `mentionTvaFranchise(dateEmission)`.
  */
