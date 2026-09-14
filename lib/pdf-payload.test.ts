@@ -127,3 +127,41 @@ describe("garde-fou : pas de coûts privés dans les surfaces publiques", () => 
     }
   });
 });
+
+/**
+ * GARDE-FOU : le bloc de marges (matériel + réelle) est un outil de
+ * pilotage pour l'artisan. Il n'a AUCUNE raison d'atteindre un document
+ * client — ni le calcul, ni ses résultats. Aucun composant PDF ne doit
+ * donc importer lib/marges ni manipuler une notion de marge ou de coût
+ * d'achat.
+ */
+describe("garde-fou : aucune marge dans les rendus PDF", () => {
+  const RACINE = join(__dirname, "..");
+  const COMPOSANTS_PDF = [
+    "components/devis/devis-pdf.tsx",
+    "components/devis/devis-pdf-simple.tsx",
+    "components/factures/facture-pdf.tsx",
+    "components/contrats/contrat-pdf.tsx",
+    "components/interventions/cerfa-pdf.tsx",
+  ];
+  const MOTIFS = [
+    /@\/lib\/marges/,
+    /\bmargeReelle\b/,
+    /\btotauxMarges\b/,
+    /\bmargeLigne\b/,
+    /\bcoutTotal\b/,
+    /\bcoutRenseigne\b/,
+    /\bmarge\b/i,
+  ];
+
+  for (const fichier of COMPOSANTS_PDF) {
+    it(`${fichier} ne connaît pas la marge`, () => {
+      const code = readFileSync(join(RACINE, fichier), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+      for (const motif of MOTIFS) {
+        expect(code, `${fichier} contient ${motif}`).not.toMatch(motif);
+      }
+    });
+  }
+});
