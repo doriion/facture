@@ -113,6 +113,9 @@ export const devisSchema = z.object({
     moneyInputOrNull,
     z.number().min(0).max(1_000_000).nullable(),
   ),
+  // Adresse du chantier quand elle diffère de celle du client. Vide =
+  // le chantier est chez le client (le PDF le dit explicitement).
+  adresse_chantier: z.string().trim().max(500).optional().or(z.literal("")),
   // Devis signé au domicile du client (hors établissement) : le PDF
   // ajoute la mention L221-18 + le formulaire de rétractation.
   signe_a_domicile: z.boolean().default(false),

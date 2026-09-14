@@ -62,6 +62,7 @@ export function DevisForm({
   lignes,
   defaultConditions,
   dureeValiditeJours,
+  acompteDefautPct,
   prefill,
   assujettiTva = false,
 }: {
@@ -72,6 +73,8 @@ export function DevisForm({
   defaultConditions?: string | null;
   /** Réglage duree_validite_devis_jours (défaut 30) */
   dureeValiditeJours?: number | null;
+  /** Réglage acompte_pct_default (défaut 40) — création seulement */
+  acompteDefautPct?: number | null;
   /** Libellés « HT » uniquement si le document est assujetti (snapshot). */
   assujettiTva?: boolean;
   prefill?: {
@@ -150,8 +153,13 @@ export function DevisForm({
       date_validite: base?.date_validite ?? validiteInitiale,
       date_debut_travaux: base?.date_debut_travaux ?? "",
       duree_estimee_jours: base?.duree_estimee_jours ?? null,
-      acompte_pct: base?.acompte_pct ?? null,
+      // En création, l'acompte est pré-rempli depuis le réglage du
+      // profil (40 % par défaut) ; en édition, la valeur du devis prime.
+      acompte_pct:
+        base?.acompte_pct ??
+        (isEdit ? null : (acompteDefautPct ?? null)),
       acompte_montant: base?.acompte_montant ?? null,
+      adresse_chantier: base?.adresse_chantier ?? "",
       signe_a_domicile: base?.signe_a_domicile ?? false,
       conditions: base?.conditions ?? defaultConditions ?? "",
       notes: base?.notes ?? "",
@@ -378,6 +386,20 @@ export function DevisForm({
             <p className="text-xs text-muted-foreground">
               Le PDF affiche « Acompte à la commande… solde à réception de
               facture ». Le % prime si les deux sont remplis.
+            </p>
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label htmlFor="adresse_chantier">Adresse du chantier</Label>
+            <Textarea
+              id="adresse_chantier"
+              rows={2}
+              placeholder="Laissez vide si le chantier est à l'adresse du client"
+              {...register("adresse_chantier")}
+            />
+            <p className="text-xs text-muted-foreground">
+              Apparaît sur le devis dans un bloc distinct de l'adresse du
+              client. Vide, le devis indique « identique à l'adresse du
+              client ».
             </p>
           </div>
           <label className="flex items-start gap-2 text-sm md:col-span-2">

@@ -63,6 +63,7 @@ export function buildDevisDuplicata(
       duree_estimee_jours: source.duree_estimee_jours,
       conditions: source.conditions,
       notes: source.notes,
+      adresse_chantier: source.adresse_chantier,
       equipement_info: source.equipement_info,
       performances_energetiques: source.performances_energetiques,
       aides_financieres: source.aides_financieres,

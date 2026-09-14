@@ -28,6 +28,11 @@ import {
   mentionRm,
 } from "@/lib/legal-text";
 import { profilEffectif } from "@/lib/emetteur";
+import {
+  MODELE_DEVIS_V2,
+  versionModeleDevis,
+} from "@/lib/devis-v2";
+import { DevisPdfV2 } from "@/components/devis/devis-pdf-v2";
 import { DUREE_VALIDITE_DEVIS_DEFAUT } from "@/lib/devis-validite";
 import { computeSections } from "@/lib/sections";
 import { mentionAcompte } from "@/lib/devis-mentions";
@@ -273,7 +278,31 @@ const styles = StyleSheet.create({
   },
 });
 
-export function DevisPdf({
+/**
+ * Point d'entrée du PDF de devis : choisit le modèle selon la version
+ * FIGÉE sur le devis (devis.pdf_template_version).
+ *
+ * GARANTIE : un devis émis avant l'arrivée du modèle v2 porte NULL et
+ * reste rendu par DevisPdfV1, à l'identique de ce que le client a
+ * reçu — le PDF étant régénéré à chaque téléchargement, c'est cette
+ * version stockée qui empêche toute réécriture du passé.
+ */
+export function DevisPdf(props: {
+  devis: Devis;
+  lignes: Ligne[];
+  client: Client | null;
+  profil: Profil | null;
+  logoData?: string | null;
+  signatureData?: string | null;
+}) {
+  const version = versionModeleDevis(
+    (props.devis as { pdf_template_version?: unknown }).pdf_template_version,
+  );
+  return version === MODELE_DEVIS_V2 ? DevisPdfV2(props) : DevisPdfV1(props);
+}
+
+/** Modèle historique — NE PAS MODIFIER : il rend les devis déjà émis. */
+export function DevisPdfV1({
   devis,
   lignes,
   client,

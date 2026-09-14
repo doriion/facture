@@ -138,6 +138,22 @@ export const profilSchema = z.object({
       (v) => v === "" || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 365),
       { message: "Entre 1 et 365 jours." },
     ),
+  // Acompte proposé par défaut sur un nouveau devis (texte borné 0-100).
+  acompte_pct_default: z
+    .string()
+    .trim()
+    .refine(
+      (v) =>
+        v === "" ||
+        (/^\d{1,3}([.,]\d{1,2})?$/.test(v) &&
+          Number(v.replace(",", ".")) >= 0 &&
+          Number(v.replace(",", ".")) <= 100),
+      { message: "Entre 0 et 100 %." },
+    ),
+  // Section « Conditions de l'offre » du devis.
+  delai_intervention_default: z.string().trim().max(300).optional().or(z.literal("")),
+  frais_deplacement_default: z.string().trim().max(300).optional().or(z.literal("")),
+  gestion_dechets_default: z.string().trim().max(1000).optional().or(z.literal("")),
   conditions_paiement_default: z.string().trim().max(500).optional().or(z.literal("")),
   penalites_retard_text: z.string().trim().max(1000).optional().or(z.literal("")),
   escompte_text: z.string().trim().max(500).optional().or(z.literal("")),

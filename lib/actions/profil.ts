@@ -92,6 +92,10 @@ export async function upsertProfil(
     mediateur_site_web: v.mediateur_site_web || null,
     mediateur_adresse: v.mediateur_adresse || null,
     duree_validite_devis_jours: dureeValiditeSure(v.duree_validite_devis_jours),
+    acompte_pct_default: acomptePctSur(v.acompte_pct_default),
+    delai_intervention_default: v.delai_intervention_default || null,
+    frais_deplacement_default: v.frais_deplacement_default || null,
+    gestion_dechets_default: v.gestion_dechets_default || null,
     conditions_paiement_default: v.conditions_paiement_default || null,
     penalites_retard_text: v.penalites_retard_text || null,
     escompte_text: v.escompte_text || null,
@@ -311,4 +315,14 @@ export async function saveAgendaCouleursAction(
   revalidatePath("/parametres");
   revalidatePath("/agenda");
   return { ok: true, data: undefined };
+}
+
+/**
+ * Acompte par défaut : saisi en texte (formulaire tout-string), borné
+ * 0-100, vide ou aberrant → 40 % (valeur métier par défaut).
+ */
+function acomptePctSur(valeur: unknown): number {
+  const n = Number(String(valeur ?? "").replace(",", "."));
+  if (!Number.isFinite(n) || n < 0 || n > 100) return 40;
+  return Math.round(n * 100) / 100;
 }

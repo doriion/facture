@@ -73,6 +73,10 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
       mediateur_site_web: profil?.mediateur_site_web ?? "",
       mediateur_adresse: profil?.mediateur_adresse ?? "",
       duree_validite_devis_jours: String(profil?.duree_validite_devis_jours ?? 30),
+      acompte_pct_default: String(profil?.acompte_pct_default ?? 40),
+      delai_intervention_default: profil?.delai_intervention_default ?? "",
+      frais_deplacement_default: profil?.frais_deplacement_default ?? "",
+      gestion_dechets_default: profil?.gestion_dechets_default ?? "",
       conditions_paiement_default: profil?.conditions_paiement_default ?? "",
       penalites_retard_text: profil?.penalites_retard_text ?? "",
       escompte_text: profil?.escompte_text ?? "",
@@ -475,6 +479,56 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
               inputMode="numeric"
               className="max-w-28"
               {...register("duree_validite_devis_jours")}
+            />
+          </Field>
+          <Field
+            label="Acompte par défaut (%)"
+            id="acompte_pct_default"
+            error={errors.acompte_pct_default?.message}
+            help="Pré-remplit l'acompte à la création d'un devis. Le PDF calcule le solde automatiquement. Défaut : 40 %."
+          >
+            <Input
+              id="acompte_pct_default"
+              inputMode="decimal"
+              className="max-w-28"
+              {...register("acompte_pct_default")}
+            />
+          </Field>
+          <Field
+            label="Délai d'intervention"
+            id="delai_intervention_default"
+            error={errors.delai_intervention_default?.message}
+            help="Section « Conditions de l'offre » du devis. Ex : « 2 à 3 semaines après acceptation »."
+          >
+            <Input
+              id="delai_intervention_default"
+              placeholder="2 à 3 semaines après acceptation du devis"
+              {...register("delai_intervention_default")}
+            />
+          </Field>
+          <Field
+            label="Frais de déplacement"
+            id="frais_deplacement_default"
+            error={errors.frais_deplacement_default?.message}
+            help="Ex : « Inclus dans un rayon de 30 km autour de Grenoble »."
+          >
+            <Input
+              id="frais_deplacement_default"
+              placeholder="Inclus dans un rayon de 30 km"
+              {...register("frais_deplacement_default")}
+            />
+          </Field>
+          <Field
+            label="Gestion des déchets"
+            id="gestion_dechets_default"
+            error={errors.gestion_dechets_default?.message}
+            help="Bloc dédié sur le devis. Laissez vide pour ne pas l'imprimer."
+          >
+            <Textarea
+              id="gestion_dechets_default"
+              rows={2}
+              placeholder="Évacuation et traitement des déchets de chantier assurés par nos soins, en déchetterie professionnelle agréée."
+              {...register("gestion_dechets_default")}
             />
           </Field>
           <Field

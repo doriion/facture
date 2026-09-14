@@ -32,6 +32,8 @@ const source: DevisRow = {
   facture_id: "fac-99",
   email_envoye_le: "2026-03-16T10:00:00Z",
   pdf_url: null,
+  pdf_template_version: null,
+  adresse_chantier: null,
   signature_client_url: null,
   created_at: "2026-03-15T09:00:00Z",
   updated_at: "2026-03-16T10:00:00Z",

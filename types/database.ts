@@ -512,6 +512,8 @@ export type Database = {
           numero: string;
           pdf_url: string | null;
           performances_energetiques: Json;
+          pdf_template_version: number | null;
+          adresse_chantier: string | null;
           signature_client_url: string | null;
           statut: string;
           total_ht: number;
@@ -542,6 +544,8 @@ export type Database = {
           numero: string;
           pdf_url?: string | null;
           performances_energetiques?: Json;
+          pdf_template_version?: number | null;
+          adresse_chantier?: string | null;
           signature_client_url?: string | null;
           statut?: string;
           total_ht?: number;
@@ -572,6 +576,8 @@ export type Database = {
           numero?: string;
           pdf_url?: string | null;
           performances_energetiques?: Json;
+          pdf_template_version?: number | null;
+          adresse_chantier?: string | null;
           signature_client_url?: string | null;
           statut?: string;
           total_ht?: number;
@@ -1262,6 +1268,10 @@ export type Database = {
           code_ape: string | null;
           code_postal: string | null;
           conditions_paiement_default: string | null;
+          acompte_pct_default: number;
+          delai_intervention_default: string | null;
+          frais_deplacement_default: string | null;
+          gestion_dechets_default: string | null;
           created_at: string;
           email_pro: string | null;
           escompte_text: string | null;
@@ -1315,6 +1325,10 @@ export type Database = {
           code_ape?: string | null;
           code_postal?: string | null;
           conditions_paiement_default?: string | null;
+          acompte_pct_default?: number;
+          delai_intervention_default?: string | null;
+          frais_deplacement_default?: string | null;
+          gestion_dechets_default?: string | null;
           created_at?: string;
           email_pro?: string | null;
           escompte_text?: string | null;
@@ -1368,6 +1382,10 @@ export type Database = {
           code_ape?: string | null;
           code_postal?: string | null;
           conditions_paiement_default?: string | null;
+          acompte_pct_default?: number;
+          delai_intervention_default?: string | null;
+          frais_deplacement_default?: string | null;
+          gestion_dechets_default?: string | null;
           created_at?: string;
           email_pro?: string | null;
           escompte_text?: string | null;
