@@ -63,6 +63,7 @@ export function DevisForm({
   defaultConditions,
   dureeValiditeJours,
   prefill,
+  assujettiTva = false,
 }: {
   clients: Client[];
   produits: Produit[];
@@ -71,6 +72,8 @@ export function DevisForm({
   defaultConditions?: string | null;
   /** Réglage duree_validite_devis_jours (défaut 30) */
   dureeValiditeJours?: number | null;
+  /** Libellés « HT » uniquement si le document est assujetti (snapshot). */
+  assujettiTva?: boolean;
   prefill?: {
     devis: Partial<Devis>;
     lignes: Array<{
@@ -79,6 +82,8 @@ export function DevisForm({
       prix_unitaire_ht: number;
       nature_fiscale?: string;
       type?: string;
+      prix_achat_ttc_unitaire?: number | null;
+      fournisseur?: string;
     }>;
   };
 }) {
@@ -107,6 +112,10 @@ export function DevisForm({
         designation: l.designation,
         quantite: l.quantite,
         prix_unitaire_ht: l.prix_unitaire_ht,
+        // Coûts privés repris à la duplication (sinon le formulaire les
+        // perdait et la marge repartait de zéro).
+        prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire ?? null,
+        fournisseur: l.fournisseur ?? "",
         nature_fiscale: (l.nature_fiscale ?? "bic_prestations") as NatureFiscale,
         type: ((l as { type?: string }).type ?? "ligne") as "ligne" | "titre",
       }));
@@ -247,7 +256,9 @@ export function DevisForm({
         <CardHeader>
           <CardTitle>Client et dates</CardTitle>
           <CardDescription>
-            La validité par défaut est de 3 mois (modifiable).
+            {isEdit
+              ? "Modifiez les dates si besoin."
+              : `Validité par défaut : ${dureeValidite} jours (réglable dans Paramètres, modifiable ici).`}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
@@ -402,6 +413,7 @@ export function DevisForm({
             watch={watch}
             errors={errors}
             produits={produits}
+            assujettiTva={assujettiTva}
           />
         </CardContent>
       </Card>

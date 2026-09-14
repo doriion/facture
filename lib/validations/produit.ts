@@ -26,9 +26,9 @@ export const produitSchema = z.object({
   prix_ht: z.preprocess(
     moneyInput,
     z
-      .number({ error: "Prix HT invalide." })
+      .number({ error: "Prix invalide." })
       .min(0, "Le prix ne peut pas être négatif.")
-      .max(1_000_000, "Prix HT trop élevé."),
+      .max(1_000_000, "Prix trop élevé."),
   ),
   // Coût réel PRIVÉ, saisi TTC (franchise en base : la TVA sur achats
   // n'est pas récupérée, le coût c'est le TTC). Jamais exposé au client.

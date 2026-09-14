@@ -289,7 +289,7 @@ export function ContratForm({
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="prix_annuel_ht">Prix annuel HT *</Label>
+            <Label htmlFor="prix_annuel_ht">Prix annuel *</Label>
             <div className="relative">
               <Input
                 id="prix_annuel_ht"

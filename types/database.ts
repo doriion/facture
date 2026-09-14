@@ -1249,6 +1249,7 @@ export type Database = {
           relances_delai_jours: number;
           auto_rappels_active: boolean;
           rappels_fenetre_jours: number;
+          auto_chatel_active: boolean;
           automatisations_simulation: boolean;
           auto_email_taches_active: boolean;
           duree_validite_devis_jours: number;
@@ -1301,6 +1302,7 @@ export type Database = {
           relances_delai_jours?: number;
           auto_rappels_active?: boolean;
           rappels_fenetre_jours?: number;
+          auto_chatel_active?: boolean;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
           duree_validite_devis_jours?: number;
@@ -1353,6 +1355,7 @@ export type Database = {
           relances_delai_jours?: number;
           auto_rappels_active?: boolean;
           rappels_fenetre_jours?: number;
+          auto_chatel_active?: boolean;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
           duree_validite_devis_jours?: number;
@@ -1398,6 +1401,15 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       next_document_number: { Args: { p_type: string }; Returns: string };
+      remplacer_lignes_document: {
+        Args: {
+          p_type: string;
+          p_document_id: string;
+          p_lignes: Json;
+        };
+        /** Nombre de lignes insérées. */
+        Returns: number;
+      };
       ensure_calendar_token: {
         Args: { p_force?: boolean };
         Returns: string;

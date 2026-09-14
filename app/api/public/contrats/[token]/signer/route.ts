@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 import { createServiceClient } from "@/lib/supabase/service";
+import { journaliser } from "@/lib/cron/journal";
 import { etatLienPublic, retractationApplicable } from "@/lib/contrats/logic";
 import {
   prestataireEffectif,
@@ -42,7 +44,21 @@ export async function POST(
     );
   }
 
-  const service = createServiceClient();
+  // Configuration serveur manquante : 503 propre plutôt qu'un crash
+  let service: ReturnType<typeof createServiceClient>;
+  try {
+    service = createServiceClient();
+  } catch (e) {
+    console.error("Signature contrat — service indisponible :", e);
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "Service momentanément indisponible — réessayez dans quelques minutes.",
+      },
+      { status: 503 },
+    );
+  }
   const { data: contratData } = await service
     .from("contrats")
     .select("*")
@@ -209,15 +225,18 @@ export async function POST(
 
   // --- PDF signé (2 passes, SHA-256) + archivage + emails ----------------
   // La signature est ACQUISE à ce stade : les étapes suivantes sont en
-  // best-effort (le PDF peut être régénéré depuis l'admin).
+  // best-effort (le PDF peut être régénéré depuis l'admin ou depuis
+  // l'alerte du tableau de bord).
+  const anomalies: string[] = [];
+  // Profil hissé hors du try : il sert aussi au journal en cas d'échec.
+  const { data: profil } = await service
+    .from("profil_entreprise")
+    .select("logo_url, email_pro")
+    .eq("user_id", signee.user_id)
+    .maybeSingle();
+
   try {
     const prestataire = prestataireEffectif(null, signee.prestataire);
-
-    const { data: profil } = await service
-      .from("profil_entreprise")
-      .select("logo_url, email_pro")
-      .eq("user_id", signee.user_id)
-      .maybeSingle();
 
     const [logoData, signatureData] = await Promise.all([
       chargerLogoDataUri(service, profil?.logo_url),
@@ -239,8 +258,16 @@ export async function POST(
         contentType: "application/pdf",
         upsert: true,
       });
+    if (pdfErr) {
+      // Le contrat apparaîtra dans « Contrats signés sans PDF archivé »
+      // sur le tableau de bord, avec un bouton de régénération.
+      anomalies.push(`dépôt du PDF : ${pdfErr.message}`);
+      Sentry.captureException(pdfErr, {
+        tags: { etape: "signature-contrat", action: "upload-pdf" },
+      });
+    }
 
-    await service
+    const { error: majErr } = await service
       .from("contrats")
       .update({
         pdf_path: pdfErr ? null : pdfPath,
@@ -248,6 +275,12 @@ export async function POST(
         updated_at: new Date().toISOString(),
       })
       .eq("id", signee.id);
+    if (majErr) {
+      anomalies.push(`enregistrement du PDF : ${majErr.message}`);
+      Sentry.captureException(majErr, {
+        tags: { etape: "signature-contrat", action: "maj-pdf" },
+      });
+    }
 
     if (isEmailConfigured()) {
       const dateSignatureText = new Date(nowIso).toLocaleString("fr-FR", {
@@ -269,7 +302,7 @@ export async function POST(
         dateSignatureText,
         pourArtisan: false,
       });
-      await sendEmail({
+      const envoiClient = await sendEmail({
         to: saisie.email,
         subject: emailClient.subject,
         html: emailClient.html,
@@ -277,6 +310,9 @@ export async function POST(
         replyTo: emailPro ?? undefined,
         attachments: [piece],
       });
+      if (!envoiClient.ok) {
+        anomalies.push(`email au client : ${envoiClient.error}`);
+      }
 
       if (emailPro) {
         const emailArtisan = buildContratSigneEmail({
@@ -286,18 +322,50 @@ export async function POST(
           dateSignatureText,
           pourArtisan: true,
         });
-        await sendEmail({
+        const envoiArtisan = await sendEmail({
           to: emailPro,
           subject: emailArtisan.subject,
           html: emailArtisan.html,
           text: emailArtisan.text,
           attachments: [piece],
         });
+        if (!envoiArtisan.ok) {
+          anomalies.push(`copie à l'artisan : ${envoiArtisan.error}`);
+        }
       }
+    } else {
+      anomalies.push("Resend non configuré : aucun email envoyé.");
     }
   } catch (e) {
-    // Signature valide malgré tout — Sentry attrapera l'erreur serveur.
+    // Signature valide malgré tout : on trace, on ne renvoie pas d'erreur
+    // au client qui vient de signer.
     console.error("Post-signature contrat :", e);
+    Sentry.captureException(e, {
+      tags: { etape: "signature-contrat", action: "post-signature" },
+    });
+    anomalies.push(
+      e instanceof Error ? e.message : "erreur inattendue après signature",
+    );
+  }
+
+  // Journal : l'artisan voit l'anomalie dans Paramètres → Automatisations,
+  // et le tableau de bord propose la régénération du PDF manquant.
+  if (anomalies.length > 0) {
+    try {
+      await journaliser(
+        service,
+        signee.user_id,
+        `contrat-signe:${signee.numero ?? signee.id}`,
+        nowIso.slice(0, 10),
+        {
+          statut: "erreur",
+          details: `Signature enregistrée, mais : ${anomalies.join(" ; ")}. Le PDF signé peut être régénéré depuis la fiche contrat.`,
+        },
+        false,
+      );
+    } catch (e) {
+      console.error("Journalisation post-signature :", e);
+    }
   }
 
   return NextResponse.json({ ok: true });

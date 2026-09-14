@@ -209,7 +209,7 @@ export function ProduitFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="prix_ht">Prix unitaire HT *</Label>
+            <Label htmlFor="prix_ht">Prix unitaire *</Label>
             <div className="relative">
               <Input
                 id="prix_ht"

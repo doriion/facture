@@ -24,6 +24,7 @@ import {
   type ContratEntretienRow,
 } from "@/lib/actions/contrats-entretien";
 import { Button } from "@/components/ui/button";
+import { RegenererPdfButton } from "@/components/contrats/regenerer-pdf-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -118,6 +119,10 @@ export function ContratEntretienActions({
           {contrat.statut === "brouillon" ? "Aperçu PDF" : "PDF"}
         </a>
       </Button>
+      {/* Signature acquise mais PDF non archivé : réparation sur place. */}
+      {contrat.signed_at && contrat.signature_path && !contrat.pdf_path && (
+        <RegenererPdfButton contratId={contrat.id} numero={contrat.numero} />
+      )}
       {(contrat.statut === "brouillon" || contrat.statut === "envoye") && (
         <AlertDialog>
           <AlertDialogTrigger asChild>

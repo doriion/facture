@@ -49,8 +49,9 @@ const lignes: DevisLigneRow[] = [
     total_ht: 3800,
     nature_fiscale: "bic_prestations",
     type: "ligne",
-    prix_achat_ttc_unitaire: null,
-    fournisseur: null,
+    // Coût privé saisi sur le devis source : doit être REPRIS
+    prix_achat_ttc_unitaire: 1450.5,
+    fournisseur: "Yukai",
     created_at: "2026-03-15T09:00:00Z",
   },
   {
@@ -73,30 +74,54 @@ const lignes: DevisLigneRow[] = [
 const now = new Date("2026-07-07T10:00:00Z");
 
 describe("buildDevisDuplicata", () => {
-  const copie = buildDevisDuplicata(source, lignes, now);
+  const copie = buildDevisDuplicata(source, lignes, { now });
 
   it("vide le client (à choisir) et remet les dates à aujourd'hui", () => {
     expect(copie.devis.client_id).toBe("");
     expect(copie.devis.date_emission).toBe("2026-07-07");
-    expect(copie.devis.date_validite).toBe("2026-10-05"); // +90 jours
     expect(copie.devis.date_debut_travaux).toBeNull();
   });
 
-  it("recopie lignes (nature fiscale incluse), équipement, performances, aides et conditions", () => {
+  it("validité : réglage du profil, défaut 30 jours (plus jamais +90 en dur)", () => {
+    // Sans réglage → défaut lib/devis-validite (30 j)
+    expect(copie.devis.date_validite).toBe("2026-08-06");
+    // Réglage du profil respecté
+    expect(
+      buildDevisDuplicata(source, lignes, { now, dureeValiditeJours: 45 })
+        .devis.date_validite,
+    ).toBe("2026-08-21");
+    // Réglage invalide (null / hors bornes) → défaut 30 j
+    expect(
+      buildDevisDuplicata(source, lignes, { now, dureeValiditeJours: null })
+        .devis.date_validite,
+    ).toBe("2026-08-06");
+    expect(
+      buildDevisDuplicata(source, lignes, { now, dureeValiditeJours: 900 })
+        .devis.date_validite,
+    ).toBe("2026-08-06");
+    // Et la validité de la SOURCE n'est jamais reprise
+    expect(copie.devis.date_validite).not.toBe(source.date_validite);
+  });
+
+  it("recopie lignes (nature fiscale et coûts privés inclus), équipement, performances, aides et conditions", () => {
     expect(copie.lignes).toEqual([
       {
         designation: "Pose clim mono-split 2,5 kW",
         quantite: 1,
         prix_unitaire_ht: 3800,
         nature_fiscale: "bic_prestations",
-    type: "ligne",
+        type: "ligne",
+        prix_achat_ttc_unitaire: 1450.5,
+        fournisseur: "Yukai",
       },
       {
         designation: "Liaison frigorifique (ml)",
         quantite: 7,
         prix_unitaire_ht: 100,
         nature_fiscale: "bic_ventes",
-    type: "ligne",
+        type: "ligne",
+        prix_achat_ttc_unitaire: null,
+        fournisseur: "",
       },
     ]);
     expect(copie.devis.equipement_info).toEqual({
@@ -113,6 +138,24 @@ describe("buildDevisDuplicata", () => {
     expect(copie.devis.type_activite).toBe("installation_clim");
   });
 
+  it("convertit les numeric Postgres renvoyés en string", () => {
+    const [copiee] = buildDevisDuplicata(
+      source,
+      [
+        {
+          ...lignes[0],
+          quantite: "2" as unknown as number,
+          prix_unitaire_ht: "1200.50" as unknown as number,
+          prix_achat_ttc_unitaire: "800.25" as unknown as number,
+        },
+      ],
+      { now },
+    ).lignes;
+    expect(copiee.quantite).toBe(2);
+    expect(copiee.prix_unitaire_ht).toBe(1200.5);
+    expect(copiee.prix_achat_ttc_unitaire).toBe(800.25);
+  });
+
   it("ne recopie ni numéro, ni statut, ni lien facture, ni envoi email", () => {
     expect(copie.devis.numero).toBeUndefined();
     expect(copie.devis.statut).toBeUndefined();
@@ -122,6 +165,6 @@ describe("buildDevisDuplicata", () => {
   });
 
   it("fonctionne avec un devis sans lignes", () => {
-    expect(buildDevisDuplicata(source, [], now).lignes).toEqual([]);
+    expect(buildDevisDuplicata(source, [], { now }).lignes).toEqual([]);
   });
 });

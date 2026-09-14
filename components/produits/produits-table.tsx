@@ -99,7 +99,7 @@ export function ProduitsTable({ produits }: { produits: Produit[] }) {
           <TableRow>
             <TableHead>Désignation</TableHead>
             <TableHead>Catégorie</TableHead>
-            <TableHead className="text-right">Prix HT</TableHead>
+            <TableHead className="text-right">Prix unitaire</TableHead>
             {afficherCouts && (
               <>
                 <TableHead className="text-right">Achat TTC</TableHead>

@@ -64,12 +64,15 @@ export function FactureForm({
   defaultConditionsPaiement,
   prefill,
   interventionId,
+  assujettiTva = false,
 }: {
   clients: Client[];
   produits: Produit[];
   facture?: Facture;
   lignes?: Ligne[];
   defaultConditionsPaiement?: string | null;
+  /** Libellés « HT » uniquement si le document est assujetti (snapshot). */
+  assujettiTva?: boolean;
   prefill?: {
     facture: Partial<Facture>;
     lignes: Array<{
@@ -352,6 +355,7 @@ export function FactureForm({
             watch={watch}
             errors={errors}
             produits={produits}
+            assujettiTva={assujettiTva}
           />
         </CardContent>
       </Card>
