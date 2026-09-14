@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { payloadLignesPdf } from "@/lib/pdf-payload";
 import { estErreurMoteurTva, verifierMoteurTva } from "@/lib/tva-garde";
 import { FacturePdf } from "@/components/factures/facture-pdf";
+import { logoApplication } from "@/lib/logo-app";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,6 +94,10 @@ export async function GET(
       logoData = null; // Échec silencieux : on rend le PDF sans logo
     }
   }
+  // À défaut de logo dans Paramètres, celui de l'application : un
+  // document sans aucune marque fait moins sérieux qu'un document
+  // portant le logo générique.
+  logoData = logoData ?? (await logoApplication());
 
   // Nettoyage : retire la propriété "client" imbriquée pour passer le strict typage
   const { client: _client, ...factureClean } = factureRaw;

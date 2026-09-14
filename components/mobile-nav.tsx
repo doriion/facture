@@ -8,6 +8,7 @@ import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import { LogoMarque } from "@/components/logo-marque";
 import {
   Sheet,
   SheetContent,
@@ -48,9 +49,7 @@ export function MobileNav({ badgeTaches = 0 }: { badgeTaches?: number }) {
             className="flex items-center gap-2"
             onClick={() => setOpen(false)}
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <span className="text-sm font-bold">F</span>
-            </div>
+            <LogoMarque taille={32} />
             <SheetTitle>Facture AE</SheetTitle>
           </Link>
         </div>
