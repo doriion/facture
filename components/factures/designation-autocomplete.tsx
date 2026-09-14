@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { formatEuros } from "@/lib/format";
 import {
   chercherPrestations,
@@ -18,6 +25,11 @@ import {
  * Entrée valide, et la main ne quitte jamais le clavier. La souris
  * fonctionne aussi, mais elle n'est pas le chemin principal.
  *
+ * Le champ est MULTI-LIGNES : Entrée (sans suggestion sélectionnée)
+ * revient à la ligne — groupe extérieur sur une ligne, unités
+ * intérieures en dessous — et le champ grandit tout seul. Les retours
+ * à la ligne sont conservés tels quels jusqu'au PDF.
+ *
  * Le composant ne décide rien : le filtrage, le classement et les
  * valeurs déposées dans la ligne viennent de lib/catalogue-recherche,
  * qui est testé. Ici, il n'y a que de l'affichage et du clavier.
@@ -31,7 +43,6 @@ export function DesignationAutocomplete({
   id,
   onBlur,
   name,
-  inputRef,
 }: {
   value: string;
   /** Frappe libre : la ligne garde exactement ce qui est tapé. */
@@ -43,7 +54,6 @@ export function DesignationAutocomplete({
   id?: string;
   onBlur?: () => void;
   name?: string;
-  inputRef?: (el: HTMLInputElement | null) => void;
 }) {
   const [ouvert, setOuvert] = useState(false);
   const [actif, setActif] = useState(-1);
@@ -52,6 +62,7 @@ export function DesignationAutocomplete({
   // modèle, édition d'un devis existant).
   const [aTape, setATape] = useState(false);
   const conteneur = useRef<HTMLDivElement>(null);
+  const champ = useRef<HTMLTextAreaElement>(null);
   const listeId = useId();
 
   const suggestions = useMemo(
@@ -60,6 +71,17 @@ export function DesignationAutocomplete({
   );
 
   const visible = ouvert && suggestions.length > 0;
+
+  // Hauteur automatique : le champ suit son contenu (1 ligne au repos,
+  // autant que nécessaire ensuite), sans barre de défilement. Recalculé
+  // à chaque changement de valeur, y compris un remplissage externe
+  // (suggestion choisie, duplication, modèle).
+  useLayoutEffect(() => {
+    const el = champ.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
 
   // L'index actif ne doit jamais désigner une suggestion disparue
   // pendant la frappe.
@@ -87,15 +109,12 @@ export function DesignationAutocomplete({
     setATape(false);
   }
 
-  function surTouche(e: React.KeyboardEvent<HTMLInputElement>) {
+  function surTouche(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      // Rouvrir à la flèche après une fermeture à l'Échap, sans
-      // obliger à retaper une lettre.
-      if (!visible && suggestions.length > 0) {
-        setOuvert(true);
-        e.preventDefault();
-        return;
-      }
+      // Liste ouverte : les flèches parcourent les suggestions. Liste
+      // fermée : elles déplacent le curseur dans le texte, comme dans
+      // n'importe quel champ multi-lignes (la liste se rouvre à la
+      // frappe suivante).
       if (!visible) return;
       e.preventDefault();
       setActif((i) =>
@@ -106,9 +125,9 @@ export function DesignationAutocomplete({
 
     if (e.key === "Enter") {
       // Entrée ne valide QUE s'il y a une suggestion sélectionnée.
-      // Sinon on laisse passer : le formulaire garde son
-      // comportement habituel, et une saisie libre n'est jamais
-      // remplacée par une proposition qu'on n'a pas choisie.
+      // Sinon on laisse passer : c'est un retour à la ligne dans la
+      // désignation, et une saisie libre n'est jamais remplacée par
+      // une proposition qu'on n'a pas choisie.
       if (visible && actif >= 0) {
         e.preventDefault();
         choisir(actif);
@@ -135,13 +154,16 @@ export function DesignationAutocomplete({
 
   return (
     <div ref={conteneur} className="relative">
-      <Input
+      {/* Mêmes cotes que <Input> (h-11 / sm:h-10) au repos, pour rester
+          aligné avec Quantité et Prix ; grandit avec le contenu. */}
+      <textarea
         id={id}
         name={name}
-        ref={inputRef}
+        ref={champ}
         value={value ?? ""}
         placeholder={placeholder}
         autoComplete="off"
+        rows={1}
         role="combobox"
         aria-expanded={visible}
         aria-controls={visible ? listeId : undefined}
@@ -149,6 +171,9 @@ export function DesignationAutocomplete({
         aria-activedescendant={
           visible && actif >= 0 ? `${listeId}-${actif}` : undefined
         }
+        className={cn(
+          "flex min-h-11 w-full resize-none overflow-hidden rounded-md border border-input bg-background px-3 py-2.5 text-base leading-6 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10 sm:py-2 sm:text-sm",
+        )}
         onChange={(e) => {
           setATape(true);
           setOuvert(true);
@@ -197,7 +222,8 @@ export function DesignationAutocomplete({
             </li>
           ))}
           <li className="border-t px-3 pb-0.5 pt-1.5 text-[11px] text-muted-foreground">
-            ↑ ↓ pour choisir · Entrée pour valider · Échap pour fermer
+            ↑ ↓ pour choisir · Entrée pour valider · Échap pour fermer · Entrée
+            sans suggestion : retour à la ligne
           </li>
         </ul>
       )}

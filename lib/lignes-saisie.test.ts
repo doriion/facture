@@ -8,6 +8,7 @@ import {
   quantiteEffective,
   quantiteSaisie,
 } from "./lignes-saisie";
+import { chercherPrestations } from "./catalogue-recherche";
 import { computeTotalHt, ligneFactureSchema } from "./validations/facture";
 
 describe("champVide", () => {
@@ -50,6 +51,39 @@ describe("quantiteEffective / prixEffectif (totaux en direct)", () => {
     expect(prixEffectif("")).toBe(0);
     expect(prixEffectif("abc")).toBe(0);
     expect(prixEffectif("12,5")).toBe(12.5);
+  });
+});
+
+describe("ligneFactureSchema : désignation multi-lignes", () => {
+  it("conserve les retours à la ligne TELS QUELS (seuls les bords sont rognés)", () => {
+    const designation =
+      "Multisplit Daikin 3MXM52A — groupe extérieur\n" +
+      "• FTXM25R — séjour\n" +
+      "• FTXM20R — chambre";
+    const r = ligneFactureSchema.safeParse({
+      designation: `  ${designation}\n`,
+      quantite: "1",
+      prix_unitaire_ht: "3250",
+      prix_achat_ttc_unitaire: "",
+      fournisseur: "",
+      nature_fiscale: "bic_prestations",
+      type: "ligne",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.designation).toBe(designation);
+      expect(r.data.designation.split("\n")).toHaveLength(3);
+    }
+  });
+
+  it("l'auto-complétion du catalogue continue de chercher sur un texte multi-lignes", () => {
+    const catalogue = [
+      { id: "p1", designation: "Pose monosplit mural", description: null, prix_ht: 850, unite: "unité", categorie: "installation", nature_fiscale: "bic_prestations", actif: true },
+      { id: "p2", designation: "Entretien PAC", description: null, prix_ht: 120, unite: "unité", categorie: "entretien", nature_fiscale: "bic_prestations", actif: true },
+    ];
+    // Le retour à la ligne est traité comme un simple séparateur de mots.
+    const trouve = chercherPrestations(catalogue, "pose\nmono");
+    expect(trouve.map((p) => p.id)).toEqual(["p1"]);
   });
 });
 
