@@ -14,6 +14,7 @@
 import { Resend } from "resend";
 
 import { mentionTvaFranchise } from "@/lib/legal-text";
+import { PRINCIPAL } from "@/lib/theme";
 
 type SendEmailParams = {
   to: string;
@@ -198,7 +199,7 @@ export function buildLienContratEmail(args: {
 <p>Bonjour ${escapeHtml(args.clientNom)},</p>
 <p>Veuillez trouver ci-dessous le lien vers votre contrat d'entretien <strong>${escapeHtml(args.numero)}</strong>. Vous pouvez le lire, compléter vos informations et le signer directement depuis votre téléphone — aucun compte n'est nécessaire.</p>
 <p style="text-align:center; margin:24px 0;">
-  <a href="${args.lien}" style="background:#2A7D5B; color:#fff; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:600;">Lire et signer mon contrat</a>
+  <a href="${args.lien}" style="background:${PRINCIPAL}; color:#fff; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:600;">Lire et signer mon contrat</a>
 </p>
 <p style="font-size:13px; color:#666;">Ce lien est personnel et valable jusqu'au ${escapeHtml(args.expireLeText)}. Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br/>${args.lien}</p>
 <p>Une fois signé, vous recevrez immédiatement le contrat en PDF par retour d'e-mail.</p>
