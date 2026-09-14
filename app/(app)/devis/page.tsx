@@ -5,7 +5,6 @@ import { listDevis, listModelesDevis } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
 import { DevisTable } from "@/components/devis/devis-table";
 import { DevisToolbar } from "@/components/devis/devis-toolbar";
-import { ModelesDevisSection } from "@/components/devis/modeles-devis-section";
 import { NouveauDepuisModeleMenu } from "@/components/devis/nouveau-depuis-modele-menu";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 
@@ -69,8 +68,9 @@ export default async function DevisPage({
         </div>
       </div>
 
-      <ModelesDevisSection modeles={modeles} />
-
+      {/* La gestion des modèles (renommer, supprimer) vit sur
+          /devis/modeles, via « Gérer mes modèles » dans le menu :
+          la liste des devis reste dégagée au quotidien. */}
       <DevisToolbar
         initialSearch={search}
         initialStatut={statut}

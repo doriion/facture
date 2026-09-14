@@ -138,6 +138,7 @@ export async function setDevisModeleAction(
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/devis");
+  revalidatePath("/devis/modeles");
   revalidatePath(`/devis/${id}`);
   revalidatePath("/dashboard");
   return { ok: true, data: undefined };
@@ -169,6 +170,7 @@ export async function renommerModeleDevisAction(
     return { ok: false, error: "Ce devis n'est pas (ou plus) un modèle." };
   }
   revalidatePath("/devis");
+  revalidatePath("/devis/modeles");
   revalidatePath(`/devis/${id}`);
   return { ok: true, data: { nom: r.nom } };
 }
@@ -316,6 +318,7 @@ export async function createDevisAction(
   }
 
   revalidatePath("/devis");
+  revalidatePath("/devis/modeles");
   return { ok: true, data: { id: devis.id, numero: devis.numero } };
 }
 
@@ -404,6 +407,7 @@ export async function updateDevisAction(
   if (!remplacement.ok) return { ok: false, error: remplacement.error };
 
   revalidatePath("/devis");
+  revalidatePath("/devis/modeles");
   revalidatePath(`/devis/${id}`);
   return { ok: true, data: undefined };
 }
@@ -458,6 +462,7 @@ export async function setDevisStatutAction(
   }
 
   revalidatePath("/devis");
+  revalidatePath("/devis/modeles");
   revalidatePath(`/devis/${id}`);
   return { ok: true, data: undefined };
 }
@@ -496,6 +501,7 @@ export async function deleteDevisAction(id: string): Promise<ActionResult> {
   const { error } = await supabase.from("devis").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/devis");
+  revalidatePath("/devis/modeles");
   return { ok: true, data: undefined };
 }
 
@@ -637,6 +643,7 @@ export async function convertirDevisEnFactureAction(
   await figerEmetteurDocument(supabase, "devis", devisId);
 
   revalidatePath("/devis");
+  revalidatePath("/devis/modeles");
   revalidatePath(`/devis/${devisId}`);
   revalidatePath("/factures");
   return { ok: true, data: { factureId: facture.id, numero: facture.numero } };

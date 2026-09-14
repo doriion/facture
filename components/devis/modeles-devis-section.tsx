@@ -88,7 +88,7 @@ export function ModelesDevisSection({
           ))}
         </ul>
         <p className="text-xs text-muted-foreground">
-          Les modèles n&apos;apparaissent ni dans la liste ci-dessous, ni
+          Les modèles n&apos;apparaissent ni dans la liste des devis, ni
           dans les statistiques. Pour en ajouter un : ouvrez un devis puis
           « Enregistrer comme modèle ».
         </p>
