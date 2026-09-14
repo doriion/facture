@@ -512,6 +512,7 @@ export type Database = {
           numero: string;
           pdf_url: string | null;
           performances_energetiques: Json;
+          pdf_template_version: number | null;
           signature_client_url: string | null;
           statut: string;
           total_ht: number;
@@ -542,6 +543,7 @@ export type Database = {
           numero: string;
           pdf_url?: string | null;
           performances_energetiques?: Json;
+          pdf_template_version?: number | null;
           signature_client_url?: string | null;
           statut?: string;
           total_ht?: number;
@@ -572,6 +574,7 @@ export type Database = {
           numero?: string;
           pdf_url?: string | null;
           performances_energetiques?: Json;
+          pdf_template_version?: number | null;
           signature_client_url?: string | null;
           statut?: string;
           total_ht?: number;
