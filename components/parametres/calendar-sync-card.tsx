@@ -87,7 +87,7 @@ export function CalendarSyncCard({
         </CardTitle>
         <CardDescription>
           Abonnez le calendrier de votre iPhone (ou Google Calendar) à votre
-          agenda Facture AE. Toutes vos interventions, prestations facturées,
+          agenda NG Gestion. Toutes vos interventions, prestations facturées,
           devis planifiés et visites de maintenance s'afficheront
           automatiquement — mise à jour toutes les ~15 minutes.
         </CardDescription>

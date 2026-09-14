@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MONOGRAMME } from "@/lib/marque";
 
 /** Chemin du logo dans `public/`. */
 const CHEMIN_LOGO = "/logo.png";
@@ -23,7 +24,7 @@ const CHEMIN_LOGO = "/logo.png";
  * capture avant correction). On part donc du monogramme, et on ne
  * bascule sur le logo qu'une fois son chargement réellement confirmé.
  *
- * Le logo est décoratif : le nom « Facture AE » l'accompagne toujours
+ * Le logo est décoratif : le nom de l'application l'accompagne toujours
  * en toutes lettres, d'où l'alternative textuelle vide plutôt qu'une
  * description qui serait lue deux fois.
  */
@@ -46,10 +47,10 @@ export function LogoMarque({ taille = 32 }: { taille?: number }) {
     return (
       <div
         className="flex shrink-0 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground"
-        style={{ height: taille, width: taille, fontSize: taille * 0.45 }}
+        style={{ height: taille, width: taille, fontSize: taille * 0.34 }}
         aria-hidden
       >
-        F
+        {MONOGRAMME}
       </div>
     );
   }

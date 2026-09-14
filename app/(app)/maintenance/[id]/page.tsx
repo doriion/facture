@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { LABELS_STATUT_CONTRAT } from "@/lib/validations/contrat";
 import { formatDateFr } from "@/lib/format";
 
-export const metadata = { title: "Contrat de maintenance — Facture AE" };
+export const metadata = { title: "Contrat de maintenance — NG Gestion" };
 
 export default async function EditContratPage({
   params,

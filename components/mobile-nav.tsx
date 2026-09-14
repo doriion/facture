@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { LogoMarque } from "@/components/logo-marque";
+import { NOM_APPLICATION } from "@/lib/marque";
 import {
   Sheet,
   SheetContent,
@@ -50,7 +51,7 @@ export function MobileNav({ badgeTaches = 0 }: { badgeTaches?: number }) {
             onClick={() => setOpen(false)}
           >
             <LogoMarque taille={32} />
-            <SheetTitle>Facture AE</SheetTitle>
+            <SheetTitle>{NOM_APPLICATION}</SheetTitle>
           </Link>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">

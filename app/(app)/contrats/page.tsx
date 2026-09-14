@@ -9,7 +9,7 @@ import {
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
 
-export const metadata = { title: "Contrats d'entretien — Facture AE" };
+export const metadata = { title: "Contrats d'entretien — NG Gestion" };
 
 /**
  * Liste des contrats d'entretien signables : filtres par statut,

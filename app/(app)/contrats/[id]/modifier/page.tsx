@@ -7,7 +7,7 @@ import { listClients } from "@/lib/actions/clients";
 import { ContratEntretienForm } from "@/components/contrats/contrat-entretien-form";
 import { Button } from "@/components/ui/button";
 
-export const metadata = { title: "Modifier le contrat — Facture AE" };
+export const metadata = { title: "Modifier le contrat — NG Gestion" };
 
 export default async function ModifierContratPage({
   params,

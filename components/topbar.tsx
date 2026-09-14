@@ -17,6 +17,7 @@ import {
 import { MobileNav } from "@/components/mobile-nav";
 import { LogoMarque } from "@/components/logo-marque";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 /**
  * Bandeau supérieur. Affiche l'email connecté + menu déconnexion.
@@ -48,7 +49,7 @@ export function Topbar({
         <MobileNav badgeTaches={badgeTaches} />
         <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
           <LogoMarque taille={28} />
-          <span className="text-sm font-semibold">Facture AE</span>
+          <span className="text-sm font-semibold">{NOM_APPLICATION}</span>
         </Link>
       </div>
       <DropdownMenu>

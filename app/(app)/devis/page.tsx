@@ -10,7 +10,7 @@ import { DevisTable } from "@/components/devis/devis-table";
 import { DevisToolbar } from "@/components/devis/devis-toolbar";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 
-export const metadata = { title: "Devis — Facture AE" };
+export const metadata = { title: "Devis — NG Gestion" };
 
 export default async function DevisPage({
   searchParams,

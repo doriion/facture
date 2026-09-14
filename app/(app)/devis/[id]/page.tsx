@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr, formatEuros } from "@/lib/format";
 
-export const metadata = { title: "Édition devis — Facture AE" };
+export const metadata = { title: "Édition devis — NG Gestion" };
 
 export default async function EditDevisPage({
   params,

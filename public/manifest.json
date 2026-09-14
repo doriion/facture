@@ -1,6 +1,6 @@
 {
-  "name": "Facture AE — Auto-entrepreneur BTP",
-  "short_name": "Facture AE",
+  "name": "NG Gestion — Auto-entrepreneur BTP",
+  "short_name": "NG Gestion",
   "description": "Gestion factures, devis, agenda et interventions pour auto-entrepreneur BTP.",
   "start_url": "/dashboard",
   "scope": "/",

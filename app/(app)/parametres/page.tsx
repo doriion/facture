@@ -21,7 +21,7 @@ import { getLogoUrl, getProfil } from "@/lib/actions/profil";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
 import { getJournalTaches } from "@/lib/actions/automatisations";
 
-export const metadata = { title: "Paramètres — Facture AE" };
+export const metadata = { title: "Paramètres — NG Gestion" };
 
 /**
  * Page Paramètres : profil entreprise complet de l'auto-entrepreneur.

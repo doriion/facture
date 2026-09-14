@@ -10,7 +10,7 @@ import { assujettiTvaEffectif } from "@/lib/tva-garde";
 import { Button } from "@/components/ui/button";
 import { DevisForm } from "@/components/devis/devis-form";
 
-export const metadata = { title: "Nouveau devis — Facture AE" };
+export const metadata = { title: "Nouveau devis — NG Gestion" };
 
 export default async function NouveauDevisPage({
   searchParams,

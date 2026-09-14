@@ -27,7 +27,7 @@ import {
 } from "@/lib/tva-garde";
 import type { StatutFacture } from "@/lib/validations/facture";
 
-export const metadata = { title: "Édition facture — Facture AE" };
+export const metadata = { title: "Édition facture — NG Gestion" };
 
 export default async function EditFacturePage({
   params,
