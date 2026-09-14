@@ -45,10 +45,13 @@ export function FactureAcompteSolde({
   factureId,
   totalParent,
   enfants,
+  assujettiTva = false,
 }: {
   factureId: string;
   totalParent: number;
   enfants: FactureEnfant[];
+  /** Libellés « HT » uniquement si le document est assujetti (snapshot). */
+  assujettiTva?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -252,12 +255,15 @@ export function FactureAcompteSolde({
                         ) / 100,
                       )}
                     </strong>{" "}
-                    sur {formatEuros(totalParent)} HT.
+                    sur {formatEuros(totalParent)}
+                    {assujettiTva ? " HT" : ""}.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <Label htmlFor="acompte_montant">Montant HT (€)</Label>
+                  <Label htmlFor="acompte_montant">
+                    {assujettiTva ? "Montant HT (€)" : "Montant (€)"}
+                  </Label>
                   <Input
                     id="acompte_montant"
                     type="text"

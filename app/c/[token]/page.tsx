@@ -31,6 +31,18 @@ export default async function SignatureContratPage({
 
   const nomPrestataire = nomAffichagePrestataire(prestataire);
 
+  if (etat === "indisponible") {
+    return (
+      <Coquille>
+        <EtatMessage
+          icone={<FileWarning className="size-10 text-muted-foreground" />}
+          titre="Service momentanément indisponible"
+          message="Impossible d'afficher le contrat pour le moment — l'incident est enregistré. Réessayez dans quelques minutes, ou contactez votre artisan. Votre lien reste valable."
+        />
+      </Coquille>
+    );
+  }
+
   if (etat === "introuvable" || etat === "revoque" || !contrat) {
     return (
       <Coquille>

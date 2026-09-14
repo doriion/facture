@@ -28,6 +28,7 @@ import {
   mentionRm,
 } from "@/lib/legal-text";
 import { profilEffectif } from "@/lib/emetteur";
+import { DUREE_VALIDITE_DEVIS_DEFAUT } from "@/lib/devis-validite";
 import { computeSections } from "@/lib/sections";
 import { mentionAcompte } from "@/lib/devis-mentions";
 import type { Database } from "@/types/database";
@@ -354,7 +355,7 @@ export function DevisPdf({
             new Date(devis.date_emission).getTime()) /
             (24 * 3600 * 1000),
         )
-      : 90;
+      : DUREE_VALIDITE_DEVIS_DEFAUT;
 
   return (
     <Document

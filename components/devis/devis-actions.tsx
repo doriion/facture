@@ -11,6 +11,7 @@ import {
   Download,
   FilePlus2,
   FileText,
+  FileWarning,
   Loader2,
   Send,
   ThumbsDown,
@@ -51,6 +52,7 @@ export function DevisActions({
   clientNom,
   estModele = false,
   signee = false,
+  pdfBloqueMotif = null,
 }: {
   devisId: string;
   numero: string;
@@ -61,9 +63,41 @@ export function DevisActions({
   estModele?: boolean;
   /** Signature « Bon pour accord » enregistrée → devis figé. */
   signee?: boolean;
+  /**
+   * Motif de blocage du PDF (garde TVA). Non nul → le téléchargement
+   * est remplacé par l'explication : la route répond 501, mais un
+   * `<a download>` avale le corps de la réponse sur desktop.
+   */
+  pdfBloqueMotif?: string | null;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
+
+  const boutonPdf = pdfBloqueMotif ? (
+    <Button
+      variant="outline"
+      onClick={() =>
+        toast.error("PDF indisponible", { description: pdfBloqueMotif })
+      }
+    >
+      <FileWarning className="size-4" />
+      PDF indisponible
+    </Button>
+  ) : (
+    // target=_blank : sur iOS (PWA), download seul échoue — le nouvel
+    // onglet ouvre le visualiseur PDF natif.
+    <Button variant="outline" asChild>
+      <a
+        href={`/api/devis/${devisId}/pdf`}
+        download
+        target="_blank"
+        rel="noopener"
+      >
+        <Download className="size-4" />
+        Télécharger PDF
+      </a>
+    </Button>
+  );
 
   async function onToggleModele(next: boolean) {
     setPending("modele");
@@ -138,19 +172,7 @@ export function DevisActions({
             Utiliser ce modèle
           </Link>
         </Button>
-        {/* target=_blank : sur iOS (PWA), download seul échoue — le
-            nouvel onglet ouvre le visualiseur PDF natif. */}
-        <Button variant="outline" asChild>
-          <a
-            href={`/api/devis/${devisId}/pdf`}
-            download
-            target="_blank"
-            rel="noopener"
-          >
-            <Download className="size-4" />
-            Télécharger PDF
-          </a>
-        </Button>
+        {boutonPdf}
         <Button
           variant="outline"
           onClick={() => onToggleModele(false)}
@@ -169,19 +191,7 @@ export function DevisActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* target=_blank : sur iOS (PWA), download seul échoue — le
-          nouvel onglet ouvre le visualiseur PDF natif. */}
-      <Button variant="outline" asChild>
-        <a
-          href={`/api/devis/${devisId}/pdf`}
-          download
-          target="_blank"
-          rel="noopener"
-        >
-          <Download className="size-4" />
-          Télécharger PDF
-        </a>
-      </Button>
+      {boutonPdf}
 
       {statut !== "refuse" && (
         <EmailDocumentButton

@@ -43,7 +43,7 @@ export default async function DevisPage({
               style: "currency",
               currency: "EUR",
             })}{" "}
-            HT cumulés
+            cumulés
             {sent + accepted > 0 && (
               <>
                 {" "}
@@ -86,7 +86,7 @@ export default async function DevisPage({
                       {LABELS_TYPE_ACTIVITE[
                         m.type_activite as keyof typeof LABELS_TYPE_ACTIVITE
                       ] ?? m.type_activite}{" "}
-                      · {formatEuros(Number(m.total_ht))} HT
+                      · {formatEuros(Number(m.total_ht))}
                     </p>
                     {m.notes && (
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">

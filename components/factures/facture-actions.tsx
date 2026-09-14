@@ -6,6 +6,7 @@ import {
   Ban,
   Copy,
   Download,
+  FileWarning,
   Loader2,
   Send,
   Trash2,
@@ -59,12 +60,19 @@ export function FactureActions({
   statut,
   clientEmail,
   clientNom,
+  pdfBloqueMotif = null,
 }: {
   factureId: string;
   numero: string;
   statut: StatutFacture | string;
   clientEmail?: string | null;
   clientNom?: string;
+  /**
+   * Motif de blocage du PDF (garde TVA). Non nul → le téléchargement
+   * est remplacé par l'explication : la route répond 501, mais un
+   * `<a download>` avale le corps de la réponse sur desktop.
+   */
+  pdfBloqueMotif?: string | null;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
@@ -164,21 +172,33 @@ export function FactureActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* target=_blank : sur iOS (surtout en PWA installée), l'attribut
-          download seul échoue silencieusement — le nouvel onglet ouvre
-          le visualiseur PDF natif (partage/impression). Sur desktop,
-          download continue de télécharger directement. */}
-      <Button variant="outline" asChild>
-        <a
-          href={`/api/factures/${factureId}/pdf`}
-          download
-          target="_blank"
-          rel="noopener"
+      {pdfBloqueMotif ? (
+        <Button
+          variant="outline"
+          onClick={() =>
+            toast.error("PDF indisponible", { description: pdfBloqueMotif })
+          }
         >
-          <Download className="size-4" />
-          Télécharger PDF
-        </a>
-      </Button>
+          <FileWarning className="size-4" />
+          PDF indisponible
+        </Button>
+      ) : (
+        /* target=_blank : sur iOS (surtout en PWA installée), l'attribut
+           download seul échoue silencieusement — le nouvel onglet ouvre
+           le visualiseur PDF natif (partage/impression). Sur desktop,
+           download continue de télécharger directement. */
+        <Button variant="outline" asChild>
+          <a
+            href={`/api/factures/${factureId}/pdf`}
+            download
+            target="_blank"
+            rel="noopener"
+          >
+            <Download className="size-4" />
+            Télécharger PDF
+          </a>
+        </Button>
+      )}
 
       {statut !== "annulee" && (
         <EmailDocumentButton

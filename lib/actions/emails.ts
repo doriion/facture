@@ -5,6 +5,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
 import { payloadLignesPdf } from "@/lib/pdf-payload";
+import { estErreurMoteurTva, verifierMoteurTva } from "@/lib/tva-garde";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import {
   buildDocumentEmail,
@@ -66,6 +67,15 @@ export async function envoyerFactureParEmailAction(
   const logoUrl = profil.logo_url
     ? await getLogoUrl(profil.logo_url)
     : null;
+
+  // Garde-fou : jamais d'envoi d'un document assujetti à la TVA tant
+  // que l'app ne sait pas la calculer.
+  try {
+    verifierMoteurTva(profil, facture.emetteur);
+  } catch (e) {
+    if (!estErreurMoteurTva(e)) throw e;
+    return { ok: false, error: e.explication };
+  }
 
   // Génère le PDF
   const pdfBuffer = await renderToBuffer(
@@ -165,6 +175,13 @@ export async function envoyerDevisParEmailAction(
   const logoUrl = profil.logo_url
     ? await getLogoUrl(profil.logo_url)
     : null;
+
+  try {
+    verifierMoteurTva(profil, devis.emetteur);
+  } catch (e) {
+    if (!estErreurMoteurTva(e)) throw e;
+    return { ok: false, error: e.explication };
+  }
 
   const pdfBuffer = await renderToBuffer(
     DevisPdf({ devis, lignes: payloadLignesPdf(lignes), client, profil, logoData: logoUrl }),
@@ -267,6 +284,12 @@ export async function envoyerRelanceFactureAction(
   // PDF de la facture joint à la relance (le client retrouve tout de suite
   // le document concerné).
   const logoUrl = profil?.logo_url ? await getLogoUrl(profil.logo_url) : null;
+  try {
+    verifierMoteurTva(profil, facture.emetteur);
+  } catch (e) {
+    if (!estErreurMoteurTva(e)) throw e;
+    return { ok: false, error: e.explication };
+  }
   const pdfBuffer = await renderToBuffer(
     FacturePdf({
       facture,

@@ -7,6 +7,7 @@ import { listProduits } from "@/lib/actions/produits";
 import { getProfil } from "@/lib/actions/profil";
 import { getIntervention } from "@/lib/actions/interventions";
 import { buildFacturePrefill } from "@/lib/facture-prefill";
+import { assujettiTvaEffectif } from "@/lib/tva-garde";
 import { formatDateFr } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { FactureForm } from "@/components/factures/facture-form";
@@ -115,6 +116,7 @@ export default async function NouvelleFacturePage({
           defaultConditionsPaiement={profil?.conditions_paiement_default}
           prefill={prefill}
           interventionId={interventionId}
+          assujettiTva={assujettiTvaEffectif(profil, null)}
         />
       )}
     </div>
