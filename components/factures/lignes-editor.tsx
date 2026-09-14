@@ -1,15 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import {
+  BookmarkPlus,
+  Eye,
+  EyeOff,
+  Loader2,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { toast } from "sonner";
 import {
   useFieldArray,
   type Control,
   type UseFormRegister,
+  type UseFormSetValue,
   type UseFormWatch,
   type FieldErrors,
   type FieldValues,
   type Path,
+  type PathValue,
   type ArrayPath,
   type FieldArray,
 } from "react-hook-form";
@@ -28,6 +38,13 @@ import { formatEuros, parseMoneyInput } from "@/lib/format";
 import { margeLigne, totauxMarges } from "@/lib/marges";
 import { ecrireAfficherCouts, lireAfficherCouts } from "@/lib/afficher-couts";
 import { contientMateriel } from "@/lib/sections";
+import {
+  ligneAbsenteDuCatalogue,
+  ligneDepuisPrestation,
+  type PrestationCatalogue,
+} from "@/lib/catalogue-recherche";
+import { ajouterLigneAuCatalogueAction } from "@/lib/actions/produits";
+import { DesignationAutocomplete } from "@/components/factures/designation-autocomplete";
 import type { Database } from "@/types/database";
 
 
@@ -69,6 +86,7 @@ export function LignesEditor<T extends FieldValues>({
   control,
   register,
   watch,
+  setValue,
   errors,
   produits,
   fieldName = "lignes" as Path<T>,
@@ -77,6 +95,8 @@ export function LignesEditor<T extends FieldValues>({
   control: Control<T>;
   register: UseFormRegister<T>;
   watch: UseFormWatch<T>;
+  /** Requis par l'auto-complétion : une suggestion remplit plusieurs champs. */
+  setValue: UseFormSetValue<T>;
   errors: FieldErrors<T>;
   produits: Produit[];
   fieldName?: Path<T>;
@@ -86,6 +106,91 @@ export function LignesEditor<T extends FieldValues>({
     control,
     name: fieldName as ArrayPath<T>,
   });
+
+  // Catalogue enrichi en cours de saisie : une prestation ajoutée
+  // depuis une ligne devient immédiatement proposable sur les lignes
+  // suivantes, sans recharger la page.
+  const [ajoutees, setAjoutees] = useState<Produit[]>([]);
+  const catalogue = [...produits, ...ajoutees] as PrestationCatalogue[];
+  const [ajoutEnCours, setAjoutEnCours] = useState<number | null>(null);
+
+  /** Écrit un champ de la ligne `index` en déclenchant la validation. */
+  function ecrireChamp(index: number, champ: string, valeur: unknown) {
+    setValue(
+      `${fieldName}.${index}.${champ}` as Path<T>,
+      valeur as PathValue<T, Path<T>>,
+      { shouldValidate: true, shouldDirty: true },
+    );
+  }
+
+  /**
+   * Choix d'une suggestion : la ligne prend la désignation, le prix et
+   * les coûts du catalogue. La QUANTITÉ n'est pas touchée — elle
+   * appartient au chantier, pas à la prestation.
+   */
+  function appliquerPrestation(index: number, prestation: PrestationCatalogue) {
+    const v = ligneDepuisPrestation(prestation);
+    ecrireChamp(index, "designation", v.designation);
+    ecrireChamp(index, "prix_unitaire_ht", v.prix_unitaire_ht);
+    ecrireChamp(index, "prix_achat_ttc_unitaire", v.prix_achat_ttc_unitaire);
+    ecrireChamp(index, "fournisseur", v.fournisseur);
+    ecrireChamp(index, "nature_fiscale", v.nature_fiscale);
+  }
+
+  /**
+   * Enregistre la ligne au catalogue. Le document en cours n'est pas
+   * modifié : seule la bibliothèque de prestations s'enrichit.
+   */
+  async function ajouterAuCatalogue(index: number) {
+    const l = lignes[index];
+    if (!l) return;
+    setAjoutEnCours(index);
+    const res = await ajouterLigneAuCatalogueAction({
+      designation: l.designation,
+      prix_unitaire_ht: l.prix_unitaire_ht,
+      prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire ?? null,
+      fournisseur: l.fournisseur ?? "",
+      nature_fiscale: l.nature_fiscale ?? "bic_prestations",
+    });
+    setAjoutEnCours(null);
+
+    if (!res.ok) {
+      toast.error("Ajout au catalogue impossible", { description: res.error });
+      return;
+    }
+    // Ajoutée localement pour que la suggestion existe tout de suite
+    // sur les lignes suivantes du même devis.
+    setAjoutees((prev) => [
+      ...prev,
+      {
+        id: res.data.id,
+        designation: l.designation,
+        description: null,
+        prix_ht: toNum(l.prix_unitaire_ht),
+        prix_achat_ttc:
+          l.prix_achat_ttc_unitaire === null ||
+          l.prix_achat_ttc_unitaire === undefined ||
+          l.prix_achat_ttc_unitaire === ""
+            ? null
+            : toNum(l.prix_achat_ttc_unitaire),
+        fournisseur: l.fournisseur || null,
+        unite: "unité",
+        categorie: "autre",
+        nature_fiscale: l.nature_fiscale ?? "bic_prestations",
+        actif: true,
+      } as Produit,
+    ]);
+    toast.success(
+      res.data.deja
+        ? "Déjà dans votre catalogue"
+        : "Ajoutée à votre catalogue",
+      {
+        description: res.data.deja
+          ? undefined
+          : "Elle vous sera proposée dès les prochains devis.",
+      },
+    );
+  }
 
   // Cast pour pouvoir lire les valeurs typées sans s'embêter avec les Path<T>
   const lignes = (watch(fieldName) ?? []) as LigneShape[];
@@ -145,24 +250,13 @@ export function LignesEditor<T extends FieldValues>({
   }
 
   function addFromCatalog(produitId: string) {
-    const p = produits.find((p) => p.id === produitId);
+    const p = catalogue.find((p) => p.id === produitId);
     if (!p) return;
-    const designation = p.description
-      ? `${p.designation} — ${p.description}`
-      : p.designation;
+    // Même helper que l'auto-complétion : une prestation ajoutée par
+    // le sélecteur ou par le champ donne exactement la même ligne.
     append({
-      designation,
+      ...ligneDepuisPrestation(p),
       quantite: 1,
-      prix_unitaire_ht: Number(p.prix_ht),
-      // Coûts repris du catalogue (modifiables ligne par ligne) :
-      // sans ça, la marge d'une ligne issue du catalogue repartait
-      // toujours de zéro.
-      prix_achat_ttc_unitaire:
-        p.prix_achat_ttc === null || p.prix_achat_ttc === undefined
-          ? null
-          : Number(p.prix_achat_ttc),
-      fournisseur: p.fournisseur ?? "",
-      nature_fiscale: p.nature_fiscale ?? "bic_prestations",
       type: "ligne",
     } as unknown as FieldArray<T, ArrayPath<T>>);
   }
@@ -273,12 +367,42 @@ export function LignesEditor<T extends FieldValues>({
                     <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
                       Ligne #{index + 1}
                     </span>
-                    <Input
-                      placeholder="Désignation de la prestation"
-                      {...register(`${fieldName}.${index}.designation` as Path<T>)}
+                    {/* Auto-complétion sur le catalogue : deux lettres
+                        suffisent, les flèches choisissent, Entrée
+                        remplit désignation + prix + coûts. La frappe
+                        libre reste possible, rien n'est imposé. */}
+                    <DesignationAutocomplete
+                      value={(ligne?.designation as string) ?? ""}
+                      catalogue={catalogue}
+                      onChange={(v) => ecrireChamp(index, "designation", v)}
+                      onSelectPrestation={(p) => appliquerPrestation(index, p)}
                     />
                     {errDesignation && (
                       <p className="text-xs text-destructive">{errDesignation}</p>
+                    )}
+                    {/* Alimentation du catalogue au fil de l'eau : le
+                        bouton n'apparaît QUE sur une prestation qu'on
+                        n'a pas encore, et disparaît une fois ajoutée. */}
+                    {ligneAbsenteDuCatalogue(
+                      { designation: ligne?.designation, type: ligne?.type },
+                      catalogue,
+                    ) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-muted-foreground"
+                        disabled={ajoutEnCours === index}
+                        onClick={() => ajouterAuCatalogue(index)}
+                        title="Enregistrer cette prestation dans votre catalogue"
+                      >
+                        {ajoutEnCours === index ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <BookmarkPlus className="size-3.5" />
+                        )}
+                        Ajouter au catalogue
+                      </Button>
                     )}
                     {/* Nature fiscale (case URSSAF) — select natif discret.
                         Défaut « Prestation » : ne changer que pour une
@@ -480,7 +604,7 @@ export function LignesEditor<T extends FieldValues>({
           Titre de section
         </Button>
 
-        {produits.length > 0 && (
+        {catalogue.length > 0 && (
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-muted-foreground">
               Ou depuis le catalogue
@@ -490,7 +614,7 @@ export function LignesEditor<T extends FieldValues>({
                 <SelectValue placeholder="Choisir une prestation…" />
               </SelectTrigger>
               <SelectContent>
-                {produits.map((p) => (
+                {catalogue.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     <span className="flex w-full justify-between gap-3">
                       <span>{p.designation}</span>

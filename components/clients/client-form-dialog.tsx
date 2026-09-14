@@ -46,10 +46,17 @@ export function ClientFormDialog({
   client,
   trigger,
   onClose,
+  onCreated,
 }: {
   client?: Client;
   trigger?: React.ReactNode;
   onClose?: () => void;
+  /**
+   * Appelé avec l'identifiant du client qui vient d'être créé.
+   * Sert au formulaire de devis, qui sélectionne aussitôt le nouveau
+   * client pour ne pas casser le fil de la saisie.
+   */
+  onCreated?: (id: string) => void;
 }) {
   const isEdit = !!client;
   const [open, setOpen] = useState(false);
@@ -88,6 +95,7 @@ export function ClientFormDialog({
     if (result.ok) {
       toast.success(isEdit ? "Client modifié" : "Client ajouté");
       setOpen(false);
+      if (!isEdit && result.data?.id) onCreated?.(result.data.id);
       router.refresh();
     } else {
       toast.error("Erreur", { description: result.error });

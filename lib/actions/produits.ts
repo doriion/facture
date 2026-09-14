@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { normaliser } from "@/lib/catalogue-recherche";
+import { parseMoneyInput } from "@/lib/format";
 import {
   produitSchema,
   type ProduitFormValues,
@@ -179,4 +181,93 @@ export async function deleteProduitAction(id: string): Promise<ActionResult> {
 
   revalidatePath("/produits");
   return { ok: true, data: undefined };
+}
+
+/**
+ * Enregistre au catalogue une ligne saisie à la main dans un devis ou
+ * une facture. C'est ce qui fait que le catalogue se construit tout
+ * seul au fil des documents, sans séance de saisie initiale.
+ *
+ * Ne crée QUE la prestation : le document en cours n'est pas touché,
+ * et la ligne garde sa quantité et son prix propres au chantier.
+ *
+ * Refuse silencieusement un doublon (même désignation, casse et
+ * accents ignorés) : un catalogue qui accumule les quasi-doublons se
+ * cherche plus mal qu'un catalogue vide, et le bouton est juste à
+ * côté du champ — un double clic est vite arrivé.
+ */
+export async function ajouterLigneAuCatalogueAction(ligne: {
+  designation: string;
+  prix_unitaire_ht: number | string;
+  prix_achat_ttc_unitaire?: number | string | null;
+  fournisseur?: string | null;
+  nature_fiscale?: string | null;
+}): Promise<ActionResult<{ id: string; deja: boolean }>> {
+  const designation = (ligne.designation ?? "").trim();
+  if (!designation) {
+    return { ok: false, error: "Saisissez d'abord une désignation." };
+  }
+  if (designation.length > 200) {
+    return { ok: false, error: "Désignation trop longue (200 caractères max)." };
+  }
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  // La RLS filtre déjà sur user_id ; la comparaison se fait ensuite en
+  // mémoire, avec la MÊME normalisation que le formulaire (accents,
+  // ligatures, ponctuation) pour que le bouton disparaisse exactement
+  // quand l'action refuserait.
+  const { data: existants } = await supabase
+    .from("produits_services")
+    .select("id, designation, description");
+
+  const cible = normaliser(designation);
+  const doublon = (existants ?? []).find((p) => {
+    const description = (p.description ?? "").trim();
+    const complet = description
+      ? `${p.designation} — ${description}`
+      : p.designation;
+    return normaliser(p.designation) === cible || normaliser(complet) === cible;
+  });
+  if (doublon) {
+    return { ok: true, data: { id: doublon.id, deja: true } };
+  }
+
+  const prixHt = Number(parseMoneyInput(String(ligne.prix_unitaire_ht ?? 0)));
+  const pa = ligne.prix_achat_ttc_unitaire;
+  const prixAchat =
+    pa === null || pa === undefined || pa === ""
+      ? null
+      : Number(parseMoneyInput(String(pa)));
+
+  const { data, error } = await supabase
+    .from("produits_services")
+    .insert({
+      user_id: user.id,
+      designation,
+      description: null,
+      prix_ht: Number.isFinite(prixHt) ? prixHt : 0,
+      prix_achat_ttc:
+        prixAchat !== null && Number.isFinite(prixAchat) ? prixAchat : null,
+      fournisseur: (ligne.fournisseur || "").trim() || null,
+      // Valeurs neutres : la prestation est créée en un clic depuis un
+      // devis, pas via le formulaire complet. L'unité et la catégorie
+      // se précisent ensuite dans Catalogue si besoin.
+      unite: "unité",
+      categorie: "autre",
+      nature_fiscale: ligne.nature_fiscale || "bic_prestations",
+      tva_taux_suggere: null,
+      actif: true,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/produits");
+  return { ok: true, data: { id: data.id, deja: false } };
 }

@@ -353,6 +353,7 @@ export function FactureForm({
             control={control}
             register={register}
             watch={watch}
+            setValue={setValue}
             errors={errors}
             produits={produits}
             assujettiTva={assujettiTva}
