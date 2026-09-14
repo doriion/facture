@@ -108,7 +108,9 @@ export type EtatLienPublic =
   | "deja-signe"
   | "expire"
   | "revoque"
-  | "introuvable";
+  | "introuvable"
+  /** Panne côté serveur (ex. configuration manquante) — pas la faute du lien */
+  | "indisponible";
 
 /**
  * État d'un lien public de signature. Le token n'est utilisable que
