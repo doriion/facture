@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { CATEGORY_ORDER, normaliserCouleur } from "@/lib/agenda-colors";
 import { dureeValiditeSure } from "@/lib/devis-validite";
 import { profilSchema, type ProfilFormValues } from "@/lib/validations/profil";
 import { siretToSiren, stripSpaces } from "@/lib/format";
@@ -273,25 +274,12 @@ export async function saveExternalCalendarUrlAction(
 export async function saveAgendaCouleursAction(
   couleurs: Record<string, string>,
 ): Promise<ActionResult> {
-  const ALLOWED_COLORS = [
-    "emerald", "amber", "blue", "red", "violet", "cyan",
-    "rose", "indigo", "yellow", "orange", "fuchsia", "slate",
-  ];
-  const ALLOWED_CATEGORIES = [
-    "intervention_a_facturer",
-    "intervention_facturee",
-    "facture",
-    "devis",
-    "maintenance",
-    "external",
-  ];
-
+  // Une couleur hex par catégorie connue ; les anciens noms Tailwind
+  // sont convertis, tout le reste est ignoré (lib/agenda-colors).
   const clean: Record<string, string> = {};
-  for (const cat of ALLOWED_CATEGORIES) {
-    const v = couleurs[cat];
-    if (typeof v === "string" && ALLOWED_COLORS.includes(v)) {
-      clean[cat] = v;
-    }
+  for (const cat of CATEGORY_ORDER) {
+    const c = normaliserCouleur(couleurs[cat]);
+    if (c) clean[cat] = c;
   }
 
   const supabase = createClient();

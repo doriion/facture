@@ -1,20 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Palette, Save, RotateCcw, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, Palette, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { saveAgendaCouleursAction } from "@/lib/actions/profil";
 import {
   CATEGORY_LABELS,
+  CATEGORY_ORDER,
   DEFAULT_AGENDA_COULEURS,
-  PALETTE_LABELS,
-  PALETTE_ORDER,
-  getSwatchClass,
+  styleEvenement,
   type AgendaCategory,
   type AgendaCouleurs,
-  type PaletteColor,
 } from "@/lib/agenda-colors";
+import { SelecteurCouleur } from "@/components/agenda/selecteur-couleur";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -22,110 +23,103 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 
-const CATEGORIES: AgendaCategory[] = [
-  "intervention_a_facturer",
-  "intervention_facturee",
-  "facture",
-  "devis",
-  "maintenance",
-];
+/** Exemple affiché dans l'aperçu de chaque type. */
+const APERCUS: Record<AgendaCategory, string> = {
+  intervention_facturee: "09:00–12:00 · Entretien PAC · M. Martin",
+  intervention_a_facturer: "14:00 · Pose monosplit · Mme Rossi",
+  facture: "FAC-2026-0031 · SCI Les Érables",
+  retard: "FAC-2026-0018 · M. Durand",
+  devis: "DEV-2026-0060 · Mme Durand",
+  maintenance: "Visite · Résidence Les Cèdres",
+  external: "⚠︎📱 10:30 · Dépannage chaudière",
+  ferie: "Case du calendrier teintée",
+  weekend: "Case du calendrier teintée",
+};
 
+/**
+ * Couleurs de l'agenda, par type d'évènement : palette proposée + choix
+ * libre, aperçu de la pastille (texte adapté automatiquement au fond),
+ * « Réinitialiser les couleurs par défaut ». Les couleurs sont
+ * enregistrées dans le profil (par utilisateur) et s'appliquent au
+ * calendrier ET à la légende.
+ */
 export function AgendaCouleursCard({
   initialCouleurs,
 }: {
   initialCouleurs: AgendaCouleurs;
 }) {
+  const router = useRouter();
   const [couleurs, setCouleurs] = useState<AgendaCouleurs>(initialCouleurs);
   const [pending, startTransition] = useTransition();
 
-  const setColor = (cat: AgendaCategory, color: PaletteColor) => {
-    setCouleurs((c) => ({ ...c, [cat]: color }));
-  };
+  const setColor = (cat: AgendaCategory, hex: string) =>
+    setCouleurs((c) => ({ ...c, [cat]: hex }));
 
   const handleSave = () => {
     startTransition(async () => {
       const res = await saveAgendaCouleursAction(couleurs);
       if (res.ok) {
-        toast.success("Couleurs enregistrées");
+        toast.success("Couleurs enregistrées", {
+          description: "Visibles dans l'agenda et sa légende.",
+        });
+        router.refresh();
       } else {
         toast.error("Erreur", { description: res.error });
       }
     });
   };
 
-  const handleReset = () => {
-    setCouleurs(DEFAULT_AGENDA_COULEURS);
-  };
-
   return (
-    <Card>
+    <Card id="couleurs-agenda">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Palette className="size-5 text-primary" />
-          Couleurs de l'agenda
+          Couleurs de l&apos;agenda
         </CardTitle>
         <CardDescription>
-          Choisissez la couleur de chaque type d'évènement affiché dans le
-          calendrier. Visible immédiatement sur la page Agenda après
-          enregistrement.
+          Choisissez la couleur de chaque type d&apos;évènement : palette ou
+          couleur libre. Le texte passe automatiquement en sombre ou en clair
+          pour rester lisible, en mode clair comme en mode sombre. Un
+          évènement précis peut aussi recevoir sa propre couleur depuis
+          l&apos;agenda.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
-        {CATEGORIES.map((cat) => (
+      <CardContent className="space-y-6">
+        {CATEGORY_ORDER.map((cat) => (
           <div key={cat} className="space-y-2">
             <Label className="flex items-center gap-2 text-sm font-medium">
               <span
-                className={cn(
-                  "inline-block size-4 rounded",
-                  getSwatchClass(couleurs[cat]),
-                )}
+                className="inline-block size-4 rounded border border-black/10 dark:border-white/15"
+                style={styleEvenement(couleurs[cat])}
                 aria-hidden="true"
               />
               {CATEGORY_LABELS[cat]}
             </Label>
-            <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-12">
-              {PALETTE_ORDER.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setColor(cat, color)}
-                  title={PALETTE_LABELS[color]}
-                  aria-label={`${PALETTE_LABELS[color]} pour ${CATEGORY_LABELS[cat]}`}
-                  className={cn(
-                    "h-8 rounded-md border-2 transition-all",
-                    getSwatchClass(color),
-                    couleurs[cat] === color
-                      ? "border-foreground ring-2 ring-offset-2 ring-foreground/30"
-                      : "border-transparent hover:scale-105",
-                  )}
-                />
-              ))}
-            </div>
+            <SelecteurCouleur
+              valeur={couleurs[cat]}
+              onChange={(hex) => setColor(cat, hex)}
+              nom={CATEGORY_LABELS[cat]}
+              apercu={APERCUS[cat]}
+            />
           </div>
         ))}
 
-        <div className="flex flex-wrap items-center gap-2 pt-2">
+        <div className="flex flex-wrap items-center gap-2 border-t pt-4">
           <Button onClick={handleSave} disabled={pending}>
-            {pending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Save className="size-4" />
-            )}
+            {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Enregistrer les couleurs
           </Button>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            onClick={handleReset}
+            onClick={() => setCouleurs(DEFAULT_AGENDA_COULEURS)}
             disabled={pending}
           >
             <RotateCcw className="size-4" />
-            Réinitialiser
+            Réinitialiser les couleurs par défaut
           </Button>
         </div>
       </CardContent>

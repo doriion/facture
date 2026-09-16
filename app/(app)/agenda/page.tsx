@@ -4,6 +4,7 @@ import { Smartphone } from "lucide-react";
 import { getAgendaEvents } from "@/lib/actions/agenda";
 import { listClients } from "@/lib/actions/clients";
 import { getProfil } from "@/lib/actions/profil";
+import { getCouleursEvenements } from "@/lib/actions/agenda-couleurs";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import { AgendaCalendar } from "@/components/agenda/agenda-calendar";
 
@@ -32,10 +33,11 @@ export default async function AgendaPage({
   const year = parseIntInRange(searchParams.year, 2000, 2100, now.getFullYear());
   const month = parseIntInRange(searchParams.month, 1, 12, now.getMonth() + 1);
 
-  const [data, clientsAll, profil] = await Promise.all([
+  const [data, clientsAll, profil, couleursEvenements] = await Promise.all([
     getAgendaEvents(year, month),
     listClients(),
     getProfil(),
+    getCouleursEvenements(),
   ]);
   const clients = clientsAll.map((c) => ({ id: c.id, nom: c.nom }));
   const couleurs = normalizeCouleurs(profil?.agenda_couleurs);
@@ -60,7 +62,12 @@ export default async function AgendaPage({
         </Link>
       </div>
 
-      <AgendaCalendar data={data} clients={clients} couleurs={couleurs} />
+      <AgendaCalendar
+        data={data}
+        clients={clients}
+        couleurs={couleurs}
+        couleursEvenements={couleursEvenements}
+      />
     </div>
   );
 }
