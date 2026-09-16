@@ -74,7 +74,7 @@ describe("normalizeCouleurs", () => {
   });
 
   it("toutes les catégories de la légende sont couvertes", () => {
-    expect(CATEGORY_ORDER).toHaveLength(9);
+    expect(CATEGORY_ORDER).toHaveLength(11);
     for (const k of CATEGORY_ORDER) expect(estHex(DEFAULT_AGENDA_COULEURS[k])).toBe(true);
   });
 });

@@ -37,6 +37,7 @@ function intervention(overrides: Partial<Intervention> = {}): Intervention {
     fluide_observations: "RAS",
     duree_minutes: null,
     facture_id: null,
+    a_facturer: true,
     notes: null,
     created_at: "2026-07-10T08:00:00Z",
     updated_at: "2026-07-10T08:00:00Z",

@@ -84,6 +84,13 @@ export default async function EditInterventionPage({
                 </>
               )}
             </p>
+            {!facture && intervention.a_facturer === false && (
+              <div className="mt-2">
+                <Badge variant="outline" className="font-normal text-muted-foreground">
+                  Rien à facturer
+                </Badge>
+              </div>
+            )}
             {facture && (
               <div className="mt-2 flex items-center gap-2">
                 <Badge variant="success">Facturée</Badge>

@@ -107,6 +107,7 @@ export function InterventionForm({
       duree_minutes: intervention?.duree_minutes ?? null,
       facture_id: intervention?.facture_id ?? null,
       notes: intervention?.notes ?? "",
+      a_facturer: intervention?.a_facturer ?? true,
     },
   });
 
@@ -265,6 +266,22 @@ export function InterventionForm({
               placeholder="Détail de ce qui a été fait sur place"
               {...register("description")}
             />
+          </div>
+          <div className="md:col-span-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 accent-primary"
+                checked={watch("a_facturer") === false}
+                onChange={(ev) => setValue("a_facturer", !ev.target.checked)}
+              />
+              <span>
+                Rien à facturer
+                <span className="ml-1 text-xs text-muted-foreground">
+                  (déplacement, outils, perso… : exclue des compteurs « à facturer »)
+                </span>
+              </span>
+            </label>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="duree_minutes">Durée (minutes)</Label>

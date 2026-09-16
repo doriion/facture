@@ -142,6 +142,7 @@ export async function createInterventionAction(
       duree_minutes: v.duree_minutes,
       facture_id: v.facture_id ?? null,
       notes: v.notes || null,
+      a_facturer: v.a_facturer ?? true,
     })
     .select("id")
     .single();
@@ -195,6 +196,7 @@ export async function updateInterventionAction(
       duree_minutes: v.duree_minutes,
       facture_id: v.facture_id ?? null,
       notes: v.notes || null,
+      a_facturer: v.a_facturer ?? true,
     })
     .eq("id", id);
 
@@ -261,6 +263,8 @@ export async function quickEditInterventionAction(
     heure_fin: string | null;
     type: string;
     description: string | null;
+    /** false = rien à facturer */
+    a_facturer: boolean;
   },
 ): Promise<ActionResult> {
   const supabase = createClient();
@@ -274,9 +278,30 @@ export async function quickEditInterventionAction(
       heure_fin: partial.heure_fin,
       type: partial.type,
       description: partial.description,
+      a_facturer: partial.a_facturer,
     })
     .eq("id", id);
 
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/interventions");
+  revalidatePath(`/interventions/${id}`);
+  revalidatePath("/agenda");
+  return { ok: true, data: undefined };
+}
+
+/**
+ * « Rien à facturer » / « à facturer » : bascule depuis l'agenda (panneau
+ * À facturer, détail d'un évènement) sans toucher au reste de la fiche.
+ */
+export async function setInterventionAFacturerAction(
+  id: string,
+  aFacturer: boolean,
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("interventions")
+    .update({ a_facturer: aFacturer })
+    .eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/interventions");
   revalidatePath(`/interventions/${id}`);

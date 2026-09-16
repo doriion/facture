@@ -39,6 +39,8 @@ import {
   vueInitiale,
   type VueAgenda,
 } from "@/lib/agenda-vues";
+import { statutFacturation } from "@/lib/agenda-facturation";
+import { AFacturerPanel } from "@/components/agenda/a-facturer-panel";
 import { BandeauJours } from "@/components/agenda/bandeau-jours";
 import { useGlissement } from "@/components/agenda/use-glissement";
 import { EvenementDetailSheet } from "@/components/agenda/evenement-detail-sheet";
@@ -95,9 +97,16 @@ function eventCoversDate(e: AgendaEvent, ymd: string): boolean {
  * iPhone facturé aussi, une facture en retard la couleur « en retard »).
  * Une facture annulée garde son rendu barré, sans couleur choisie.
  */
-function eventCategorie(e: AgendaEvent): AgendaCategory | "annulee" {
+function eventCategorie(e: AgendaEvent, aujourdhui: string): AgendaCategory | "annulee" {
   if (e.kind === "intervention") {
-    return e.facture_emise ? "intervention_facturee" : "intervention_a_facturer";
+    const statut = statutFacturation(e, aujourdhui);
+    return statut === "facturee"
+      ? "intervention_facturee"
+      : statut === "sans_facturation"
+        ? "sans_facturation"
+        : statut === "prevue"
+          ? "intervention_prevue"
+          : "intervention_a_facturer";
   }
   if (e.kind === "facture_prestation") {
     if (e.statut === "retard") return "retard";
@@ -123,8 +132,9 @@ function eventStyle(
   e: AgendaEvent,
   couleurs: AgendaCouleurs,
   parEvenement: CouleursEvenements,
+  aujourdhui: string,
 ): React.CSSProperties | undefined {
-  const cat = eventCategorie(e);
+  const cat = eventCategorie(e, aujourdhui);
   if (cat === "annulee") return undefined;
   return styleEvenement(couleurEvenement(cat, cleEvenement(e), couleurs, parEvenement));
 }
@@ -187,6 +197,7 @@ export function AgendaCalendar({
 }) {
   const router = useRouter();
   const { year, month, events, stats } = data;
+  const todayYmd = useMemo(() => toYmd(new Date()), []);
 
   // Petit écran (téléphone) : l'agenda principal se pilote au doigt,
   // l'écran est allégé (stats, légende et bandeau masqués, « + » flottant).
@@ -240,7 +251,7 @@ export function AgendaCalendar({
   const [cibleCouleur, setCibleCouleur] = useState<AgendaEvent | null>(null);
   const cibleDialogue = useMemo(() => {
     if (!cibleCouleur) return null;
-    const cat = eventCategorie(cibleCouleur);
+    const cat = eventCategorie(cibleCouleur, todayYmd);
     if (cat === "annulee") return null;
     const cle = cleEvenement(cibleCouleur);
     return {
@@ -250,9 +261,7 @@ export function AgendaCalendar({
       couleurDuType: couleurs[cat],
       aCouleurPropre: cle in couleursEvenements,
     };
-  }, [cibleCouleur, couleurs, couleursEvenements]);
-
-  const todayYmd = useMemo(() => toYmd(new Date()), []);
+  }, [cibleCouleur, couleurs, couleursEvenements, todayYmd]);
 
   const grid = useMemo(() => buildMonthGrid(year, month), [year, month]);
 
@@ -299,6 +308,7 @@ export function AgendaCalendar({
       heure_fin: e.heure_fin,
       type: e.type_activite ?? "installation",
       description: e.description,
+      a_facturer: e.a_facturer ?? true,
     });
     setQuickAddOpen(true);
   };
@@ -331,16 +341,18 @@ export function AgendaCalendar({
           ? `${JOURS_LISTE} prochains jours`
           : `${MOIS_FR[month - 1]} ${year}`;
 
-  const styleDe = (e: AgendaEvent) => eventStyle(e, couleurs, couleursEvenements);
+  const styleDe = (e: AgendaEvent) => eventStyle(e, couleurs, couleursEvenements, todayYmd);
 
   const inMonth = (e: AgendaEvent) => {
     const debutMois = `${year}-${String(month).padStart(2, "0")}-01`;
     const finMois = toYmd(new Date(year, month, 0));
     return e.date_end >= debutMois && e.date_start <= finMois;
   };
+  // RDV iPhone passés, non rattachés (un RDV futur n'est pas encore à facturer).
   const rdvARattacher = events.filter(
-    (e) => e.kind === "external" && !e.facture_emise && inMonth(e),
+    (e) => e.kind === "external" && !e.facture_emise && inMonth(e) && e.date_start <= todayYmd,
   );
+  const nbAFacturer = data.aFacturer.length + stats.nbExternalAFacturer;
 
   return (
     <div className="space-y-4">
@@ -348,17 +360,13 @@ export function AgendaCalendar({
       <div className="hidden grid-cols-2 gap-3 sm:grid md:grid-cols-4">
         <StatCard
           label="À facturer"
-          value={stats.nbInterventionsAFacturer + stats.nbExternalAFacturer}
+          value={nbAFacturer}
           hint={
             stats.nbExternalAFacturer > 0
-              ? `${stats.nbInterventionsAFacturer} intervention(s) + ${stats.nbExternalAFacturer} RDV iPhone`
-              : `${stats.nbInterventions} intervention(s) ce mois`
+              ? `${data.aFacturer.length} intervention(s) passée(s) + ${stats.nbExternalAFacturer} RDV iPhone`
+              : `intervention(s) passée(s) sans facture, tous mois`
           }
-          tone={
-            stats.nbInterventionsAFacturer + stats.nbExternalAFacturer > 0
-              ? "warning"
-              : "default"
-          }
+          tone={nbAFacturer > 0 ? "warning" : "default"}
         />
         <StatCard
           label="Factures"
@@ -370,7 +378,7 @@ export function AgendaCalendar({
       </div>
 
       {/* Mobile : une seule puce « à facturer » remplace les stats et le bandeau */}
-      {stats.nbInterventionsAFacturer + stats.nbExternalAFacturer > 0 && (
+      {nbAFacturer > 0 && (
         <button
           type="button"
           onClick={() =>
@@ -379,7 +387,7 @@ export function AgendaCalendar({
           className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 sm:hidden"
         >
           <AlertCircle className="size-3.5" />
-          {stats.nbInterventionsAFacturer + stats.nbExternalAFacturer} à facturer ce mois
+          {nbAFacturer} à facturer
           {stats.nbExternalAFacturer > 0 && " · RDV iPhone à rattacher"}
         </button>
       )}
@@ -466,57 +474,13 @@ export function AgendaCalendar({
         </div>
       )}
 
-      {/* Alerte : choses à facturer (interventions + RDV iPhone importés) */}
-      {stats.nbInterventionsAFacturer + stats.nbExternalAFacturer > 0 && (
-        <div
-          role={stats.nbExternalAFacturer > 0 ? "button" : undefined}
-          tabIndex={stats.nbExternalAFacturer > 0 ? 0 : undefined}
-          onClick={() => stats.nbExternalAFacturer > 0 && setRattacherOuvert(true)}
-          onKeyDown={(ev) => {
-            if (stats.nbExternalAFacturer > 0 && (ev.key === "Enter" || ev.key === " ")) {
-              ev.preventDefault();
-              setRattacherOuvert(true);
-            }
-          }}
-          className={cn(
-            "flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 max-sm:hidden dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100",
-            stats.nbExternalAFacturer > 0 &&
-              "cursor-pointer transition-colors hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-amber-950/60",
-          )}
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <div className="flex-1 space-y-1">
-            {stats.nbInterventionsAFacturer > 0 && (
-              <p className="font-medium">
-                {stats.nbInterventionsAFacturer} intervention
-                {stats.nbInterventionsAFacturer > 1 ? "s" : ""} de ce mois
-                {stats.nbInterventionsAFacturer > 1 ? " ne sont " : " n'est "}
-                pas encore facturée
-                {stats.nbInterventionsAFacturer > 1 ? "s" : ""}.
-              </p>
-            )}
-            {stats.nbExternalAFacturer > 0 && (
-              <p className="font-medium">
-                {stats.nbExternalAFacturer} RDV noté
-                {stats.nbExternalAFacturer > 1 ? "s" : ""} sur votre iPhone
-                ce mois — pensez à les rattacher à une facture (section
-                « Évènements couverts » sur la fiche facture).
-              </p>
-            )}
-            <p className="text-xs opacity-80">
-              Repérables à leur couleur « À facturer » dans le calendrier
-              ci-dessous (préfixe ⚠︎📱 pour les RDV iPhone ; ✓📱 = déjà
-              facturés).
-              {stats.nbExternalAFacturer > 0 && (
-                <strong className="ml-1">Cliquez pour les rattacher.</strong>
-              )}
-            </p>
-          </div>
-          {stats.nbExternalAFacturer > 0 && (
-            <ChevronRight className="mt-0.5 size-4 shrink-0 opacity-70" />
-          )}
-        </div>
-      )}
+      {/* PC : panneau « À facturer » — passées sans facture, tous mois, + RDV iPhone */}
+      <AFacturerPanel
+        items={data.aFacturer}
+        nbExternal={stats.nbExternalAFacturer}
+        onRattacher={() => setRattacherOuvert(true)}
+        className="max-sm:hidden"
+      />
 
       {/* Vues jour / semaine / liste ; le mois garde sa grille ci-dessous.
           Le conteneur écoute le swipe ; la clé relance la petite
@@ -665,7 +629,7 @@ export function AgendaCalendar({
                   <div className="space-y-0.5">
                     {dayEvents.slice(0, 3).map((e, evIdx) => {
                       const isIntervention = e.kind === "intervention";
-                      const styleEv = eventStyle(e, couleurs, couleursEvenements);
+                      const styleEv = eventStyle(e, couleurs, couleursEvenements, todayYmd);
                       const commonClass = cn(
                         "block w-full text-left line-clamp-1 break-words rounded px-1 py-0.5 pr-4 text-[10px] leading-tight transition-[filter] hover:brightness-95 dark:hover:brightness-110 sm:line-clamp-2 sm:px-1.5 sm:pr-4 sm:text-[11px]",
                         // Liseré discret : une couleur très sombre reste

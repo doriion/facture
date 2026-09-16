@@ -76,6 +76,8 @@ export type InterventionEditData = {
   heure_fin: string | null;
   type: string;
   description: string | null;
+  /** false = rien à facturer */
+  a_facturer: boolean;
 };
 
 /** Heures pré-remplies (HH:MM) quand on clique un créneau de la grille horaire. */
@@ -160,6 +162,7 @@ export function QuickInterventionDialog({
           heure_fin: values.heure_fin || null,
           type: values.type,
           description: values.description || null,
+          a_facturer: values.a_facturer ?? true,
         })
       : await createInterventionAction(values);
     setSubmitting(false);
@@ -359,6 +362,22 @@ export function QuickInterventionDialog({
               {...register("description")}
             />
           </div>
+
+          {/* Tout ce qui est sur le planning n'est pas à facturer */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={watch("a_facturer") === false}
+              onChange={(ev) => setValue("a_facturer", !ev.target.checked)}
+            />
+            <span>
+              Rien à facturer
+              <span className="ml-1 text-xs text-muted-foreground">
+                (déplacement, outils, perso…)
+              </span>
+            </span>
+          </label>
         </form>
 
         {/* min-w-0 + flex-wrap : en mode édition, les quatre boutons ne
@@ -459,6 +478,7 @@ function makeDefaults(
     duree_minutes: null,
     facture_id: null,
     notes: "",
+    a_facturer: true,
   };
 }
 
@@ -485,6 +505,7 @@ function makeDefaultsFromIntervention(
     duree_minutes: null,
     facture_id: null,
     notes: "",
+    a_facturer: it.a_facturer,
   };
 }
 

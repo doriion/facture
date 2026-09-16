@@ -27,6 +27,8 @@ type InterventionRow = {
   fluide_frigo_kg_recupere: number | null;
   client: { id: string; nom: string; type: string } | null;
   facture: { id: string; numero: string } | null;
+  /** false = rien à facturer */
+  a_facturer?: boolean;
 };
 
 const variantByType: Record<
@@ -99,6 +101,10 @@ export function InterventionsTable({
                 >
                   <Badge variant="success">Facturée · {i.facture.numero}</Badge>
                 </Link>
+              ) : i.a_facturer === false ? (
+                <span className="inline-flex min-h-11 items-center">
+                  <Badge variant="outline" className="font-normal text-muted-foreground">Rien à facturer</Badge>
+                </span>
               ) : (
                 <Link
                   href={`/factures/nouvelle?intervention=${i.id}`}
@@ -204,6 +210,8 @@ export function InterventionsTable({
                   >
                     <Badge variant="success">{i.facture.numero}</Badge>
                   </Link>
+                ) : i.a_facturer === false ? (
+                  <Badge variant="outline" className="font-normal text-muted-foreground">Rien à facturer</Badge>
                 ) : (
                   <Link
                     href={`/factures/nouvelle?intervention=${i.id}`}

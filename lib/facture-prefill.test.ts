@@ -37,6 +37,7 @@ function intervention(
     fluide_observations: null,
     duree_minutes: null,
     facture_id: null,
+    a_facturer: true,
     notes: null,
     created_at: "2026-07-01T08:00:00Z",
     updated_at: "2026-07-01T08:00:00Z",
