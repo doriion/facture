@@ -22,6 +22,7 @@ export type LignePrefill = {
 };
 
 export type FacturePrefill = {
+  /** "" si l'intervention n'a pas encore de client : le formulaire de facture exige alors un choix. */
   client_id: string;
   type_activite: TypeActivite | "";
   date_prestation: string;
@@ -135,7 +136,7 @@ export function buildFacturePrefill(
     equipement_info.fluide_frigo_type = intervention.fluide_frigo_type;
 
   return {
-    client_id: intervention.client_id,
+    client_id: intervention.client_id ?? "",
     type_activite: mapInterventionTypeToActivite(
       intervention.type,
       intervention.fluide_frigo_type,

@@ -24,16 +24,9 @@ export default async function NouvelleInterventionPage() {
         </h1>
       </div>
 
-      {clients.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-16 text-center text-sm text-muted-foreground">
-          <p className="mb-3">Aucun client. Créez-en un d'abord.</p>
-          <Button asChild>
-            <Link href="/clients">Aller aux clients</Link>
-          </Button>
-        </div>
-      ) : (
-        <InterventionForm clients={clients} />
-      )}
+      {/* Le client est optionnel : on peut créer l'intervention sans
+          client et le renseigner plus tard (obligatoire pour facturer). */}
+      <InterventionForm clients={clients} />
     </div>
   );
 }

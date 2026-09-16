@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Save, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, Plus, Save, Trash2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+
+import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 
 import {
   createInterventionAction,
@@ -57,13 +59,17 @@ import {
 
 export type ClientOption = { id: string; nom: string };
 
+/** Valeur du menu déroulant pour « aucun client » (Radix refuse la chaîne vide). */
+const SANS_CLIENT = "__sans_client__";
+
 /**
  * Données minimales d'une intervention pour pré-remplir le dialogue
  * en mode édition. Couvre tous les champs gérés par ce dialogue rapide.
  */
 export type InterventionEditData = {
   id: string;
-  client_id: string;
+  /** null = client à renseigner */
+  client_id: string | null;
   date_intervention: string;
   date_fin: string | null;
   heure_debut: string | null;
@@ -72,10 +78,14 @@ export type InterventionEditData = {
   description: string | null;
 };
 
+/** Heures pré-remplies (HH:MM) quand on clique un créneau de la grille horaire. */
+export type CreneauPrerempli = { heure_debut: string; heure_fin: string };
+
 export function QuickInterventionDialog({
   open,
   onOpenChange,
   date,
+  creneau = null,
   clients,
   editIntervention,
 }: {
@@ -83,6 +93,8 @@ export function QuickInterventionDialog({
   onOpenChange: (open: boolean) => void;
   /** YYYY-MM-DD — date pré-remplie en mode création */
   date: string;
+  /** Heures pré-remplies en mode création (clic sur la grille jour / semaine) ; null = journée */
+  creneau?: CreneauPrerempli | null;
   clients: ClientOption[];
   /** Si présent : mode édition (mise à jour de cette intervention) */
   editIntervention?: InterventionEditData;
@@ -102,21 +114,36 @@ export function QuickInterventionDialog({
     resolver: zodResolver(interventionSchema),
     defaultValues: editIntervention
       ? makeDefaultsFromIntervention(editIntervention)
-      : makeDefaults(date),
+      : makeDefaults(date, creneau),
   });
 
-  // Réinitialise quand on change de date ou qu'on rouvre la modale (création),
-  // ou quand on change d'intervention cible (édition).
+  // Réinitialise quand on change de date ou de créneau, qu'on rouvre la
+  // modale (création), ou quand on change d'intervention cible (édition).
+  const heureDebutPreremplie = creneau?.heure_debut ?? "";
+  const heureFinPreremplie = creneau?.heure_fin ?? "";
   useEffect(() => {
     if (!open) return;
     reset(
       editIntervention
         ? makeDefaultsFromIntervention(editIntervention)
-        : makeDefaults(date),
+        : makeDefaults(
+            date,
+            heureDebutPreremplie
+              ? { heure_debut: heureDebutPreremplie, heure_fin: heureFinPreremplie }
+              : null,
+          ),
     );
-  }, [open, date, editIntervention, reset]);
+  }, [open, date, heureDebutPreremplie, heureFinPreremplie, editIntervention, reset]);
 
-  const currentClient = watch("client_id");
+  // Clients créés depuis ce dialogue (« + Nouveau client ») : ajoutés à
+  // la liste tout de suite, sans attendre le rafraîchissement serveur.
+  const [clientsCrees, setClientsCrees] = useState<ClientOption[]>([]);
+  const tousLesClients = [
+    ...clients,
+    ...clientsCrees.filter((n) => !clients.some((c) => c.id === n.id)),
+  ];
+
+  const currentClient = watch("client_id") ?? "";
   const currentType = watch("type");
   const currentStart = watch("date_intervention");
   const currentEnd = watch("date_fin");
@@ -126,7 +153,7 @@ export function QuickInterventionDialog({
     setSubmitting(true);
     const result = editIntervention
       ? await quickEditInterventionAction(editIntervention.id, {
-          client_id: values.client_id,
+          client_id: values.client_id || null,
           date_intervention: values.date_intervention,
           date_fin: values.date_fin || null,
           heure_debut: values.heure_debut || null,
@@ -183,7 +210,7 @@ export function QuickInterventionDialog({
         <form
           id="quick-intervention-form"
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4"
+          className="min-w-0 space-y-4"
         >
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-3">
@@ -244,29 +271,54 @@ export function QuickInterventionDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="client_id">Client *</Label>
-            {clients.length === 0 ? (
-              <p className="text-xs text-destructive">
-                Aucun client. Créez d'abord un client depuis la page Clients.
-              </p>
-            ) : (
-              <Select
-                value={currentClient}
-                onValueChange={(v) =>
-                  setValue("client_id", v, { shouldValidate: true })
-                }
-              >
-                <SelectTrigger id="client_id">
-                  <SelectValue placeholder="Sélectionnez un client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nom}
+            <Label htmlFor="client_id">Client (optionnel)</Label>
+            <div className="flex flex-wrap gap-2">
+              <div className="min-w-0 flex-1">
+                <Select
+                  value={currentClient || SANS_CLIENT}
+                  onValueChange={(v) =>
+                    setValue("client_id", v === SANS_CLIENT ? "" : v, {
+                      shouldValidate: true,
+                    })
+                  }
+                >
+                  <SelectTrigger id="client_id">
+                    <SelectValue placeholder="Client à renseigner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SANS_CLIENT}>
+                      <span className="text-muted-foreground">
+                        Aucun client pour l&apos;instant
+                      </span>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    {tousLesClients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Création sans quitter l'agenda : le nouveau client est
+                  sélectionné dès sa création. */}
+              <ClientFormDialog
+                onCreated={(nouvelId, client) => {
+                  setClientsCrees((l) => [...l, { id: nouvelId, nom: client.nom }]);
+                  setValue("client_id", nouvelId, { shouldValidate: true });
+                }}
+                trigger={
+                  <Button type="button" variant="outline">
+                    <Plus className="size-4" />
+                    Nouveau client
+                  </Button>
+                }
+              />
+            </div>
+            {!currentClient && (
+              <p className="text-xs text-muted-foreground">
+                Vous pourrez rattacher le client plus tard ; il sera demandé
+                au moment de facturer.
+              </p>
             )}
             {errors.client_id && (
               <p className="text-xs text-destructive">
@@ -309,9 +361,11 @@ export function QuickInterventionDialog({
           </div>
         </form>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+        {/* min-w-0 + flex-wrap : en mode édition, les quatre boutons ne
+            doivent pas élargir le dialogue (sinon le formulaire déborde). */}
+        <DialogFooter className="min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
           {isEdit && editIntervention ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -367,7 +421,7 @@ export function QuickInterventionDialog({
             <Button
               type="submit"
               form="quick-intervention-form"
-              disabled={submitting || clients.length === 0}
+              disabled={submitting}
             >
               {submitting ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -383,13 +437,16 @@ export function QuickInterventionDialog({
   );
 }
 
-function makeDefaults(date: string): InterventionFormInput {
+function makeDefaults(
+  date: string,
+  creneau: CreneauPrerempli | null,
+): InterventionFormInput {
   return {
     client_id: "",
     date_intervention: date,
     date_fin: "",
-    heure_debut: "",
-    heure_fin: "",
+    heure_debut: creneau?.heure_debut ?? "",
+    heure_fin: creneau?.heure_fin ?? "",
     type: "installation",
     description: "",
     equipement_marque: "",
@@ -411,7 +468,7 @@ function makeDefaultsFromIntervention(
   // Postgres renvoie les TIME au format "HH:MM:SS" — un input[type=time]
   // accepte "HH:MM" ou "HH:MM:SS", on garde tel quel.
   return {
-    client_id: it.client_id,
+    client_id: it.client_id ?? "",
     date_intervention: it.date_intervention,
     date_fin: it.date_fin ?? "",
     heure_debut: it.heure_debut ? it.heure_debut.slice(0, 5) : "",

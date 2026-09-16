@@ -62,7 +62,7 @@ export default async function EditInterventionPage({
               {LABELS_TYPE_INTERVENTION[
                 intervention.type as keyof typeof LABELS_TYPE_INTERVENTION
               ] ?? intervention.type}
-              {client && (
+              {client ? (
                 <>
                   {" — "}
                   <Link
@@ -71,6 +71,16 @@ export default async function EditInterventionPage({
                   >
                     {client.nom}
                   </Link>
+                </>
+              ) : (
+                <>
+                  {" — "}
+                  <Badge
+                    variant="outline"
+                    className="border-orange-400 font-normal text-orange-700 dark:text-orange-300"
+                  >
+                    Client à renseigner
+                  </Badge>
                 </>
               )}
             </p>

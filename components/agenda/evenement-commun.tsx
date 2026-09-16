@@ -17,15 +17,37 @@ export function libelleEvenement(e: AgendaEvent): string {
   return e.title;
 }
 
+/** Intervention posée sans client (à rattacher avant de facturer). */
+export function clientARenseigner(e: AgendaEvent): boolean {
+  return e.kind === "intervention" && !e.client_id;
+}
+
+/** Badge « Client à renseigner » (interventions sans client). */
+export function ClientARenseignerBadge() {
+  return (
+    <Badge
+      variant="outline"
+      className="border-orange-400 font-normal text-orange-700 dark:text-orange-300"
+    >
+      Client à renseigner
+    </Badge>
+  );
+}
+
 /** Badge de statut d'un évènement (même vocabulaire que la légende). */
 export function StatutEvenementBadge({ e }: { e: AgendaEvent }) {
   if (e.kind === "intervention") {
-    return e.facture_emise ? (
-      <Badge variant="secondary" className="font-normal">Facturée</Badge>
-    ) : (
-      <Badge variant="outline" className="border-amber-400 font-normal text-amber-700 dark:text-amber-300">
-        À facturer
-      </Badge>
+    return (
+      <>
+        {e.facture_emise ? (
+          <Badge variant="secondary" className="font-normal">Facturée</Badge>
+        ) : (
+          <Badge variant="outline" className="border-amber-400 font-normal text-amber-700 dark:text-amber-300">
+            À facturer
+          </Badge>
+        )}
+        {clientARenseigner(e) && <ClientARenseignerBadge />}
+      </>
     );
   }
   if (e.kind === "external") {

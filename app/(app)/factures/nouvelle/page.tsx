@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Wrench } from "lucide-react";
+import { ArrowLeft, UserRound, Wrench } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { listProduits } from "@/lib/actions/produits";
@@ -43,6 +43,7 @@ export default async function NouvelleFacturePage({
     | undefined;
   let interventionId: string | undefined;
   let interventionResume: string | undefined;
+  let interventionSansClient = false;
 
   if (searchParams.intervention) {
     const { intervention, client } = await getIntervention(
@@ -69,6 +70,9 @@ export default async function NouvelleFacturePage({
       interventionResume = `intervention du ${formatDateFr(intervention.date_intervention)}${
         client ? ` — ${client.nom}` : ""
       }`;
+      // Intervention posée sans client : la facture en exige un ; le
+      // client choisi ici sera reporté sur l'intervention à la création.
+      interventionSansClient = !intervention.client_id;
     }
   }
 
@@ -95,6 +99,17 @@ export default async function NouvelleFacturePage({
             Formulaire pré-rempli depuis l&apos;{interventionResume}. Vérifiez
             les lignes et les montants avant de créer la facture —
             l&apos;intervention sera automatiquement marquée comme facturée.
+          </p>
+        </div>
+      )}
+
+      {interventionSansClient && (
+        <div className="flex items-start gap-2 rounded-lg border border-orange-300 bg-orange-50 px-4 py-3 text-sm text-orange-900 dark:border-orange-700 dark:bg-orange-950/40 dark:text-orange-100">
+          <UserRound className="mt-0.5 size-4 shrink-0" />
+          <p>
+            <strong>Client à renseigner :</strong> cette intervention n&apos;a
+            pas encore de client. Choisissez-le ci-dessous — il sera aussi
+            rattaché à l&apos;intervention.
           </p>
         </div>
       )}

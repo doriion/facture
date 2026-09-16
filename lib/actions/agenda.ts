@@ -211,7 +211,7 @@ export async function getAgendaEvents(
     type: string;
     description: string | null;
     facture_id: string | null;
-    client_id: string;
+    client_id: string | null;
     client: ClientJoint | null;
   };
   for (const it of (interventionsRes.data ?? []) as InterventionRow[]) {

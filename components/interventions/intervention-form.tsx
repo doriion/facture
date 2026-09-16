@@ -52,6 +52,9 @@ import type { Database } from "@/types/database";
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Intervention = Database["public"]["Tables"]["interventions"]["Row"];
 
+/** Valeur du menu déroulant pour « aucun client » (Radix refuse la chaîne vide). */
+const SANS_CLIENT = "__sans_client__";
+
 export function InterventionForm({
   clients,
   intervention,
@@ -138,17 +141,24 @@ export function InterventionForm({
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5 md:col-span-2">
-            <Label htmlFor="client_id">Client *</Label>
+            <Label htmlFor="client_id">Client</Label>
             <Select
-              value={watch("client_id")}
+              value={watch("client_id") || SANS_CLIENT}
               onValueChange={(v) =>
-                setValue("client_id", v, { shouldValidate: true })
+                setValue("client_id", v === SANS_CLIENT ? "" : v, {
+                  shouldValidate: true,
+                })
               }
             >
               <SelectTrigger id="client_id">
-                <SelectValue placeholder="Sélectionner un client" />
+                <SelectValue placeholder="Client à renseigner" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={SANS_CLIENT}>
+                  <span className="text-muted-foreground">
+                    Aucun client pour l&apos;instant
+                  </span>
+                </SelectItem>
                 {clients.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.nom}
@@ -159,6 +169,11 @@ export function InterventionForm({
                 ))}
               </SelectContent>
             </Select>
+            {!watch("client_id") && (
+              <p className="text-xs text-orange-700 dark:text-orange-300">
+                Client à renseigner — indispensable pour créer la facture.
+              </p>
+            )}
             {errors.client_id && (
               <p className="text-xs text-destructive">
                 {errors.client_id.message}

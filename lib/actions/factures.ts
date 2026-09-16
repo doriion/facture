@@ -220,6 +220,14 @@ export async function createFactureAction(
       .update({ facture_id: facture.id })
       .eq("id", options.interventionId)
       .is("facture_id", null);
+    // Intervention posée sans client : le client choisi pour la facture
+    // devient le sien (jamais écrasé s'il était déjà renseigné).
+    await supabase
+      .from("interventions")
+      .update({ client_id: v.client_id })
+      .eq("id", options.interventionId)
+      .eq("facture_id", facture.id)
+      .is("client_id", null);
     revalidatePath("/interventions");
     revalidatePath(`/interventions/${options.interventionId}`);
     revalidatePath("/agenda");

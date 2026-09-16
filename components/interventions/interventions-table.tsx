@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ClientARenseignerBadge } from "@/components/agenda/evenement-commun";
 import { formatDateFr } from "@/lib/format";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
 
@@ -75,9 +76,7 @@ export function InterventionsTable({
                     : formatDateFr(i.date_intervention)}
                 </p>
                 <p className="mt-0.5 truncate text-sm">
-                  {i.client?.nom ?? (
-                    <span className="text-muted-foreground">—</span>
-                  )}
+                  {i.client?.nom ?? <ClientARenseignerBadge />}
                 </p>
               </div>
               <Badge variant={variantByType[i.type] ?? "default"}>
@@ -165,7 +164,7 @@ export function InterventionsTable({
                     {i.client.nom}
                   </Link>
                 ) : (
-                  <span className="text-muted-foreground">—</span>
+                  <ClientARenseignerBadge />
                 )}
               </TableCell>
               <TableCell className="text-sm">
