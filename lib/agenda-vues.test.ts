@@ -185,3 +185,67 @@ describe("libellés longs et courts", () => {
     expect(libelleJourCourt("2026-09-14")).toBe("Lun 14");
   });
 });
+
+describe("disposition de la grille (bornes élargies, heures vides compactées)", () => {
+  it("bornes 7h → 20h par défaut, élargies aux évènements tôt ou tard", async () => {
+    const { bornesGrille } = await import("./agenda-vues");
+    expect(bornesGrille([ev({ date_start: "2026-09-16", heure_debut: "09:00:00" })], ["2026-09-16"])).toEqual({ debut: 7, fin: 20 });
+    expect(
+      bornesGrille(
+        [
+          ev({ date_start: "2026-09-16", heure_debut: "06:30:00", heure_fin: "08:00:00" }),
+          ev({ date_start: "2026-09-17", heure_debut: "20:15:00", heure_fin: "21:30:00" }),
+        ],
+        ["2026-09-16", "2026-09-17"],
+      ),
+    ).toEqual({ debut: 6, fin: 22 });
+    // un autre jour n'influence pas
+    expect(bornesGrille([ev({ date_start: "2026-09-18", heure_debut: "05:00:00" })], ["2026-09-16"])).toEqual({ debut: 7, fin: 20 });
+  });
+
+  it("heures occupées : chaque heure touchée par un évènement, fin absente = +1 h", async () => {
+    const { heuresOccupees } = await import("./agenda-vues");
+    const occ = heuresOccupees(
+      [
+        ev({ date_start: "2026-09-16", heure_debut: "09:30:00", heure_fin: "11:15:00" }),
+        ev({ date_start: "2026-09-16", heure_debut: "14:00:00" }),
+      ],
+      ["2026-09-16"],
+    );
+    expect(Array.from(occ).sort((a, b) => a - b)).toEqual([9, 10, 11, 14]);
+  });
+
+  it("lignes compactées : hauteur réduite pour les heures vides, l'heure en cours reste pleine", async () => {
+    const { dispositionGrille, hauteurGrille, yDeMinutes, heureDeY } = await import("./agenda-vues");
+    const lignes = dispositionGrille({
+      debut: 7,
+      fin: 11,
+      occupees: new Set([9]),
+      hauteurPleine: 64,
+      hauteurCompacte: 24,
+      compacter: true,
+      heureActuelle: 10,
+    });
+    expect(lignes.map((l) => [l.heure, l.top, l.height, l.compacte])).toEqual([
+      [7, 0, 24, true],
+      [8, 24, 24, true],
+      [9, 48, 64, false],
+      [10, 112, 64, false],
+    ]);
+    expect(hauteurGrille(lignes)).toBe(176);
+    // 9h30 = milieu de la ligne de 9h ; avant la grille → 0 ; après → hauteur totale
+    expect(yDeMinutes(lignes, 9 * 60 + 30)).toBe(80);
+    expect(yDeMinutes(lignes, 6 * 60)).toBe(0);
+    expect(yDeMinutes(lignes, 12 * 60)).toBe(176);
+    // et l'inverse pour le clic
+    expect(heureDeY(lignes, 10)).toBe(7);
+    expect(heureDeY(lignes, 80)).toBe(9);
+    expect(heureDeY(lignes, 999)).toBe(10);
+  });
+
+  it("sans compaction : lignes uniformes (vue semaine)", async () => {
+    const { dispositionGrille } = await import("./agenda-vues");
+    const lignes = dispositionGrille({ debut: 7, fin: 10, occupees: new Set(), hauteurPleine: 48, hauteurCompacte: 20, compacter: false });
+    expect(lignes.every((l) => l.height === 48 && !l.compacte)).toBe(true);
+  });
+});
