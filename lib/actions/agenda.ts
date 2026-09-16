@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { parseIcal } from "@/lib/ical-parser";
 import { computeExternalEventKey } from "@/lib/external-event-key";
+import { adresseClient } from "@/lib/agenda-contact";
 
 export type AgendaEventKind =
   | "intervention"
@@ -33,6 +34,12 @@ export type AgendaEvent = {
   facture_emise?: boolean;
   numero?: string | null;
   type_activite?: string | null;
+  /** LOCATION iCal d'un RDV iPhone (adresse saisie sur le téléphone). */
+  lieu?: string | null;
+  /** Adresse postale du client rattaché (pour « Itinéraire »). */
+  client_adresse?: string | null;
+  /** Téléphone du client rattaché (pour « Appeler »). */
+  client_telephone?: string | null;
 };
 
 export type AgendaData = {
@@ -67,6 +74,14 @@ export type AgendaData = {
 export async function getAgendaEvents(
   year: number,
   month: number, // 1-12
+  options: {
+    /**
+     * Étend la fenêtre jusqu'à cette date (YYYY-MM-DD) : la vue liste
+     * affiche les prochaines semaines, au-delà du mois. La logique de
+     * chargement est la même, seule la borne change.
+     */
+    jusquau?: string;
+  } = {},
 ): Promise<AgendaData> {
   const supabase = createClient();
 
@@ -102,6 +117,9 @@ export async function getAgendaEvents(
   windowStart.setUTCDate(windowStart.getUTCDate() - 7);
   const windowEnd = new Date(lastOfMonth);
   windowEnd.setUTCDate(windowEnd.getUTCDate() + 7);
+  if (options.jusquau && options.jusquau > windowEnd.toISOString().slice(0, 10)) {
+    windowEnd.setTime(new Date(options.jusquau + "T00:00:00Z").getTime());
+  }
 
   const ws = windowStart.toISOString().slice(0, 10);
   const we = windowEnd.toISOString().slice(0, 10);
@@ -124,7 +142,7 @@ export async function getAgendaEvents(
     supabase
       .from("interventions")
       .select(
-        "id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, client_id, client:clients(nom)",
+        "id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, client_id, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)",
       )
       // Pour les interventions multi-jours, on doit inclure celles qui
       // *intersectent* la fenêtre, pas seulement celles qui commencent dedans.
@@ -135,7 +153,7 @@ export async function getAgendaEvents(
     supabase
       .from("factures")
       .select(
-        "id, numero, statut, date_prestation, date_prestation_fin, type_activite, client:clients(nom)",
+        "id, numero, statut, date_prestation, date_prestation_fin, type_activite, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)",
       )
       .not("date_prestation", "is", null)
       .gte("date_prestation", ws)
@@ -144,7 +162,7 @@ export async function getAgendaEvents(
     supabase
       .from("devis")
       .select(
-        "id, numero, statut, date_debut_travaux, duree_estimee_jours, type_activite, client:clients(nom)",
+        "id, numero, statut, date_debut_travaux, duree_estimee_jours, type_activite, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)",
       )
       .eq("est_modele", false)
       .not("date_debut_travaux", "is", null)
@@ -153,7 +171,7 @@ export async function getAgendaEvents(
       .order("date_debut_travaux", { ascending: true }),
     supabase
       .from("contrats_maintenance")
-      .select("id, intitule, prochaine_visite, statut, client:clients(nom)")
+      .select("id, intitule, prochaine_visite, statut, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)")
       .eq("statut", "actif")
       .not("prochaine_visite", "is", null)
       .gte("prochaine_visite", ws)
@@ -171,6 +189,19 @@ export async function getAgendaEvents(
 
   const events: AgendaEvent[] = [];
 
+  type ClientJoint = {
+    nom: string;
+    adresse_ligne1: string | null;
+    adresse_ligne2: string | null;
+    code_postal: string | null;
+    ville: string | null;
+    telephone: string | null;
+  };
+  const coordonnees = (c: ClientJoint | null) => ({
+    client_adresse: c ? adresseClient(c) : null,
+    client_telephone: c?.telephone ?? null,
+  });
+
   type InterventionRow = {
     id: string;
     date_intervention: string;
@@ -181,7 +212,7 @@ export async function getAgendaEvents(
     description: string | null;
     facture_id: string | null;
     client_id: string;
-    client: { nom: string } | null;
+    client: ClientJoint | null;
   };
   for (const it of (interventionsRes.data ?? []) as InterventionRow[]) {
     const end = it.date_fin ?? it.date_intervention;
@@ -202,6 +233,7 @@ export async function getAgendaEvents(
       href: `/interventions/${it.id}`,
       facture_emise: Boolean(it.facture_id),
       type_activite: it.type,
+      ...coordonnees(it.client),
     });
   }
 
@@ -212,7 +244,7 @@ export async function getAgendaEvents(
     date_prestation: string | null;
     date_prestation_fin: string | null;
     type_activite: string | null;
-    client: { nom: string } | null;
+    client: ClientJoint | null;
   };
   for (const f of (facturesRes.data ?? []) as FactureRow[]) {
     if (!f.date_prestation) continue;
@@ -231,6 +263,7 @@ export async function getAgendaEvents(
       statut: f.statut,
       numero: f.numero,
       type_activite: f.type_activite,
+      ...coordonnees(f.client),
     });
   }
 
@@ -241,7 +274,7 @@ export async function getAgendaEvents(
     date_debut_travaux: string | null;
     duree_estimee_jours: number | null;
     type_activite: string | null;
-    client: { nom: string } | null;
+    client: ClientJoint | null;
   };
   for (const d of (devisRes.data ?? []) as DevisRow[]) {
     if (!d.date_debut_travaux) continue;
@@ -267,6 +300,7 @@ export async function getAgendaEvents(
       statut: d.statut,
       numero: d.numero,
       type_activite: d.type_activite,
+      ...coordonnees(d.client),
     });
   }
 
@@ -275,7 +309,7 @@ export async function getAgendaEvents(
     intitule: string | null;
     prochaine_visite: string | null;
     statut: string;
-    client: { nom: string } | null;
+    client: ClientJoint | null;
   };
   for (const c of (contratsRes.data ?? []) as ContratRow[]) {
     if (!c.prochaine_visite) continue;
@@ -291,6 +325,7 @@ export async function getAgendaEvents(
       heure_debut: null,
       heure_fin: null,
       href: `/maintenance/${c.id}`,
+      ...coordonnees(c.client),
     });
   }
 
@@ -334,6 +369,7 @@ export async function getAgendaEvents(
       date_end: ext.date_end,
       title: ext.summary,
       description: ext.description,
+      lieu: ext.location,
       client_nom: null,
       client_id: null,
       heure_debut: ext.time_start ? ext.time_start + ":00" : null,

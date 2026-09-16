@@ -158,4 +158,26 @@ describe("parseIcal", () => {
     expect(parseIcal("")).toEqual([]);
     expect(parseIcal("BEGIN:VCALENDAR\r\nEND:VCALENDAR")).toEqual([]);
   });
+
+  it("expose LOCATION (adresse saisie sur l'iPhone), null si absente", () => {
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "BEGIN:VEVENT",
+      "UID:loc-1",
+      "SUMMARY:DEHEEKEREN Marie",
+      "LOCATION:1 Av. du Centenaire\\, Valgelon-La Rochette",
+      "DTSTART;VALUE=DATE:20260918",
+      "DTEND;VALUE=DATE:20260919",
+      "END:VEVENT",
+      "BEGIN:VEVENT",
+      "UID:loc-2",
+      "SUMMARY:Sans lieu",
+      "DTSTART;VALUE=DATE:20260918",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const [avec, sans] = parseIcal(ics);
+    expect(avec?.location).toBe("1 Av. du Centenaire, Valgelon-La Rochette");
+    expect(sans?.location).toBeNull();
+  });
 });
