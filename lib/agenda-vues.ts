@@ -201,6 +201,9 @@ export type Creneau = {
   /** Position et hauteur en % de la grille [HEURE_DEBUT, HEURE_FIN]. */
   top: number;
   height: number;
+  /** Bornes en minutes depuis minuit (rognées à la grille) — pour une grille aux lignes inégales. */
+  debut: number;
+  fin: number;
   /** Colonne (0..n-1) et nombre de colonnes quand des créneaux se chevauchent. */
   colonne: number;
   colonnes: number;
@@ -267,6 +270,8 @@ export function creneauxDuJour<T extends EvenementMinimal>(
       creneau: {
         top: ((debut - minGrille) / total) * 100,
         height: ((fin - debut) / total) * 100,
+        debut,
+        fin,
         colonne: p.colonne,
         colonnes: colonnesParGroupe.get(p.groupe) ?? 1,
       },
@@ -319,4 +324,111 @@ export function journeeEntiere<T extends EvenementMinimal>(evenements: T[], jour
 /** Évènements horodatés du jour (les multi-jours horodatés comptent sur chaque jour). */
 export function horodatesDuJour<T extends EvenementMinimal>(evenements: T[], jour: string): T[] {
   return evenements.filter((e) => e.heure_debut && e.date_start <= jour && e.date_end >= jour);
+}
+
+// ---------------------------------------------------------------------------
+// Disposition de la grille horaire : bornes élargies aux évènements et
+// heures vides compactées (vue jour). Les lignes n'ont plus toutes la même
+// hauteur : on convertit minutes ↔ pixels avec les fonctions ci-dessous.
+// ---------------------------------------------------------------------------
+
+/**
+ * Bornes de la grille pour les jours affichés : 7h → 20h, élargies si un
+ * évènement commence avant ou finit après (une pose à 6h30 doit se voir).
+ */
+export function bornesGrille<T extends EvenementMinimal>(
+  evenements: T[],
+  jours: string[],
+): { debut: number; fin: number } {
+  let debut = HEURE_DEBUT_GRILLE;
+  let fin = HEURE_FIN_GRILLE;
+  for (const jour of jours) {
+    for (const e of horodatesDuJour(evenements, jour)) {
+      const d = minutes(e.heure_debut!);
+      const f = e.heure_fin ? minutes(e.heure_fin) : d + DUREE_DEFAUT_MIN;
+      debut = Math.min(debut, Math.floor(d / 60));
+      fin = Math.max(fin, Math.ceil(f / 60));
+    }
+  }
+  return { debut: Math.max(0, debut), fin: Math.min(24, fin) };
+}
+
+/** Heures (entières) couvertes par au moins un évènement sur les jours affichés. */
+export function heuresOccupees<T extends EvenementMinimal>(
+  evenements: T[],
+  jours: string[],
+): Set<number> {
+  const occupees = new Set<number>();
+  for (const jour of jours) {
+    for (const e of horodatesDuJour(evenements, jour)) {
+      const d = minutes(e.heure_debut!);
+      const f = Math.max(e.heure_fin ? minutes(e.heure_fin) : d + DUREE_DEFAUT_MIN, d + 1);
+      for (let h = Math.floor(d / 60); h < Math.ceil(f / 60); h++) occupees.add(h);
+    }
+  }
+  return occupees;
+}
+
+export type LigneHoraire = {
+  heure: number;
+  /** Position et hauteur en px. */
+  top: number;
+  height: number;
+  compacte: boolean;
+};
+
+/**
+ * Lignes de la grille avec leur position : les heures vides sont
+ * réduites (`hauteurCompacte`) quand `compacter` est vrai, sauf l'heure
+ * en cours (`heureActuelle`) qui reste lisible. Sans compaction, toutes
+ * les lignes font `hauteurPleine`.
+ */
+export function dispositionGrille(args: {
+  debut: number;
+  fin: number;
+  occupees: Set<number>;
+  hauteurPleine: number;
+  hauteurCompacte: number;
+  compacter: boolean;
+  heureActuelle?: number | null;
+}): LigneHoraire[] {
+  const lignes: LigneHoraire[] = [];
+  let top = 0;
+  for (let h = args.debut; h < args.fin; h++) {
+    const compacte =
+      args.compacter && !args.occupees.has(h) && h !== (args.heureActuelle ?? -1);
+    const height = compacte ? args.hauteurCompacte : args.hauteurPleine;
+    lignes.push({ heure: h, top, height, compacte });
+    top += height;
+  }
+  return lignes;
+}
+
+/** Hauteur totale de la grille (px). */
+export function hauteurGrille(lignes: LigneHoraire[]): number {
+  const derniere = lignes[lignes.length - 1];
+  return derniere ? derniere.top + derniere.height : 0;
+}
+
+/** Position (px) d'un instant en minutes depuis minuit, rognée à la grille. */
+export function yDeMinutes(lignes: LigneHoraire[], minutesDepuisMinuit: number): number {
+  const premiere = lignes[0];
+  if (!premiere) return 0;
+  if (minutesDepuisMinuit <= premiere.heure * 60) return 0;
+  for (const l of lignes) {
+    if (minutesDepuisMinuit < (l.heure + 1) * 60) {
+      return l.top + ((minutesDepuisMinuit - l.heure * 60) / 60) * l.height;
+    }
+  }
+  return hauteurGrille(lignes);
+}
+
+/** Heure (entière) de la ligne qui contient une position en px, bornée à la grille. */
+export function heureDeY(lignes: LigneHoraire[], y: number): number {
+  const premiere = lignes[0];
+  if (!premiere) return HEURE_DEBUT_GRILLE;
+  for (const l of lignes) {
+    if (y < l.top + l.height) return l.heure;
+  }
+  return lignes[lignes.length - 1]!.heure;
 }

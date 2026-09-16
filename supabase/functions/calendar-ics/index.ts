@@ -121,6 +121,16 @@ function buildIcs(events: AgendaRow[]): string {
       lines.push("CATEGORIES:Maintenance");
     }
     lines.push("TRANSP:TRANSPARENT");
+    // Rappel sur le téléphone : 30 min avant un rendez-vous horodaté,
+    // la veille à 18 h pour une intervention / visite « journée entière »
+    // (rien pour les factures et devis : ce ne sont pas des rendez-vous).
+    if (ev.kind === "intervention" || ev.kind === "visite_maintenance") {
+      lines.push("BEGIN:VALARM");
+      lines.push("ACTION:DISPLAY");
+      lines.push(foldLine(`DESCRIPTION:${escapeIcs(summary)}`));
+      lines.push(isTimed ? "TRIGGER:-PT30M" : "TRIGGER:-PT6H");
+      lines.push("END:VALARM");
+    }
     lines.push("END:VEVENT");
   }
 

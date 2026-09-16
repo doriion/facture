@@ -1,35 +1,47 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
 import {
-  HEURE_DEBUT_GRILLE,
-  HEURE_FIN_GRILLE,
+  bornesGrille,
   creneauDepuisHeures,
   creneauxDuJour,
+  dispositionGrille,
+  hauteurGrille,
   heureCourte,
+  heureDeY,
+  heuresOccupees,
   horodatesDuJour,
   journeeEntiere,
   joursSemaine,
   libelleJour,
   libelleJourCourt,
+  yDeMinutes,
 } from "@/lib/agenda-vues";
 import { cn } from "@/lib/utils";
 import { libelleEvenement } from "@/components/agenda/evenement-commun";
 
-const HEURES = Array.from(
-  { length: HEURE_FIN_GRILLE - HEURE_DEBUT_GRILLE },
-  (_, i) => HEURE_DEBUT_GRILLE + i,
-);
+/** Hauteur d'une heure vide en vue jour (les heures pleines gardent 64 px). */
+const HAUTEUR_COMPACTE = 26;
+
+/** Minutes depuis minuit, heure locale du téléphone. */
+function minutesMaintenant(): number {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
 
 /**
  * Grille horaire partagée par les vues JOUR (une colonne, créneaux
  * larges pour le doigt) et SEMAINE (lundi → samedi, dimanche
  * repliable : c'est la vue « créneaux libres » quand un client appelle).
  * Les évènements sans heure vont dans le bandeau « Journée » en haut ;
- * les horodatés sont posés sur la grille 7h → 20h d'après leurs heures.
+ * les horodatés sont posés sur la grille 7h → 20h (élargie si un
+ * évènement déborde) d'après leurs heures. En vue jour, les heures
+ * vides sont compactées pour ne pas faire défiler du blanc ; une ligne
+ * rouge marque l'heure actuelle et la grille s'y positionne à
+ * l'ouverture.
  * Un clic sur une ligne vide planifie une intervention ce jour-là À
  * CETTE HEURE (14 h → 14:00–15:00) ; un clic-glisser sur plusieurs
  * lignes donne la plage (14 h → 16 h). Sur téléphone, un tap suffit ;
@@ -63,6 +75,43 @@ export function VueGrilleHoraire({
     mode === "jour" ? [date] : joursSemaine(date).slice(0, dimanche ? 7 : 6);
   const hauteurHeure = mode === "jour" ? 64 : 48; // px
 
+  // Heure actuelle (minutes) : connue seulement après le montage pour
+  // ne pas diverger du rendu serveur ; rafraîchie chaque minute.
+  const [maintenant, setMaintenant] = useState<number | null>(null);
+  useEffect(() => {
+    setMaintenant(minutesMaintenant());
+    const id = window.setInterval(() => setMaintenant(minutesMaintenant()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const aujourdhuiAffiche = jours.includes(aujourdhui);
+  const heureActuelle =
+    aujourdhuiAffiche && maintenant !== null ? Math.floor(maintenant / 60) : null;
+
+  // Disposition : bornes élargies aux évènements, heures vides compactées
+  // en vue jour (la semaine garde des lignes régulières pour lire les
+  // créneaux libres d'un coup d'œil).
+  const bornes = bornesGrille(events, jours);
+  const lignes = dispositionGrille({
+    debut: bornes.debut,
+    fin: bornes.fin,
+    occupees: heuresOccupees(events, jours),
+    hauteurPleine: hauteurHeure,
+    hauteurCompacte: HAUTEUR_COMPACTE,
+    compacter: mode === "jour",
+    heureActuelle,
+  });
+  const hauteur = hauteurGrille(lignes);
+
+  // À l'ouverture, on amène l'heure actuelle au milieu de l'écran (une
+  // fois par montage ; la clé du conteneur change avec la date).
+  const ligneMaintenant = useRef<HTMLDivElement>(null);
+  const aDefile = useRef(false);
+  useEffect(() => {
+    if (aDefile.current || maintenant === null || !ligneMaintenant.current) return;
+    aDefile.current = true;
+    ligneMaintenant.current.scrollIntoView({ block: "center" });
+  }, [maintenant]);
+
   // Sélection en cours sur la grille (clic ou clic-glisser) : jour,
   // ligne de départ et ligne sous le pointeur. Relâcher planifie.
   const [selection, setSelection] = useState<{
@@ -76,8 +125,7 @@ export function VueGrilleHoraire({
 
   const heureSousPointeur = (ev: React.PointerEvent<HTMLDivElement>) => {
     const rect = ev.currentTarget.getBoundingClientRect();
-    const i = Math.floor((ev.clientY - rect.top) / hauteurHeure);
-    return HEURE_DEBUT_GRILLE + Math.max(0, Math.min(HEURES.length - 1, i));
+    return heureDeY(lignes, ev.clientY - rect.top);
   };
 
   const debutSelection = (jour: string) => (ev: React.PointerEvent<HTMLDivElement>) => {
@@ -193,22 +241,32 @@ export function VueGrilleHoraire({
         style={{ gridTemplateColumns: `3rem repeat(${jours.length}, minmax(0, 1fr))` }}
       >
         {/* Colonne des heures */}
-        <div className="relative border-r" style={{ height: HEURES.length * hauteurHeure }}>
-          {HEURES.map((h, i) => (
+        <div className="relative border-r" style={{ height: hauteur }}>
+          {lignes.map((l, i) => (
             <div
-              key={h}
-              className="absolute right-1 -translate-y-1/2 text-[10px] tabular-nums text-muted-foreground"
-              style={{ top: i * hauteurHeure }}
+              key={l.heure}
+              className={cn(
+                "absolute right-1 -translate-y-1/2 text-[10px] tabular-nums text-muted-foreground",
+                l.compacte && "opacity-60",
+              )}
+              style={{ top: l.top }}
             >
-              {i === 0 ? "" : `${String(h).padStart(2, "0")}:00`}
+              {i === 0 ? "" : `${String(l.heure).padStart(2, "0")}:00`}
             </div>
           ))}
         </div>
         {jours.map((jour) => {
-          const creneaux = creneauxDuJour(horodatesDuJour(events, jour));
+          const creneaux = creneauxDuJour(horodatesDuJour(events, jour), bornes);
           const sel = selection?.jour === jour ? selection : null;
           const selDebut = sel ? Math.min(sel.debut, sel.fin) : 0;
           const selFin = sel ? Math.max(sel.debut, sel.fin) + 1 : 0;
+          const yMaintenant =
+            jour === aujourdhui &&
+            maintenant !== null &&
+            maintenant >= bornes.debut * 60 &&
+            maintenant <= bornes.fin * 60
+              ? yDeMinutes(lignes, maintenant)
+              : null;
           return (
             <div
               key={jour}
@@ -218,32 +276,49 @@ export function VueGrilleHoraire({
                 jour === aujourdhui && "bg-primary/[0.03]",
                 holidays[jour] && "bg-muted/40",
               )}
-              style={{ height: HEURES.length * hauteurHeure, touchAction: "pan-y" }}
+              style={{ height: hauteur, touchAction: "pan-y" }}
               onPointerDown={debutSelection(jour)}
               onPointerMove={etendreSelection(jour)}
               onPointerUp={finirSelection(jour)}
               onPointerCancel={annulerSelection}
             >
               {/* Lignes d'heures : cliquer (ou glisser) planifie à cette heure */}
-              {HEURES.map((h, i) => (
+              {lignes.map((l) => (
                 <div
-                  key={h}
-                  data-heure={h}
-                  title={`Planifier le ${libelleJour(jour)} à ${h} h`}
-                  className="group absolute inset-x-0 cursor-pointer border-t border-border/60 hover:bg-accent/40"
-                  style={{ top: i * hauteurHeure, height: hauteurHeure }}
+                  key={l.heure}
+                  data-heure={l.heure}
+                  title={`Planifier le ${libelleJour(jour)} à ${l.heure} h`}
+                  className={cn(
+                    "group absolute inset-x-0 cursor-pointer border-t border-border/60 hover:bg-accent/40",
+                    l.compacte && "bg-muted/20",
+                  )}
+                  style={{ top: l.top, height: l.height }}
                 >
-                  <Plus className="absolute right-1 top-1 size-3 text-primary opacity-0 group-hover:opacity-60" />
+                  {!l.compacte && (
+                    <Plus className="absolute right-1 top-1 size-3 text-primary opacity-0 group-hover:opacity-60" />
+                  )}
                 </div>
               ))}
+              {/* Heure actuelle */}
+              {yMaintenant !== null && (
+                <div
+                  ref={ligneMaintenant}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 z-20"
+                  style={{ top: yMaintenant }}
+                >
+                  <div className="absolute -left-1 -top-1 size-2 rounded-full bg-red-500" />
+                  <div className="h-0.5 w-full bg-red-500" />
+                </div>
+              )}
               {/* Sélection en cours (clic-glisser) */}
               {sel && (
                 <div
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-x-0.5 z-10 rounded-md bg-primary/15 ring-1 ring-inset ring-primary"
                   style={{
-                    top: (selDebut - HEURE_DEBUT_GRILLE) * hauteurHeure,
-                    height: (selFin - selDebut) * hauteurHeure,
+                    top: yDeMinutes(lignes, selDebut * 60),
+                    height: yDeMinutes(lignes, selFin * 60) - yDeMinutes(lignes, selDebut * 60),
                   }}
                 >
                   <span className="absolute left-1 top-0.5 text-[11px] font-medium text-primary">
@@ -255,6 +330,8 @@ export function VueGrilleHoraire({
               {/* Créneaux */}
               {creneaux.map(({ evenement: e, creneau }) => {
                 const largeur = 100 / creneau.colonnes;
+                const top = yDeMinutes(lignes, creneau.debut);
+                const height = Math.max(yDeMinutes(lignes, creneau.fin) - top, 18);
                 return (
                   <button
                     key={`${e.kind}-${e.id}`}
@@ -266,8 +343,8 @@ export function VueGrilleHoraire({
                     }}
                     style={{
                       ...style(e),
-                      top: `${creneau.top}%`,
-                      height: `${creneau.height}%`,
+                      top,
+                      height,
                       left: `calc(${creneau.colonne * largeur}% + 2px)`,
                       width: `calc(${largeur}% - 4px)`,
                     }}
