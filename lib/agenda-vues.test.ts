@@ -17,10 +17,10 @@ import {
 } from "./agenda-vues";
 
 describe("vue initiale", () => {
-  it("URL > mémorisée > défaut selon l'écran (liste sur mobile, mois sur desktop)", () => {
+  it("URL > mémorisée > défaut selon l'écran (jour sur mobile, mois sur desktop)", () => {
     expect(vueInitiale({ depuisUrl: "semaine", memorisee: "jour", mobile: true })).toBe("semaine");
-    expect(vueInitiale({ memorisee: "jour", mobile: true })).toBe("jour");
-    expect(vueInitiale({ mobile: true })).toBe("liste");
+    expect(vueInitiale({ memorisee: "liste", mobile: true })).toBe("liste");
+    expect(vueInitiale({ mobile: true })).toBe("jour");
     expect(vueInitiale({ mobile: false })).toBe("mois");
   });
 
@@ -161,6 +161,20 @@ describe("creneauDepuisHeures (clic sur la grille horaire)", () => {
   it("ne dépasse jamais 23:59 (dernière ligne de la grille)", async () => {
     const { creneauDepuisHeures } = await import("./agenda-vues");
     expect(creneauDepuisHeures(23)).toEqual({ heure_debut: "23:00", heure_fin: "23:59" });
+  });
+});
+
+describe("joursAvecEvenements (points du bandeau des jours)", () => {
+  it("marque les jours couverts, y compris par un multi-jours", async () => {
+    const { joursAvecEvenements, joursSemaine } = await import("./agenda-vues");
+    const charges = joursAvecEvenements(
+      [
+        ev({ date_start: "2026-09-16", heure_debut: "09:00:00" }),
+        ev({ date_start: "2026-09-18", date_end: "2026-09-19" }),
+      ],
+      joursSemaine("2026-09-16"),
+    );
+    expect(Array.from(charges).sort()).toEqual(["2026-09-16", "2026-09-18", "2026-09-19"]);
   });
 });
 

@@ -15,6 +15,73 @@ import { StatutEvenementBadge, libelleEvenement } from "@/components/agenda/even
  * en premier. Chaque ligne : heure, titre, client, lieu, statut.
  * Pensée pour le pouce : lignes hautes, gros texte, une seule colonne.
  */
+/**
+ * Une ligne d'évènement (heure, barre de couleur, titre, adresse,
+ * statut, téléphone). Partagée par la vue Liste et la liste du jour
+ * sous la grille du mois sur mobile.
+ */
+export function LigneEvenement({
+  e,
+  style,
+  onOuvrir,
+}: {
+  e: AgendaEvent;
+  style: (e: AgendaEvent) => React.CSSProperties | undefined;
+  onOuvrir: (e: AgendaEvent) => void;
+}) {
+  const contact = contactEvenement(e);
+  const debut = heureCourte(e.heure_debut);
+  const fin = heureCourte(e.heure_fin);
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onOuvrir(e)}
+        className="flex w-full items-stretch gap-3 px-3 py-3 text-left transition-colors hover:bg-accent/40 active:bg-accent/60"
+      >
+        {/* Heure : colonne fixe, gros et lisible */}
+        <div className="w-14 shrink-0 pt-0.5 text-sm tabular-nums">
+          {debut ? (
+            <>
+              <div className="font-semibold">{debut}</div>
+              {fin && <div className="text-xs text-muted-foreground">{fin}</div>}
+            </>
+          ) : (
+            <div className="text-xs leading-tight text-muted-foreground">Journée</div>
+          )}
+        </div>
+        {/* Barre de couleur du type / de l'évènement */}
+        <span
+          className="w-1.5 shrink-0 rounded-full ring-1 ring-inset ring-black/10 dark:ring-white/20"
+          style={style(e)}
+          aria-hidden="true"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-medium leading-snug">{libelleEvenement(e)}</p>
+          {e.client_nom && e.kind !== "intervention" && (
+            <p className="truncate text-sm text-muted-foreground">{e.client_nom}</p>
+          )}
+          {contact.adresse && (
+            <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+              <MapPin className="size-3 shrink-0" />
+              <span className="truncate">{contact.adresse}</span>
+            </p>
+          )}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <StatutEvenementBadge e={e} />
+            {contact.telephone && (
+              <Badge variant="outline" className="gap-1 font-normal text-muted-foreground">
+                <Phone className="size-3" />
+                {contact.telephone}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </button>
+    </li>
+  );
+}
+
 export function VueListe({
   events,
   aujourdhui,
@@ -63,61 +130,9 @@ export function VueListe({
             </span>
           </h3>
           <ul className="divide-y overflow-hidden rounded-lg border bg-card">
-            {evenements.map((e) => {
-              const contact = contactEvenement(e);
-              const debut = heureCourte(e.heure_debut);
-              const fin = heureCourte(e.heure_fin);
-              return (
-                <li key={`${e.kind}-${e.id}-${jour}`}>
-                  <button
-                    type="button"
-                    onClick={() => onOuvrir(e)}
-                    className="flex w-full items-stretch gap-3 px-3 py-3 text-left transition-colors hover:bg-accent/40 active:bg-accent/60"
-                  >
-                    {/* Heure : colonne fixe, gros et lisible */}
-                    <div className="w-14 shrink-0 pt-0.5 text-sm tabular-nums">
-                      {debut ? (
-                        <>
-                          <div className="font-semibold">{debut}</div>
-                          {fin && <div className="text-xs text-muted-foreground">{fin}</div>}
-                        </>
-                      ) : (
-                        <div className="text-xs leading-tight text-muted-foreground">Journée</div>
-                      )}
-                    </div>
-                    {/* Barre de couleur du type / de l'évènement */}
-                    <span
-                      className="w-1.5 shrink-0 rounded-full ring-1 ring-inset ring-black/10 dark:ring-white/20"
-                      style={style(e)}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-base font-medium leading-snug">
-                        {libelleEvenement(e)}
-                      </p>
-                      {e.client_nom && e.kind !== "intervention" && (
-                        <p className="truncate text-sm text-muted-foreground">{e.client_nom}</p>
-                      )}
-                      {contact.adresse && (
-                        <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                          <MapPin className="size-3 shrink-0" />
-                          <span className="truncate">{contact.adresse}</span>
-                        </p>
-                      )}
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <StatutEvenementBadge e={e} />
-                        {contact.telephone && (
-                          <Badge variant="outline" className="gap-1 font-normal text-muted-foreground">
-                            <Phone className="size-3" />
-                            {contact.telephone}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
+            {evenements.map((e) => (
+              <LigneEvenement key={`${e.kind}-${e.id}-${jour}`} e={e} style={style} onOuvrir={onOuvrir} />
+            ))}
           </ul>
         </section>
       ))}
