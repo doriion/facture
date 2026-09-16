@@ -7,6 +7,7 @@ import type { AgendaEvent } from "@/lib/actions/agenda";
 import {
   HEURE_DEBUT_GRILLE,
   HEURE_FIN_GRILLE,
+  creneauDepuisHeures,
   creneauxDuJour,
   heureCourte,
   horodatesDuJour,
@@ -29,7 +30,10 @@ const HEURES = Array.from(
  * repliable : c'est la vue « créneaux libres » quand un client appelle).
  * Les évènements sans heure vont dans le bandeau « Journée » en haut ;
  * les horodatés sont posés sur la grille 7h → 20h d'après leurs heures.
- * Un clic sur une plage vide planifie une intervention ce jour-là.
+ * Un clic sur une ligne vide planifie une intervention ce jour-là À
+ * CETTE HEURE (14 h → 14:00–15:00) ; un clic-glisser sur plusieurs
+ * lignes donne la plage (14 h → 16 h). Sur téléphone, un tap suffit ;
+ * le défilement vertical reste au navigateur (touch-action: pan-y).
  */
 export function VueGrilleHoraire({
   mode,
@@ -48,12 +52,59 @@ export function VueGrilleHoraire({
   holidays: Record<string, string>;
   style: (e: AgendaEvent) => React.CSSProperties | undefined;
   onOuvrir: (e: AgendaEvent) => void;
-  onPlanifier: (ymd: string) => void;
+  /**
+   * Planifier une intervention : le jour, et — depuis la grille — les
+   * heures de début et de fin (exclusive) du créneau cliqué ou glissé.
+   */
+  onPlanifier: (ymd: string, heures?: { debut: number; fin: number }) => void;
 }) {
   const [dimanche, setDimanche] = useState(false);
   const jours =
     mode === "jour" ? [date] : joursSemaine(date).slice(0, dimanche ? 7 : 6);
   const hauteurHeure = mode === "jour" ? 64 : 48; // px
+
+  // Sélection en cours sur la grille (clic ou clic-glisser) : jour,
+  // ligne de départ et ligne sous le pointeur. Relâcher planifie.
+  const [selection, setSelection] = useState<{
+    jour: string;
+    debut: number;
+    fin: number;
+  } | null>(null);
+
+  const heureSousPointeur = (ev: React.PointerEvent<HTMLDivElement>) => {
+    const rect = ev.currentTarget.getBoundingClientRect();
+    const i = Math.floor((ev.clientY - rect.top) / hauteurHeure);
+    return HEURE_DEBUT_GRILLE + Math.max(0, Math.min(HEURES.length - 1, i));
+  };
+
+  const debutSelection = (jour: string) => (ev: React.PointerEvent<HTMLDivElement>) => {
+    // Bouton principal seulement, et jamais depuis un créneau existant
+    // (qui a son propre clic → fiche).
+    if (ev.button !== 0) return;
+    if ((ev.target as HTMLElement).closest("[data-evenement]")) return;
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+    const h = heureSousPointeur(ev);
+    setSelection({ jour, debut: h, fin: h });
+  };
+
+  const etendreSelection = (jour: string) => (ev: React.PointerEvent<HTMLDivElement>) => {
+    if (!selection || selection.jour !== jour) return;
+    const h = heureSousPointeur(ev);
+    if (h !== selection.fin) setSelection({ ...selection, fin: h });
+  };
+
+  const finirSelection = (jour: string) => (ev: React.PointerEvent<HTMLDivElement>) => {
+    if (!selection || selection.jour !== jour) return;
+    if (ev.currentTarget.hasPointerCapture(ev.pointerId)) {
+      ev.currentTarget.releasePointerCapture(ev.pointerId);
+    }
+    const debut = Math.min(selection.debut, selection.fin);
+    const fin = Math.max(selection.debut, selection.fin) + 1; // fin exclusive
+    setSelection(null);
+    onPlanifier(jour, { debut, fin });
+  };
+
+  const annulerSelection = () => setSelection(null);
 
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
@@ -137,30 +188,52 @@ export function VueGrilleHoraire({
         </div>
         {jours.map((jour) => {
           const creneaux = creneauxDuJour(horodatesDuJour(events, jour));
+          const sel = selection?.jour === jour ? selection : null;
+          const selDebut = sel ? Math.min(sel.debut, sel.fin) : 0;
+          const selFin = sel ? Math.max(sel.debut, sel.fin) + 1 : 0;
           return (
             <div
               key={jour}
+              data-jour={jour}
               className={cn(
-                "relative border-r last:border-r-0",
+                "relative select-none border-r last:border-r-0",
                 jour === aujourdhui && "bg-primary/[0.03]",
                 holidays[jour] && "bg-muted/40",
               )}
-              style={{ height: HEURES.length * hauteurHeure }}
+              style={{ height: HEURES.length * hauteurHeure, touchAction: "pan-y" }}
+              onPointerDown={debutSelection(jour)}
+              onPointerMove={etendreSelection(jour)}
+              onPointerUp={finirSelection(jour)}
+              onPointerCancel={annulerSelection}
             >
-              {/* Lignes d'heures, cliquables pour planifier */}
+              {/* Lignes d'heures : cliquer (ou glisser) planifie à cette heure */}
               {HEURES.map((h, i) => (
                 <div
                   key={h}
-                  role="button"
-                  tabIndex={-1}
-                  aria-label={`Planifier le ${jour} à ${h} h`}
-                  onClick={() => onPlanifier(jour)}
+                  data-heure={h}
+                  title={`Planifier le ${libelleJour(jour)} à ${h} h`}
                   className="group absolute inset-x-0 cursor-pointer border-t border-border/60 hover:bg-accent/40"
                   style={{ top: i * hauteurHeure, height: hauteurHeure }}
                 >
                   <Plus className="absolute right-1 top-1 size-3 text-primary opacity-0 group-hover:opacity-60" />
                 </div>
               ))}
+              {/* Sélection en cours (clic-glisser) */}
+              {sel && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0.5 z-10 rounded-md bg-primary/15 ring-1 ring-inset ring-primary"
+                  style={{
+                    top: (selDebut - HEURE_DEBUT_GRILLE) * hauteurHeure,
+                    height: (selFin - selDebut) * hauteurHeure,
+                  }}
+                >
+                  <span className="absolute left-1 top-0.5 text-[11px] font-medium text-primary">
+                    {creneauDepuisHeures(selDebut, selFin).heure_debut}–
+                    {creneauDepuisHeures(selDebut, selFin).heure_fin}
+                  </span>
+                </div>
+              )}
               {/* Créneaux */}
               {creneaux.map(({ evenement: e, creneau }) => {
                 const largeur = 100 / creneau.colonnes;
@@ -168,6 +241,7 @@ export function VueGrilleHoraire({
                   <button
                     key={`${e.kind}-${e.id}`}
                     type="button"
+                    data-evenement=""
                     onClick={(ev) => {
                       ev.stopPropagation();
                       onOuvrir(e);

@@ -273,6 +273,31 @@ export function creneauxDuJour<T extends EvenementMinimal>(
   });
 }
 
+/** « 14:00 » depuis un nombre d'heures (14 → « 14:00 », 8.5 → « 08:30 »), borné à 23:59. */
+export function formatHeure(heures: number): string {
+  const total = Math.max(0, Math.min(Math.round(heures * 60), 23 * 60 + 59));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * Créneau pré-rempli quand on clique (ou glisse) sur la grille horaire :
+ * l'heure cliquée devient l'heure de début, la fin = début + 1 h par
+ * défaut — ou la fin de la dernière ligne sélectionnée en cas de
+ * clic-glisser (`fin` = heure exclusive, ex. 14 → 16 donne 14:00–16:00).
+ * Une plage à l'envers est remise dans l'ordre.
+ */
+export function creneauDepuisHeures(
+  debut: number,
+  fin?: number,
+): { heure_debut: string; heure_fin: string } {
+  const a = fin === undefined ? debut : Math.min(debut, fin);
+  const b = fin === undefined ? debut + DUREE_DEFAUT_MIN / 60 : Math.max(debut, fin);
+  const finEffective = b <= a ? a + DUREE_DEFAUT_MIN / 60 : b;
+  return { heure_debut: formatHeure(a), heure_fin: formatHeure(finEffective) };
+}
+
 /** Évènements sans heure (journée entière) couvrant le jour. */
 export function journeeEntiere<T extends EvenementMinimal>(evenements: T[], jour: string): T[] {
   return evenements.filter((e) => !e.heure_debut && e.date_start <= jour && e.date_end >= jour);

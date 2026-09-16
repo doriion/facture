@@ -141,6 +141,29 @@ describe("creneauxDuJour (vues jour / semaine)", () => {
   });
 });
 
+describe("creneauDepuisHeures (clic sur la grille horaire)", () => {
+  it("l'heure cliquée devient l'heure de début, fin = +1 h", async () => {
+    const { creneauDepuisHeures, formatHeure } = await import("./agenda-vues");
+    expect(creneauDepuisHeures(14)).toEqual({ heure_debut: "14:00", heure_fin: "15:00" });
+    expect(creneauDepuisHeures(7)).toEqual({ heure_debut: "07:00", heure_fin: "08:00" });
+    expect(formatHeure(8.5)).toBe("08:30");
+  });
+
+  it("clic-glisser : de la première à la dernière ligne, dans les deux sens", async () => {
+    const { creneauDepuisHeures } = await import("./agenda-vues");
+    // lignes 14 h et 15 h sélectionnées → fin exclusive 16 h
+    expect(creneauDepuisHeures(14, 16)).toEqual({ heure_debut: "14:00", heure_fin: "16:00" });
+    expect(creneauDepuisHeures(16, 14)).toEqual({ heure_debut: "14:00", heure_fin: "16:00" });
+    // même ligne → 1 h
+    expect(creneauDepuisHeures(9, 9)).toEqual({ heure_debut: "09:00", heure_fin: "10:00" });
+  });
+
+  it("ne dépasse jamais 23:59 (dernière ligne de la grille)", async () => {
+    const { creneauDepuisHeures } = await import("./agenda-vues");
+    expect(creneauDepuisHeures(23)).toEqual({ heure_debut: "23:00", heure_fin: "23:59" });
+  });
+});
+
 describe("libellés longs et courts", () => {
   it("jour long avec majuscule initiale, jour court pour les colonnes mobiles", async () => {
     const { libelleJourLong, libelleJourCourt } = await import("./agenda-vues");

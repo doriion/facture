@@ -72,10 +72,14 @@ export type InterventionEditData = {
   description: string | null;
 };
 
+/** Heures pré-remplies (HH:MM) quand on clique un créneau de la grille horaire. */
+export type CreneauPrerempli = { heure_debut: string; heure_fin: string };
+
 export function QuickInterventionDialog({
   open,
   onOpenChange,
   date,
+  creneau = null,
   clients,
   editIntervention,
 }: {
@@ -83,6 +87,8 @@ export function QuickInterventionDialog({
   onOpenChange: (open: boolean) => void;
   /** YYYY-MM-DD — date pré-remplie en mode création */
   date: string;
+  /** Heures pré-remplies en mode création (clic sur la grille jour / semaine) ; null = journée */
+  creneau?: CreneauPrerempli | null;
   clients: ClientOption[];
   /** Si présent : mode édition (mise à jour de cette intervention) */
   editIntervention?: InterventionEditData;
@@ -102,19 +108,26 @@ export function QuickInterventionDialog({
     resolver: zodResolver(interventionSchema),
     defaultValues: editIntervention
       ? makeDefaultsFromIntervention(editIntervention)
-      : makeDefaults(date),
+      : makeDefaults(date, creneau),
   });
 
-  // Réinitialise quand on change de date ou qu'on rouvre la modale (création),
-  // ou quand on change d'intervention cible (édition).
+  // Réinitialise quand on change de date ou de créneau, qu'on rouvre la
+  // modale (création), ou quand on change d'intervention cible (édition).
+  const heureDebutPreremplie = creneau?.heure_debut ?? "";
+  const heureFinPreremplie = creneau?.heure_fin ?? "";
   useEffect(() => {
     if (!open) return;
     reset(
       editIntervention
         ? makeDefaultsFromIntervention(editIntervention)
-        : makeDefaults(date),
+        : makeDefaults(
+            date,
+            heureDebutPreremplie
+              ? { heure_debut: heureDebutPreremplie, heure_fin: heureFinPreremplie }
+              : null,
+          ),
     );
-  }, [open, date, editIntervention, reset]);
+  }, [open, date, heureDebutPreremplie, heureFinPreremplie, editIntervention, reset]);
 
   const currentClient = watch("client_id");
   const currentType = watch("type");
@@ -383,13 +396,16 @@ export function QuickInterventionDialog({
   );
 }
 
-function makeDefaults(date: string): InterventionFormInput {
+function makeDefaults(
+  date: string,
+  creneau: CreneauPrerempli | null,
+): InterventionFormInput {
   return {
     client_id: "",
     date_intervention: date,
     date_fin: "",
-    heure_debut: "",
-    heure_fin: "",
+    heure_debut: creneau?.heure_debut ?? "",
+    heure_fin: creneau?.heure_fin ?? "",
     type: "installation",
     description: "",
     equipement_marque: "",

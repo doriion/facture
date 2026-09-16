@@ -27,6 +27,7 @@ import {
   JOURS_LISTE,
   LABELS_VUE,
   VUES_AGENDA,
+  creneauDepuisHeures,
   libelleJourLong,
   libelleSemaine,
   naviguer,
@@ -243,11 +244,18 @@ export function AgendaCalendar({
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddDate, setQuickAddDate] = useState(todayYmd);
+  // Créneau pré-rempli (vues jour / semaine : l'heure cliquée ; la vue
+  // mois et le bouton « Planifier » ne passent que la date).
+  const [quickAddCreneau, setQuickAddCreneau] = useState<{
+    heure_debut: string;
+    heure_fin: string;
+  } | null>(null);
   const [editTarget, setEditTarget] = useState<InterventionEditData | null>(null);
 
-  const openQuickAdd = (ymd: string) => {
+  const openQuickAdd = (ymd: string, heures?: { debut: number; fin: number }) => {
     setEditTarget(null);
     setQuickAddDate(ymd);
+    setQuickAddCreneau(heures ? creneauDepuisHeures(heures.debut, heures.fin) : null);
     setQuickAddOpen(true);
   };
 
@@ -719,6 +727,7 @@ export function AgendaCalendar({
           if (!next) setEditTarget(null);
         }}
         date={editTarget?.date_intervention ?? quickAddDate}
+        creneau={editTarget ? null : quickAddCreneau}
         clients={clients}
         editIntervention={editTarget ?? undefined}
       />
