@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { parseIcal } from "@/lib/ical-parser";
 import { computeExternalEventKey } from "@/lib/external-event-key";
 import { adresseClient } from "@/lib/agenda-contact";
-import { aujourdhuiParis, estAFacturer } from "@/lib/agenda-facturation";
+import { aujourdhuiParis } from "@/lib/agenda-facturation";
+import { fenetreAgenda, type Fenetre } from "@/lib/agenda-vues";
 
 export type AgendaEventKind =
   | "intervention"
@@ -59,6 +60,7 @@ export type AFacturerItem = {
 export type AgendaData = {
   year: number;
   month: number; // 1-12
+  /** Évènements de la base (interventions, factures, devis, visites) sur la fenêtre. */
   events: AgendaEvent[];
   /**
    * Toutes les interventions passées à facturer, quel que soit le mois
@@ -66,174 +68,108 @@ export type AgendaData = {
    * de mois).
    */
   aFacturer: AFacturerItem[];
-  /** Stats globales pour le mois affiché */
-  stats: {
-    nbInterventions: number;
-    nbInterventionsAFacturer: number;
-    nbFactures: number;
-    nbDevis: number;
-    nbVisites: number;
-    nbExternal: number;
-    /** RDV iPhone du mois, passés, encore à facturer (non liés à une facture) */
-    nbExternalAFacturer: number;
-  };
-  /** True si l'utilisateur a un calendrier externe configuré */
-  hasExternalCalendar: boolean;
-  /** True si le fetch du calendrier externe a échoué */
-  externalCalendarError: string | null;
+  /** Plage de jours chargée : le client navigue dedans sans recharger. */
+  fenetre: Fenetre;
 };
 
+/** RDV iPhone (calendrier externe), chargés après l'affichage pour ne pas le retarder. */
+export type AgendaExternes = {
+  events: AgendaEvent[];
+  /** True si l'utilisateur a un calendrier externe configuré */
+  hasExternalCalendar: boolean;
+  /** Message si le fetch du calendrier externe a échoué */
+  error: string | null;
+};
+
+type ClientJoint = {
+  nom: string;
+  adresse_ligne1: string | null;
+  adresse_ligne2: string | null;
+  code_postal: string | null;
+  ville: string | null;
+  telephone: string | null;
+};
+const coordonnees = (c: ClientJoint | null) => ({
+  client_adresse: c ? adresseClient(c) : null,
+  client_telephone: c?.telephone ?? null,
+});
+const SELECT_CLIENT = "client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)";
+
 /**
- * Récupère tous les événements (interventions, prestations facturées,
- * devis planifiés, visites de maintenance) intersectant le mois demandé.
- *
- * On élargit la fenêtre de quelques jours pour couvrir le rendu du
- * calendrier (qui affiche aussi la fin du mois précédent et le début
- * du suivant).
+ * Évènements de la BASE (interventions, prestations facturées, devis
+ * planifiés, visites de maintenance) sur la fenêtre du mois demandé —
+ * élargie aux mois voisins par la page pour que le swipe reste local.
+ * Les RDV iPhone sont chargés à part (getAgendaExternes) : leur fetch
+ * réseau ne doit pas retarder l'affichage.
  */
 export async function getAgendaEvents(
   year: number,
   month: number, // 1-12
-  options: {
-    /**
-     * Étend la fenêtre jusqu'à cette date (YYYY-MM-DD) : la vue liste
-     * affiche les prochaines semaines, au-delà du mois. La logique de
-     * chargement est la même, seule la borne change.
-     */
-    jusquau?: string;
-  } = {},
+  options: { depuis?: string; jusquau?: string } = {},
 ): Promise<AgendaData> {
   const supabase = createClient();
+  const fenetre = fenetreAgenda(year, month, options);
 
   // Garde d'auth explicite : la RLS protège déjà les données, mais on
-  // évite de requêter (et de fetcher le calendrier externe) pour rien,
-  // et on renvoie un résultat vide propre plutôt qu'un état silencieux.
+  // évite de requêter pour rien et on renvoie un résultat vide propre.
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    return {
-      year,
-      month,
-      events: [],
-      aFacturer: [],
-      stats: {
-        nbInterventions: 0,
-        nbInterventionsAFacturer: 0,
-        nbFactures: 0,
-        nbDevis: 0,
-        nbVisites: 0,
-        nbExternal: 0,
-        nbExternalAFacturer: 0,
-      },
-      hasExternalCalendar: false,
-      externalCalendarError: "Non authentifié.",
-    };
-  }
+  if (!user) return { year, month, events: [], aFacturer: [], fenetre };
 
-  // Fenêtre élargie : 7 jours avant le 1er du mois → 7 jours après le dernier.
-  const firstOfMonth = new Date(Date.UTC(year, month - 1, 1));
-  const lastOfMonth = new Date(Date.UTC(year, month, 0));
-  const windowStart = new Date(firstOfMonth);
-  windowStart.setUTCDate(windowStart.getUTCDate() - 7);
-  const windowEnd = new Date(lastOfMonth);
-  windowEnd.setUTCDate(windowEnd.getUTCDate() + 7);
-  if (options.jusquau && options.jusquau > windowEnd.toISOString().slice(0, 10)) {
-    windowEnd.setTime(new Date(options.jusquau + "T00:00:00Z").getTime());
-  }
-
-  const ws = windowStart.toISOString().slice(0, 10);
-  const we = windowEnd.toISOString().slice(0, 10);
+  const ws = fenetre.debut;
+  const we = fenetre.fin;
   const aujourdhui = aujourdhuiParis();
 
-  // Récupération de l'URL externe pour fetcher en parallèle des requêtes DB
-  const profilExternalRes = await supabase
-    .from("profil_entreprise")
-    .select("external_calendar_url")
-    .maybeSingle();
-  const externalUrl = profilExternalRes.data?.external_calendar_url ?? null;
-
-  const [
-    interventionsRes,
-    facturesRes,
-    devisRes,
-    contratsRes,
-    externalEventsRes,
-    externalLinksRes,
-    aFacturerRes,
-  ] = await Promise.all([
-    supabase
-      .from("interventions")
-      .select(
-        "id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, a_facturer, client_id, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)",
-      )
-      // Pour les interventions multi-jours, on doit inclure celles qui
-      // *intersectent* la fenêtre, pas seulement celles qui commencent dedans.
-      .gte("date_intervention", new Date(new Date(ws).getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10))
-      .lte("date_intervention", we)
-      .order("date_intervention", { ascending: true })
-      .order("heure_debut", { ascending: true, nullsFirst: true }),
-    supabase
-      .from("factures")
-      .select(
-        "id, numero, statut, date_prestation, date_prestation_fin, type_activite, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)",
-      )
-      .not("date_prestation", "is", null)
-      .gte("date_prestation", ws)
-      .lte("date_prestation", we)
-      .order("date_prestation", { ascending: true }),
-    supabase
-      .from("devis")
-      .select(
-        "id, numero, statut, date_debut_travaux, duree_estimee_jours, type_activite, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)",
-      )
-      .eq("est_modele", false)
-      .not("date_debut_travaux", "is", null)
-      .gte("date_debut_travaux", ws)
-      .lte("date_debut_travaux", we)
-      .order("date_debut_travaux", { ascending: true }),
-    supabase
-      .from("contrats_maintenance")
-      .select("id, intitule, prochaine_visite, statut, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)")
-      .eq("statut", "actif")
-      .not("prochaine_visite", "is", null)
-      .gte("prochaine_visite", ws)
-      .lte("prochaine_visite", we)
-      .order("prochaine_visite", { ascending: true }),
-    fetchExternalCalendar(externalUrl),
-    // Liens RDV iPhone → factures (fenêtre du mois ±, on filtre côté code
-    // par UID au moment du merge).
-    supabase
-      .from("facture_external_events")
-      .select("external_uid, facture_id, factures:factures(numero)")
-      .gte("snapshot_date_start", new Date(new Date(ws).getTime() - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10))
-      .lte("snapshot_date_start", new Date(new Date(we).getTime() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10)),
-    // Panneau « À facturer » : passées, sans facture, pas « rien à facturer »,
-    // tous mois confondus.
-    supabase
-      .from("interventions")
-      .select("id, date_intervention, date_fin, description, type, client_id, client:clients(nom)")
-      .is("facture_id", null)
-      .eq("a_facturer", true)
-      .lte("date_intervention", aujourdhui)
-      .order("date_intervention", { ascending: false })
-      .limit(200),
-  ]);
+  const [interventionsRes, facturesRes, devisRes, contratsRes, aFacturerRes] =
+    await Promise.all([
+      supabase
+        .from("interventions")
+        .select(
+          `id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, a_facturer, client_id, ${SELECT_CLIENT}`,
+        )
+        // Pour les interventions multi-jours, on doit inclure celles qui
+        // *intersectent* la fenêtre, pas seulement celles qui commencent dedans.
+        .gte("date_intervention", new Date(new Date(ws).getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10))
+        .lte("date_intervention", we)
+        .order("date_intervention", { ascending: true })
+        .order("heure_debut", { ascending: true, nullsFirst: true }),
+      supabase
+        .from("factures")
+        .select(`id, numero, statut, date_prestation, date_prestation_fin, type_activite, ${SELECT_CLIENT}`)
+        .not("date_prestation", "is", null)
+        .gte("date_prestation", ws)
+        .lte("date_prestation", we)
+        .order("date_prestation", { ascending: true }),
+      supabase
+        .from("devis")
+        .select(`id, numero, statut, date_debut_travaux, duree_estimee_jours, type_activite, ${SELECT_CLIENT}`)
+        .eq("est_modele", false)
+        .not("date_debut_travaux", "is", null)
+        .gte("date_debut_travaux", ws)
+        .lte("date_debut_travaux", we)
+        .order("date_debut_travaux", { ascending: true }),
+      supabase
+        .from("contrats_maintenance")
+        .select(`id, intitule, prochaine_visite, statut, ${SELECT_CLIENT}`)
+        .eq("statut", "actif")
+        .not("prochaine_visite", "is", null)
+        .gte("prochaine_visite", ws)
+        .lte("prochaine_visite", we)
+        .order("prochaine_visite", { ascending: true }),
+      // Panneau « À facturer » : passées, sans facture, pas « rien à facturer »,
+      // tous mois confondus.
+      supabase
+        .from("interventions")
+        .select("id, date_intervention, date_fin, description, type, client_id, client:clients(nom)")
+        .is("facture_id", null)
+        .eq("a_facturer", true)
+        .lte("date_intervention", aujourdhui)
+        .order("date_intervention", { ascending: false })
+        .limit(200),
+    ]);
 
   const events: AgendaEvent[] = [];
-
-  type ClientJoint = {
-    nom: string;
-    adresse_ligne1: string | null;
-    adresse_ligne2: string | null;
-    code_postal: string | null;
-    ville: string | null;
-    telephone: string | null;
-  };
-  const coordonnees = (c: ClientJoint | null) => ({
-    client_adresse: c ? adresseClient(c) : null,
-    client_telephone: c?.telephone ?? null,
-  });
 
   type InterventionRow = {
     id: string;
@@ -251,7 +187,7 @@ export async function getAgendaEvents(
   for (const it of (interventionsRes.data ?? []) as InterventionRow[]) {
     const end = it.date_fin ?? it.date_intervention;
     // Filtre côté Node : ignorer les interventions dont la plage est
-    // entièrement hors de la fenêtre du calendrier.
+    // entièrement hors de la fenêtre.
     if (end < ws) continue;
     events.push({
       id: it.id,
@@ -364,33 +300,79 @@ export async function getAgendaEvents(
     });
   }
 
-  // Évènements externes (calendrier iCloud / Google publié)
+  type AFacturerRow = {
+    id: string;
+    date_intervention: string;
+    date_fin: string | null;
+    description: string | null;
+    type: string;
+    client_id: string | null;
+    client: { nom: string } | null;
+  };
+  const aFacturer: AFacturerItem[] = ((aFacturerRes.data ?? []) as AFacturerRow[]).map((r) => ({
+    id: r.id,
+    date_intervention: r.date_intervention,
+    date_fin: r.date_fin,
+    description: r.description,
+    type: r.type,
+    client_id: r.client_id,
+    client_nom: r.client?.nom ?? null,
+  }));
+
+  return { year, month, events, aFacturer, fenetre };
+}
+
+/**
+ * RDV iPhone (calendrier iCloud / Google publié) sur la fenêtre, avec
+ * leur rattachement éventuel à une facture. Appelé par le client APRÈS
+ * l'affichage de l'agenda : si iCloud est lent, l'agenda ne l'est pas.
+ */
+export async function getAgendaExternes(fenetre: Fenetre): Promise<AgendaExternes> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { events: [], hasExternalCalendar: false, error: "Non authentifié." };
+
+  const profilExternalRes = await supabase
+    .from("profil_entreprise")
+    .select("external_calendar_url")
+    .maybeSingle();
+  const externalUrl = profilExternalRes.data?.external_calendar_url ?? null;
+  if (!externalUrl) return { events: [], hasExternalCalendar: false, error: null };
+
+  const ws = fenetre.debut;
+  const we = fenetre.fin;
+  const [externalEventsRes, externalLinksRes] = await Promise.all([
+    fetchExternalCalendar(externalUrl),
+    // Liens RDV iPhone → factures (fenêtre ±60 j, on filtre côté code par UID).
+    supabase
+      .from("facture_external_events")
+      .select("external_uid, facture_id, factures:factures(numero)")
+      .gte("snapshot_date_start", new Date(new Date(ws).getTime() - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10))
+      .lte("snapshot_date_start", new Date(new Date(we).getTime() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10)),
+  ]);
+
   // Construction d'une map UID → facture liée pour le match O(1).
   type LinkRow = {
     external_uid: string;
     facture_id: string;
     factures: { numero: string } | { numero: string }[] | null;
   };
-  const externalLinkByUid = new Map<
-    string,
-    { facture_id: string; numero: string }
-  >();
+  const externalLinkByUid = new Map<string, { facture_id: string; numero: string }>();
   for (const link of (externalLinksRes.data ?? []) as LinkRow[]) {
-    const factureRel = Array.isArray(link.factures)
-      ? link.factures[0]
-      : link.factures;
+    const factureRel = Array.isArray(link.factures) ? link.factures[0] : link.factures;
     externalLinkByUid.set(link.external_uid, {
       facture_id: link.facture_id,
       numero: factureRel?.numero ?? "",
     });
   }
 
+  const events: AgendaEvent[] = [];
   for (const ext of externalEventsRes.events) {
-    // Ne garde que ceux dans la fenêtre du mois (élargie)
     if (ext.date_end < ws || ext.date_start > we) continue;
-    // Calcule la clé canonique (UID iCal ou fallback hash). C'est cette
-    // clé qu'on a stockée si l'utilisateur a déjà coché l'event dans une
-    // facture — donc c'est elle qu'on cherche dans la map.
+    // Clé canonique (UID iCal ou fallback hash) : c'est elle qu'on a
+    // stockée si l'utilisateur a déjà coché l'event dans une facture.
     const key = computeExternalEventKey({
       uid: ext.uid,
       date_start: ext.date_start,
@@ -411,72 +393,13 @@ export async function getAgendaEvents(
       heure_fin: ext.time_end ? ext.time_end + ":00" : null,
       facture_emise: Boolean(linked),
       numero: linked?.numero ?? null,
-      // Si facturé → href vers la facture liée pour navigation rapide ;
-      // sinon le pill reste non-cliquable (vue read-only).
+      // Si facturé → href vers la facture liée ; sinon le pill reste
+      // non-cliquable (vue read-only).
       href: linked ? `/factures/${linked.facture_id}` : "#",
     });
   }
 
-  // Stats restreintes au mois affiché (pas la fenêtre élargie)
-  const startMonthIso = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endMonthIso = lastOfMonth.toISOString().slice(0, 10);
-  const inMonth = (e: AgendaEvent) =>
-    e.date_end >= startMonthIso && e.date_start <= endMonthIso;
-
-  const interventionsInMonth = events.filter(
-    (e) => e.kind === "intervention" && inMonth(e),
-  );
-  const externalInMonth = events.filter(
-    (e) => e.kind === "external" && inMonth(e),
-  );
-  const stats = {
-    nbInterventions: interventionsInMonth.length,
-    // « À facturer » = passé (ou commencé aujourd'hui), sans facture, et
-    // pas marqué « rien à facturer ».
-    nbInterventionsAFacturer: interventionsInMonth.filter((e) =>
-      estAFacturer(e, aujourdhui),
-    ).length,
-    nbFactures: events.filter(
-      (e) => e.kind === "facture_prestation" && inMonth(e),
-    ).length,
-    nbDevis: events.filter((e) => e.kind === "devis_planifie" && inMonth(e))
-      .length,
-    nbVisites: events.filter(
-      (e) => e.kind === "visite_maintenance" && inMonth(e),
-    ).length,
-    nbExternal: externalInMonth.length,
-    nbExternalAFacturer: externalInMonth.filter((e) => estAFacturer(e, aujourdhui))
-      .length,
-  };
-
-  type AFacturerRow = {
-    id: string;
-    date_intervention: string;
-    date_fin: string | null;
-    description: string | null;
-    type: string;
-    client_id: string | null;
-    client: { nom: string } | null;
-  };
-  const aFacturer: AFacturerItem[] = ((aFacturerRes.data ?? []) as AFacturerRow[]).map((r) => ({
-    id: r.id,
-    date_intervention: r.date_intervention,
-    date_fin: r.date_fin,
-    description: r.description,
-    type: r.type,
-    client_id: r.client_id,
-    client_nom: r.client?.nom ?? null,
-  }));
-
-  return {
-    year,
-    month,
-    events,
-    aFacturer,
-    stats,
-    hasExternalCalendar: Boolean(externalUrl),
-    externalCalendarError: externalEventsRes.error,
-  };
+  return { events, hasExternalCalendar: true, error: externalEventsRes.error };
 }
 
 /**

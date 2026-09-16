@@ -58,6 +58,7 @@ export async function middleware(request: NextRequest) {
   const isPublicPage =
     path === "/login" ||
     path.startsWith("/login/") ||
+    path === "/hors-ligne" ||
     path.startsWith("/c/") ||
     path.startsWith("/api/public/");
 

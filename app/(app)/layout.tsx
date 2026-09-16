@@ -18,16 +18,19 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Session et badge « À faire » (tâches échues aujourd'hui + en retard)
+  // en parallèle : un aller-retour de moins avant chaque page. Le badge
+  // vaut 0 sans session (RLS) et la redirection prend le dessus.
+  const [
+    {
+      data: { user },
+    },
+    badgeTaches,
+  ] = await Promise.all([supabase.auth.getUser(), getCompteurBadgeTaches()]);
 
   if (!user) {
     redirect("/login");
   }
-
-  // Badge « À faire » : tâches échues aujourd'hui + en retard
-  const badgeTaches = await getCompteurBadgeTaches();
 
   return (
     // h-dvh (hauteur dynamique) : suit la barre d'URL mobile, contrairement

@@ -2,11 +2,18 @@ import Link from "next/link";
 import { Smartphone } from "lucide-react";
 
 import { getAgendaEvents } from "@/lib/actions/agenda";
-import { listClients } from "@/lib/actions/clients";
+import { listClientsLegers } from "@/lib/actions/clients";
 import { getProfil } from "@/lib/actions/profil";
 import { getCouleursEvenements } from "@/lib/actions/agenda-couleurs";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
-import { JOURS_LISTE, ajouterJours, normaliserVue, ymd } from "@/lib/agenda-vues";
+import {
+  JOURS_LISTE,
+  ajouterJours,
+  dernierDuMois,
+  normaliserVue,
+  premierDuMois,
+  ymd,
+} from "@/lib/agenda-vues";
 import { AgendaCalendar } from "@/components/agenda/agenda-calendar";
 
 export const metadata = { title: "Agenda — NG Gestion" };
@@ -50,16 +57,22 @@ export default async function AgendaPage({
       : aujourdhui);
   const vue = normaliserVue(searchParams.vue);
 
-  const [data, clientsAll, profil, couleursEvenements] = await Promise.all([
-    // La vue liste affiche les prochaines semaines : fenêtre étendue.
+  // Fenêtre chargée : le mois affiché ET ses deux voisins (le swipe d'un
+  // mois à l'autre reste local), ET les 60 prochains jours (vue liste),
+  // quel que soit le mois affiché. Les RDV iPhone sont chargés par le
+  // client après l'affichage (getAgendaExternes).
+  const moisPrecedent = month === 1 ? premierDuMois(year - 1, 12) : premierDuMois(year, month - 1);
+  const moisSuivant = month === 12 ? dernierDuMois(year + 1, 1) : dernierDuMois(year, month + 1);
+  const finListe = ajouterJours(aujourdhui, JOURS_LISTE);
+  const [data, clients, profil, couleursEvenements] = await Promise.all([
     getAgendaEvents(year, month, {
-      jusquau: vue === "liste" || vue === null ? ajouterJours(aujourdhui, JOURS_LISTE) : undefined,
+      depuis: moisPrecedent < aujourdhui ? moisPrecedent : aujourdhui,
+      jusquau: moisSuivant > finListe ? moisSuivant : finListe,
     }),
-    listClients(),
+    listClientsLegers(),
     getProfil(),
     getCouleursEvenements(),
   ]);
-  const clients = clientsAll.map((c) => ({ id: c.id, nom: c.nom }));
   const couleurs = normalizeCouleurs(profil?.agenda_couleurs);
 
   return (
@@ -92,6 +105,7 @@ export default async function AgendaPage({
         couleursEvenements={couleursEvenements}
         date={date}
         vueUrl={vue}
+        externesCle={Date.now()}
       />
     </div>
   );
