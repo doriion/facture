@@ -9,6 +9,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
+import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
 
 import {
   createInterventionAction,
@@ -90,6 +91,7 @@ export function QuickInterventionDialog({
   creneau = null,
   clients,
   editIntervention,
+  onOptimiste,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -100,6 +102,12 @@ export function QuickInterventionDialog({
   clients: ClientOption[];
   /** Si présent : mode édition (mise à jour de cette intervention) */
   editIntervention?: InterventionEditData;
+  /**
+   * Mise à jour optimiste : appelé AVANT l'enregistrement pour afficher
+   * le résultat tout de suite ; renvoie la fonction qui annule si le
+   * serveur refuse.
+   */
+  onOptimiste?: (changement: ChangementOptimiste) => () => void;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -153,6 +161,19 @@ export function QuickInterventionDialog({
 
   async function onSubmit(values: InterventionFormValues) {
     setSubmitting(true);
+    // Affichage immédiat : le dialogue se ferme, le rendez-vous est déjà
+    // dans l'agenda ; le serveur confirme derrière (ou on annule).
+    const id = editIntervention?.id ?? `tmp-${Date.now()}`;
+    const clientNom =
+      tousLesClients.find((c) => c.id === (values.client_id || ""))?.nom ?? null;
+    const annuler = onOptimiste?.({
+      type: editIntervention ? "edition" : "creation",
+      id,
+      valeurs: values,
+      clientNom,
+    });
+    onOpenChange(false);
+
     const result = editIntervention
       ? await quickEditInterventionAction(editIntervention.id, {
           client_id: values.client_id || null,
@@ -169,24 +190,28 @@ export function QuickInterventionDialog({
 
     if (result.ok) {
       toast.success(isEdit ? "Intervention modifiée" : "Intervention planifiée");
-      onOpenChange(false);
       router.refresh();
     } else {
-      toast.error("Erreur", { description: result.error });
+      annuler?.();
+      toast.error(isEdit ? "Modification refusée" : "Planification refusée", {
+        description: result.error,
+      });
     }
   }
 
   async function onDelete() {
     if (!editIntervention) return;
     setSubmitting(true);
+    const annuler = onOptimiste?.({ type: "suppression", id: editIntervention.id });
+    onOpenChange(false);
     const result = await deleteInterventionAction(editIntervention.id);
     setSubmitting(false);
     if (result.ok) {
       toast.success("Intervention supprimée");
-      onOpenChange(false);
       router.refresh();
     } else {
-      toast.error("Erreur", { description: result.error });
+      annuler?.();
+      toast.error("Suppression refusée", { description: result.error });
     }
   }
 

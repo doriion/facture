@@ -432,3 +432,55 @@ export function heureDeY(lignes: LigneHoraire[], y: number): number {
   }
   return lignes[lignes.length - 1]!.heure;
 }
+
+// ---------------------------------------------------------------------------
+// Fenêtre de chargement : le serveur charge une plage de jours, le client
+// navigue dedans sans recharger (swipe instantané) et ne repasse par le
+// serveur qu'en sortant de la plage.
+// ---------------------------------------------------------------------------
+
+export type Fenetre = { debut: string; fin: string };
+
+export function moisDe(date: string): { year: number; month: number } {
+  return { year: Number(date.slice(0, 4)), month: Number(date.slice(5, 7)) };
+}
+
+export function premierDuMois(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-01`;
+}
+
+export function dernierDuMois(year: number, month: number): string {
+  const suivant = month === 12 ? premierDuMois(year + 1, 1) : premierDuMois(year, month + 1);
+  return ajouterJours(suivant, -1);
+}
+
+/**
+ * Fenêtre chargée pour un mois : 7 jours avant le 1er → 7 jours après le
+ * dernier (les cases débordantes de la grille), étendue à `depuis` /
+ * `jusquau` si on les fournit (mois voisins, liste des 60 prochains jours).
+ */
+export function fenetreAgenda(
+  year: number,
+  month: number,
+  options: { depuis?: string; jusquau?: string } = {},
+): Fenetre {
+  let debut = ajouterJours(premierDuMois(year, month), -7);
+  let fin = ajouterJours(dernierDuMois(year, month), 7);
+  if (options.depuis && options.depuis < debut) debut = options.depuis;
+  if (options.jusquau && options.jusquau > fin) fin = options.jusquau;
+  return { debut, fin };
+}
+
+/** La vue peut-elle afficher cette date sans recharger ? (tout ce qu'elle montre est dans la fenêtre) */
+export function dansFenetre(vue: VueAgenda, date: string, fenetre: Fenetre): boolean {
+  if (vue === "jour") return date >= fenetre.debut && date <= fenetre.fin;
+  if (vue === "semaine") {
+    const jours = joursSemaine(date);
+    return jours[0]! >= fenetre.debut && jours[6]! <= fenetre.fin;
+  }
+  if (vue === "mois") {
+    const { year, month } = moisDe(date);
+    return premierDuMois(year, month) >= fenetre.debut && dernierDuMois(year, month) <= fenetre.fin;
+  }
+  return true; // liste : part d'aujourd'hui, la page garantit la couverture
+}

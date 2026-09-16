@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
 import { setInterventionAFacturerAction } from "@/lib/actions/interventions";
+import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
 import { contactEvenement, lienAppel, lienItineraire } from "@/lib/agenda-contact";
 import { heureCourte, libelleJourLong } from "@/lib/agenda-vues";
 import { Button } from "@/components/ui/button";
@@ -35,12 +36,15 @@ export function EvenementDetailSheet({
   style,
   onModifier,
   onRattacher,
+  onOptimiste,
 }: {
   evenement: AgendaEvent | null;
   onClose: () => void;
   style: (e: AgendaEvent) => React.CSSProperties | undefined;
   onModifier: (e: AgendaEvent) => void;
   onRattacher: () => void;
+  /** Mise à jour optimiste (voir QuickInterventionDialog). */
+  onOptimiste?: (changement: ChangementOptimiste) => () => void;
 }) {
   const router = useRouter();
   const [basculeEnCours, setBasculeEnCours] = useState(false);
@@ -51,14 +55,17 @@ export function EvenementDetailSheet({
   async function basculerFacturation(ev: AgendaEvent) {
     setBasculeEnCours(true);
     const cible = ev.a_facturer === false;
+    // Le tiroir se ferme et la pastille change tout de suite.
+    const annuler = onOptimiste?.({ type: "facturation", id: ev.id, a_facturer: cible });
+    onClose();
     const res = await setInterventionAFacturerAction(ev.id, cible);
     setBasculeEnCours(false);
     if (!res.ok) {
-      toast.error("Erreur", { description: res.error });
+      annuler?.();
+      toast.error("Modification refusée", { description: res.error });
       return;
     }
     toast.success(cible ? "Remise « à facturer »" : "Marquée « rien à facturer »");
-    onClose();
     router.refresh();
   }
   const debut = heureCourte(e?.heure_debut);

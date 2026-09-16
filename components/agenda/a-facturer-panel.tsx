@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ChevronDown, ChevronRight, Link2, Loader2, Receipt, XCircle } from "lucide-react";
@@ -37,15 +37,25 @@ export function AFacturerPanel({
   const [ouvert, setOuvert] = useState(true);
   const [tout, setTout] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  // Lignes retirées tout de suite (optimiste) ; remises si le serveur refuse.
+  const [retirees, setRetirees] = useState<Set<string>>(new Set());
+  useEffect(() => setRetirees(new Set()), [items]);
+  const restantes = items.filter((it) => !retirees.has(it.id));
 
-  if (items.length === 0 && nbExternal === 0) return null;
+  if (restantes.length === 0 && nbExternal === 0) return null;
 
   async function rienAFacturer(it: AFacturerItem) {
     setPending(it.id);
+    setRetirees((s) => new Set(s).add(it.id));
     const res = await setInterventionAFacturerAction(it.id, false);
     setPending(null);
     if (!res.ok) {
-      toast.error("Erreur", { description: res.error });
+      setRetirees((s) => {
+        const n = new Set(s);
+        n.delete(it.id);
+        return n;
+      });
+      toast.error("Modification refusée", { description: res.error });
       return;
     }
     toast.success("Marquée « rien à facturer »", {
@@ -54,7 +64,7 @@ export function AFacturerPanel({
     router.refresh();
   }
 
-  const visibles = tout ? items : items.slice(0, VISIBLES_PAR_DEFAUT);
+  const visibles = tout ? restantes : restantes.slice(0, VISIBLES_PAR_DEFAUT);
 
   return (
     <div
@@ -71,13 +81,13 @@ export function AFacturerPanel({
       >
         <AlertCircle className="size-4 shrink-0" />
         <span className="flex-1 font-medium">
-          {items.length > 0 && (
+          {restantes.length > 0 && (
             <>
-              {items.length} intervention{items.length > 1 ? "s" : ""} passée
-              {items.length > 1 ? "s" : ""} à facturer
+              {restantes.length} intervention{restantes.length > 1 ? "s" : ""} passée
+              {restantes.length > 1 ? "s" : ""} à facturer
             </>
           )}
-          {items.length > 0 && nbExternal > 0 && " · "}
+          {restantes.length > 0 && nbExternal > 0 && " · "}
           {nbExternal > 0 && (
             <>
               {nbExternal} RDV iPhone à rattacher
@@ -128,13 +138,13 @@ export function AFacturerPanel({
               ))}
             </ul>
           )}
-          {items.length > VISIBLES_PAR_DEFAUT && (
+          {restantes.length > VISIBLES_PAR_DEFAUT && (
             <button
               type="button"
               onClick={() => setTout((v) => !v)}
               className="text-xs underline-offset-2 hover:underline"
             >
-              {tout ? "Réduire" : `Voir tout (${items.length})`}
+              {tout ? "Réduire" : `Voir tout (${restantes.length})`}
             </button>
           )}
           {nbExternal > 0 && (

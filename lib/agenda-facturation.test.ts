@@ -42,3 +42,31 @@ describe("aujourdhuiParis", () => {
     expect(aujourdhuiParis(new Date("2026-01-15T12:00:00Z"))).toBe("2026-01-15");
   });
 });
+
+describe("statsDuMois (compteurs calculés côté client)", () => {
+  it("ne compte que le mois affiché, « à facturer » = passé hors « rien à facturer »", async () => {
+    const { statsDuMois } = await import("./agenda-facturation");
+    const ev = (kind: string, date_start: string, extra: Record<string, unknown> = {}) => ({ kind, date_start, date_end: date_start, ...extra });
+    const events = [
+      ev("intervention", "2026-09-10"),
+      ev("intervention", "2026-09-25"), // future → prévue
+      ev("intervention", "2026-09-12", { a_facturer: false }),
+      ev("intervention", "2026-09-05", { facture_emise: true }),
+      ev("intervention", "2026-08-30"), // autre mois
+      ev("facture_prestation", "2026-09-03"),
+      ev("devis_planifie", "2026-09-20"),
+      ev("visite_maintenance", "2026-09-21"),
+      ev("external", "2026-09-14"),
+      ev("external", "2026-09-30"),
+    ];
+    expect(statsDuMois(events, 2026, 9, AUJOURDHUI)).toEqual({
+      nbInterventions: 4,
+      nbInterventionsAFacturer: 1,
+      nbFactures: 1,
+      nbDevis: 1,
+      nbVisites: 1,
+      nbExternal: 2,
+      nbExternalAFacturer: 1,
+    });
+  });
+});

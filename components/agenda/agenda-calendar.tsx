@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, AlertCircle, Plus } from "lucide-react";
@@ -30,29 +31,46 @@ import {
   ajouterJours,
   comparerHoraire,
   creneauDepuisHeures,
+  dansFenetre,
   joursAvecEvenements,
   joursSemaine,
   libelleJour,
   libelleJourLong,
   libelleSemaine,
+  moisDe,
   naviguer,
   vueInitiale,
   type VueAgenda,
 } from "@/lib/agenda-vues";
-import { statutFacturation } from "@/lib/agenda-facturation";
+import { statsDuMois, statutFacturation } from "@/lib/agenda-facturation";
+import { appliquerChangement, type ChangementOptimiste } from "@/lib/agenda-optimiste";
 import { AFacturerPanel } from "@/components/agenda/a-facturer-panel";
 import { BandeauJours } from "@/components/agenda/bandeau-jours";
 import { useGlissement } from "@/components/agenda/use-glissement";
 import { EvenementDetailSheet } from "@/components/agenda/evenement-detail-sheet";
-import { RdvARattacherDialog } from "@/components/agenda/rdv-a-rattacher-dialog";
 import { VueGrilleHoraire } from "@/components/agenda/vue-grille-horaire";
 import { LigneEvenement, VueListe } from "@/components/agenda/vue-liste";
-import type { AgendaEvent, AgendaData } from "@/lib/actions/agenda";
 import {
-  QuickInterventionDialog,
-  type ClientOption,
-  type InterventionEditData,
+  getAgendaExternes,
+  type AgendaData,
+  type AgendaEvent,
+  type AgendaExternes,
+} from "@/lib/actions/agenda";
+import type {
+  ClientOption,
+  InterventionEditData,
 } from "@/components/agenda/quick-intervention-dialog";
+
+// Dialogues chargés à la première ouverture seulement : ils ne pèsent
+// pas sur l'affichage initial de l'agenda.
+const QuickInterventionDialog = dynamic(
+  () => import("@/components/agenda/quick-intervention-dialog").then((m) => m.QuickInterventionDialog),
+  { ssr: false },
+);
+const RdvARattacherDialog = dynamic(
+  () => import("@/components/agenda/rdv-a-rattacher-dialog").then((m) => m.RdvARattacherDialog),
+  { ssr: false },
+);
 
 const MOIS_FR = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -184,6 +202,7 @@ export function AgendaCalendar({
   couleursEvenements = {},
   date,
   vueUrl = null,
+  externesCle = 0,
 }: {
   data: AgendaData;
   clients: ClientOption[];
@@ -194,10 +213,57 @@ export function AgendaCalendar({
   date: string;
   /** Vue demandée dans l'URL (?vue=), null = dernier choix / défaut selon l'écran. */
   vueUrl?: string | null;
+  /** Change à chaque rendu serveur : force le rechargement des RDV iPhone après un refresh. */
+  externesCle?: number;
 }) {
   const router = useRouter();
-  const { year, month, events, stats } = data;
   const todayYmd = useMemo(() => toYmd(new Date()), []);
+  const { fenetre } = data;
+
+  // Date affichée. À l'intérieur de la fenêtre chargée (le mois et ses
+  // voisins), on change de jour, de semaine ou de mois sans repasser par
+  // le serveur (un swipe doit être instantané) ; on ne recharge qu'en
+  // sortant de la fenêtre. Mois et compteurs suivent la date affichée.
+  const [dateCourante, setDateCourante] = useState(date);
+  useEffect(() => setDateCourante(date), [date]);
+  const { year, month } = moisDe(dateCourante);
+
+  // Évènements = ceux du serveur + les mises à jour OPTIMISTES (un
+  // rendez-vous planifié, modifié, supprimé ou passé « rien à facturer »
+  // s'affiche tout de suite, le serveur confirme derrière) + les RDV
+  // iPhone, chargés après l'affichage pour ne jamais le retarder.
+  const [evenementsLocaux, setEvenementsLocaux] = useState<AgendaEvent[]>(data.events);
+  useEffect(() => setEvenementsLocaux(data.events), [data.events]);
+  const [externes, setExternes] = useState<AgendaExternes>({
+    events: [],
+    hasExternalCalendar: false,
+    error: null,
+  });
+  const { debut: fenetreDebut, fin: fenetreFin } = fenetre;
+  useEffect(() => {
+    let actif = true;
+    getAgendaExternes({ debut: fenetreDebut, fin: fenetreFin })
+      .then((r) => {
+        if (actif) setExternes(r);
+      })
+      .catch(() => {});
+    return () => {
+      actif = false;
+    };
+  }, [fenetreDebut, fenetreFin, externesCle]);
+  const events = useMemo(
+    () => [...evenementsLocaux, ...externes.events],
+    [evenementsLocaux, externes.events],
+  );
+  const stats = useMemo(
+    () => statsDuMois(events, year, month, todayYmd),
+    [events, year, month, todayYmd],
+  );
+  const appliquerOptimiste = (c: ChangementOptimiste) => {
+    const avant = evenementsLocaux;
+    setEvenementsLocaux((prev) => appliquerChangement(prev, c));
+    return () => setEvenementsLocaux(avant);
+  };
 
   // Petit écran (téléphone) : l'agenda principal se pilote au doigt,
   // l'écran est allégé (stats, légende et bandeau masqués, « + » flottant).
@@ -210,11 +276,6 @@ export function AgendaCalendar({
     return () => mq.removeEventListener("change", maj);
   }, []);
 
-  // Date affichée. À l'intérieur du mois déjà chargé, on change de jour
-  // ou de semaine sans repasser par le serveur (un swipe doit être
-  // instantané) ; on ne recharge que quand on sort du mois.
-  const [dateCourante, setDateCourante] = useState(date);
-  useEffect(() => setDateCourante(date), [date]);
   // Sens du dernier déplacement, pour la petite animation de glissement.
   const [glisse, setGlisse] = useState<"gauche" | "droite" | null>(null);
 
@@ -239,7 +300,8 @@ export function AgendaCalendar({
     try {
       localStorage.setItem(CLE_VUE_AGENDA, v);
     } catch {}
-    router.replace(`/agenda?vue=${v}&date=${dateCourante}`);
+    // Les données de la fenêtre sont déjà là : pas de rechargement.
+    window.history.replaceState(null, "", `/agenda?vue=${v}&date=${dateCourante}`);
   };
 
   // Fiche d'un évènement (vues jour / semaine / liste)
@@ -286,11 +348,19 @@ export function AgendaCalendar({
     heure_fin: string;
   } | null>(null);
   const [editTarget, setEditTarget] = useState<InterventionEditData | null>(null);
+  // Dialogues montés à la première ouverture (chargement différé).
+  const [quickMonte, setQuickMonte] = useState(false);
+  const [rattacherMonte, setRattacherMonte] = useState(false);
+  const ouvrirRattacher = () => {
+    setRattacherMonte(true);
+    setRattacherOuvert(true);
+  };
   // Vue Mois sur téléphone : un tap sur un jour montre ses rendez-vous
   // en dessous (au lieu d'ouvrir « Planifier » directement).
   const [jourSelectionne, setJourSelectionne] = useState<string | null>(null);
 
   const openQuickAdd = (ymd: string, heures?: { debut: number; fin: number }) => {
+    setQuickMonte(true);
     setEditTarget(null);
     setQuickAddDate(ymd);
     setQuickAddCreneau(heures ? creneauDepuisHeures(heures.debut, heures.fin) : null);
@@ -299,6 +369,7 @@ export function AgendaCalendar({
 
   const openEdit = (e: AgendaEvent) => {
     if (e.kind !== "intervention") return;
+    setQuickMonte(true);
     setEditTarget({
       id: e.id,
       client_id: e.client_id,
@@ -316,7 +387,7 @@ export function AgendaCalendar({
   const allerA = (d: string, sens: 1 | -1 | null = null) => {
     setGlisse(sens === 1 ? "gauche" : sens === -1 ? "droite" : null);
     const v = vue ?? "mois";
-    if (d.slice(0, 7) === `${year}-${String(month).padStart(2, "0")}`) {
+    if (dansFenetre(v, d, fenetre)) {
       setDateCourante(d);
       window.history.replaceState(null, "", `/agenda?vue=${v}&date=${d}`);
     } else {
@@ -382,7 +453,7 @@ export function AgendaCalendar({
         <button
           type="button"
           onClick={() =>
-            stats.nbExternalAFacturer > 0 ? setRattacherOuvert(true) : choisirVue("liste")
+            stats.nbExternalAFacturer > 0 ? ouvrirRattacher() : choisirVue("liste")
           }
           className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 sm:hidden"
         >
@@ -467,10 +538,10 @@ export function AgendaCalendar({
       </div>
 
       {/* Erreur calendrier externe */}
-      {data.externalCalendarError && (
+      {externes.error && (
         <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
           ⚠︎ Impossible de récupérer votre calendrier téléphone :{" "}
-          {data.externalCalendarError}
+          {externes.error}
         </div>
       )}
 
@@ -478,7 +549,7 @@ export function AgendaCalendar({
       <AFacturerPanel
         items={data.aFacturer}
         nbExternal={stats.nbExternalAFacturer}
-        onRattacher={() => setRattacherOuvert(true)}
+        onRattacher={ouvrirRattacher}
         className="max-sm:hidden"
       />
 
@@ -810,17 +881,20 @@ export function AgendaCalendar({
       </button>
       <div aria-hidden className="h-14 sm:hidden" />
 
-      <QuickInterventionDialog
-        open={quickAddOpen}
-        onOpenChange={(next) => {
-          setQuickAddOpen(next);
-          if (!next) setEditTarget(null);
-        }}
-        date={editTarget?.date_intervention ?? quickAddDate}
-        creneau={editTarget ? null : quickAddCreneau}
-        clients={clients}
-        editIntervention={editTarget ?? undefined}
-      />
+      {quickMonte && (
+        <QuickInterventionDialog
+          open={quickAddOpen}
+          onOpenChange={(next) => {
+            setQuickAddOpen(next);
+            if (!next) setEditTarget(null);
+          }}
+          date={editTarget?.date_intervention ?? quickAddDate}
+          creneau={editTarget ? null : quickAddCreneau}
+          clients={clients}
+          editIntervention={editTarget ?? undefined}
+          onOptimiste={appliquerOptimiste}
+        />
+      )}
 
       <CouleurEvenementDialog
         cible={cibleDialogue}
@@ -832,15 +906,18 @@ export function AgendaCalendar({
         onClose={() => setDetail(null)}
         style={styleDe}
         onModifier={openEdit}
-        onRattacher={() => setRattacherOuvert(true)}
+        onRattacher={ouvrirRattacher}
+        onOptimiste={appliquerOptimiste}
       />
 
-      <RdvARattacherDialog
-        open={rattacherOuvert}
-        onOpenChange={setRattacherOuvert}
-        rdvs={rdvARattacher}
-        aujourdhui={todayYmd}
-      />
+      {rattacherMonte && (
+        <RdvARattacherDialog
+          open={rattacherOuvert}
+          onOpenChange={setRattacherOuvert}
+          rdvs={rdvARattacher}
+          aujourdhui={todayYmd}
+        />
+      )}
     </div>
   );
 }

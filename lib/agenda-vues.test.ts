@@ -249,3 +249,23 @@ describe("disposition de la grille (bornes élargies, heures vides compactées)"
     expect(lignes.every((l) => l.height === 48 && !l.compacte)).toBe(true);
   });
 });
+
+describe("fenêtre de chargement (navigation sans recharger)", () => {
+  it("fenêtre d'un mois : 7 jours avant et après, étendue aux bornes demandées", async () => {
+    const { fenetreAgenda, dansFenetre } = await import("./agenda-vues");
+    expect(fenetreAgenda(2026, 9)).toEqual({ debut: "2026-08-25", fin: "2026-10-07" });
+    expect(fenetreAgenda(2026, 9, { depuis: "2026-08-01", jusquau: "2026-11-15" })).toEqual({ debut: "2026-08-01", fin: "2026-11-15" });
+    // bornes plus étroites que la fenêtre : ignorées
+    expect(fenetreAgenda(2026, 9, { depuis: "2026-09-10", jusquau: "2026-09-20" })).toEqual({ debut: "2026-08-25", fin: "2026-10-07" });
+
+    const f = { debut: "2026-08-01", fin: "2026-10-31" };
+    expect(dansFenetre("jour", "2026-10-31", f)).toBe(true);
+    expect(dansFenetre("jour", "2026-11-01", f)).toBe(false);
+    // semaine du 26 oct. → 1er nov. : déborde
+    expect(dansFenetre("semaine", "2026-10-28", f)).toBe(false);
+    expect(dansFenetre("semaine", "2026-10-14", f)).toBe(true);
+    expect(dansFenetre("mois", "2026-10-15", f)).toBe(true);
+    expect(dansFenetre("mois", "2026-11-15", f)).toBe(false);
+    expect(dansFenetre("liste", "2027-01-01", f)).toBe(true);
+  });
+});

@@ -16,6 +16,16 @@ type Client = Database["public"]["Tables"]["clients"]["Row"];
 /**
  * Liste des clients avec recherche optionnelle (sur nom, ville, email).
  */
+/** Id + nom seulement : pour les sélecteurs (agenda), sans charger les fiches. */
+export async function listClientsLegers(): Promise<Array<{ id: string; nom: string }>> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("clients")
+    .select("id, nom")
+    .order("nom", { ascending: true });
+  return data ?? [];
+}
+
 export async function listClients(params?: { search?: string; type?: string }) {
   const supabase = createClient();
   let query = supabase

@@ -41,3 +41,44 @@ export function estAFacturer(e: EvenementFacturable, aujourdhui: string): boolea
 export function aujourdhuiParis(maintenant: Date = new Date()): string {
   return maintenant.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" });
 }
+
+export type AgendaStats = {
+  nbInterventions: number;
+  nbInterventionsAFacturer: number;
+  nbFactures: number;
+  nbDevis: number;
+  nbVisites: number;
+  nbExternal: number;
+  /** RDV iPhone du mois, passés, encore à facturer (non liés à une facture) */
+  nbExternalAFacturer: number;
+};
+
+type EvenementPourStats = EvenementFacturable & { date_end: string };
+
+/**
+ * Compteurs du mois affiché, calculés côté client à partir des évènements
+ * chargés : ils suivent la navigation (swipe d'un mois à l'autre) sans
+ * repasser par le serveur.
+ */
+export function statsDuMois(
+  events: EvenementPourStats[],
+  year: number,
+  month: number,
+  aujourdhui: string,
+): AgendaStats {
+  const debut = `${year}-${String(month).padStart(2, "0")}-01`;
+  const finExclusive =
+    month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const duMois = events.filter((e) => e.date_end >= debut && e.date_start < finExclusive);
+  const interventions = duMois.filter((e) => e.kind === "intervention");
+  const externes = duMois.filter((e) => e.kind === "external");
+  return {
+    nbInterventions: interventions.length,
+    nbInterventionsAFacturer: interventions.filter((e) => estAFacturer(e, aujourdhui)).length,
+    nbFactures: duMois.filter((e) => e.kind === "facture_prestation").length,
+    nbDevis: duMois.filter((e) => e.kind === "devis_planifie").length,
+    nbVisites: duMois.filter((e) => e.kind === "visite_maintenance").length,
+    nbExternal: externes.length,
+    nbExternalAFacturer: externes.filter((e) => estAFacturer(e, aujourdhui)).length,
+  };
+}
