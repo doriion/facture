@@ -260,7 +260,7 @@ export function AgendaCalendar({
   };
 
   const openEdit = (e: AgendaEvent) => {
-    if (e.kind !== "intervention" || !e.client_id) return;
+    if (e.kind !== "intervention") return;
     setEditTarget({
       id: e.id,
       client_id: e.client_id,

@@ -23,8 +23,18 @@ export const LABELS_TYPE_INTERVENTION = {
  * Le bilan kg ajoutés / kg récupérés est obligatoire pour les contrôles
  * et les bilans annuels.
  */
+/**
+ * Le client est OPTIONNEL : on peut poser un créneau dans l'agenda avant
+ * de savoir pour qui, et rattacher le client plus tard. Vide / null =
+ * « client à renseigner » (la facturation, elle, exige un client).
+ */
 export const interventionSchema = z.object({
-  client_id: z.string().uuid("Sélectionnez un client."),
+  client_id: z
+    .string()
+    .uuid("Client invalide.")
+    .nullable()
+    .optional()
+    .or(z.literal("")),
   date_intervention: z.string().min(1, "Date obligatoire."),
   date_fin: z.string().optional().or(z.literal("")),
   heure_debut: z.string().optional().or(z.literal("")),

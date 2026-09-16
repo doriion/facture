@@ -128,6 +128,13 @@ describe("buildFacturePrefill", () => {
     });
   });
 
+  it("intervention sans client : client vide (le formulaire exige alors un choix), rien ne plante", () => {
+    const p = buildFacturePrefill(intervention({ client_id: null }));
+    expect(p.client_id).toBe("");
+    expect(p.date_prestation).toBe("2026-07-01");
+    expect(p.lignes).toHaveLength(1);
+  });
+
   it("laisse la date de fin vide pour une intervention d'un jour", () => {
     expect(buildFacturePrefill(intervention()).date_prestation_fin).toBe("");
     expect(

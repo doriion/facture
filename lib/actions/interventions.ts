@@ -118,7 +118,7 @@ export async function createInterventionAction(
     .from("interventions")
     .insert({
       user_id: user.id,
-      client_id: v.client_id,
+      client_id: v.client_id || null,
       date_intervention: v.date_intervention,
       date_fin: v.date_fin || null,
       heure_debut: v.heure_debut || null,
@@ -171,7 +171,7 @@ export async function updateInterventionAction(
   const { error } = await supabase
     .from("interventions")
     .update({
-      client_id: v.client_id,
+      client_id: v.client_id || null,
       date_intervention: v.date_intervention,
       date_fin: v.date_fin || null,
       heure_debut: v.heure_debut || null,
@@ -253,7 +253,8 @@ export async function deleteInterventionAction(
 export async function quickEditInterventionAction(
   id: string,
   partial: {
-    client_id: string;
+    /** null = client à renseigner plus tard */
+    client_id: string | null;
     date_intervention: string;
     date_fin: string | null;
     heure_debut: string | null;

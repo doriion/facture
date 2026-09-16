@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Link2, MapPin, Navigation, Pencil, Phone, Search } from "lucide-react";
+import { ExternalLink, Link2, MapPin, Navigation, Pencil, Phone, Search, UserPlus } from "lucide-react";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
 import { contactEvenement, lienAppel, lienItineraire } from "@/lib/agenda-contact";
 import { heureCourte, libelleJourLong } from "@/lib/agenda-vues";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { StatutEvenementBadge, libelleEvenement } from "@/components/agenda/evenement-commun";
+import {
+  StatutEvenementBadge,
+  clientARenseigner,
+  libelleEvenement,
+} from "@/components/agenda/evenement-commun";
 
 /**
  * Fiche d'un évènement (tiroir du bas sur mobile) : quand, qui, où —
@@ -64,6 +68,28 @@ export function EvenementDetailSheet({
                 </div>
               </div>
             </div>
+
+            {/* Intervention sans client : on le dit clairement et on
+                propose de l'ajouter (même dialogue que « Modifier »). */}
+            {clientARenseigner(e) && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-900 dark:border-orange-700 dark:bg-orange-950/40 dark:text-orange-100">
+                <span>
+                  Aucun client rattaché — à renseigner avant de facturer.
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-orange-400 bg-background"
+                  onClick={() => {
+                    onClose();
+                    onModifier(e);
+                  }}
+                >
+                  <UserPlus className="size-4" />
+                  Ajouter un client
+                </Button>
+              </div>
+            )}
 
             {(contact.adresse || contact.telephone || contact.rechercheLibelle) && (
               <dl className="space-y-1 text-sm">

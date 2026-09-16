@@ -1110,7 +1110,7 @@ export type Database = {
       };
       interventions: {
         Row: {
-          client_id: string;
+          client_id: string | null;
           created_at: string;
           date_intervention: string;
           date_fin: string | null;
@@ -1139,7 +1139,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
-          client_id: string;
+          client_id?: string | null;
           created_at?: string;
           date_intervention: string;
           date_fin?: string | null;
@@ -1168,7 +1168,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
-          client_id?: string;
+          client_id?: string | null;
           created_at?: string;
           date_intervention?: string;
           date_fin?: string | null;
