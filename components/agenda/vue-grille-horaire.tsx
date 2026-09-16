@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus } from "lucide-react";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
@@ -70,6 +70,9 @@ export function VueGrilleHoraire({
     debut: number;
     fin: number;
   } | null>(null);
+  // Point de départ du pointeur : un mouvement surtout horizontal est un
+  // swipe (changer de jour / de semaine), pas une sélection de créneau.
+  const origine = useRef<{ x: number; y: number } | null>(null);
 
   const heureSousPointeur = (ev: React.PointerEvent<HTMLDivElement>) => {
     const rect = ev.currentTarget.getBoundingClientRect();
@@ -83,12 +86,27 @@ export function VueGrilleHoraire({
     if (ev.button !== 0) return;
     if ((ev.target as HTMLElement).closest("[data-evenement]")) return;
     ev.currentTarget.setPointerCapture(ev.pointerId);
+    origine.current = { x: ev.clientX, y: ev.clientY };
     const h = heureSousPointeur(ev);
     setSelection({ jour, debut: h, fin: h });
   };
 
   const etendreSelection = (jour: string) => (ev: React.PointerEvent<HTMLDivElement>) => {
     if (!selection || selection.jour !== jour) return;
+    const o = origine.current;
+    if (o) {
+      const dx = Math.abs(ev.clientX - o.x);
+      const dy = Math.abs(ev.clientY - o.y);
+      if (dx > 24 && dx > dy) {
+        // Swipe horizontal : on abandonne la sélection, le conteneur
+        // gère le changement de jour / semaine.
+        setSelection(null);
+        if (ev.currentTarget.hasPointerCapture(ev.pointerId)) {
+          ev.currentTarget.releasePointerCapture(ev.pointerId);
+        }
+        return;
+      }
+    }
     const h = heureSousPointeur(ev);
     if (h !== selection.fin) setSelection({ ...selection, fin: h });
   };

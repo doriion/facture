@@ -26,8 +26,9 @@ export function normaliserVue(v: unknown): VueAgenda | null {
 
 /**
  * Vue au premier affichage : celle de l'URL, sinon le dernier choix
- * mémorisé, sinon LISTE sur mobile (lisible au doigt) et MOIS sur
- * desktop (comme avant).
+ * mémorisé, sinon JOUR sur mobile (agenda principal : « qu'est-ce que
+ * j'ai aujourd'hui », avec le bandeau des jours pour naviguer) et MOIS
+ * sur desktop (comme avant).
  */
 export function vueInitiale(args: {
   depuisUrl?: unknown;
@@ -37,7 +38,7 @@ export function vueInitiale(args: {
   return (
     normaliserVue(args.depuisUrl) ??
     normaliserVue(args.memorisee) ??
-    (args.mobile ? "liste" : "mois")
+    (args.mobile ? "jour" : "mois")
   );
 }
 
@@ -296,6 +297,18 @@ export function creneauDepuisHeures(
   const b = fin === undefined ? debut + DUREE_DEFAUT_MIN / 60 : Math.max(debut, fin);
   const finEffective = b <= a ? a + DUREE_DEFAUT_MIN / 60 : b;
   return { heure_debut: formatHeure(a), heure_fin: formatHeure(finEffective) };
+}
+
+/** Jours (parmi ceux donnés) qui ont au moins un évènement — points du bandeau des jours. */
+export function joursAvecEvenements<T extends EvenementMinimal>(
+  evenements: T[],
+  jours: string[],
+): Set<string> {
+  const charges = new Set<string>();
+  for (const jour of jours) {
+    if (evenements.some((e) => e.date_start <= jour && e.date_end >= jour)) charges.add(jour);
+  }
+  return charges;
 }
 
 /** Évènements sans heure (journée entière) couvrant le jour. */

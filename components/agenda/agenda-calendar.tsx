@@ -27,17 +27,24 @@ import {
   JOURS_LISTE,
   LABELS_VUE,
   VUES_AGENDA,
+  ajouterJours,
+  comparerHoraire,
   creneauDepuisHeures,
+  joursAvecEvenements,
+  joursSemaine,
+  libelleJour,
   libelleJourLong,
   libelleSemaine,
   naviguer,
   vueInitiale,
   type VueAgenda,
 } from "@/lib/agenda-vues";
+import { BandeauJours } from "@/components/agenda/bandeau-jours";
+import { useGlissement } from "@/components/agenda/use-glissement";
 import { EvenementDetailSheet } from "@/components/agenda/evenement-detail-sheet";
 import { RdvARattacherDialog } from "@/components/agenda/rdv-a-rattacher-dialog";
 import { VueGrilleHoraire } from "@/components/agenda/vue-grille-horaire";
-import { VueListe } from "@/components/agenda/vue-liste";
+import { LigneEvenement, VueListe } from "@/components/agenda/vue-liste";
 import type { AgendaEvent, AgendaData } from "@/lib/actions/agenda";
 import {
   QuickInterventionDialog,
@@ -181,6 +188,25 @@ export function AgendaCalendar({
   const router = useRouter();
   const { year, month, events, stats } = data;
 
+  // Petit écran (téléphone) : l'agenda principal se pilote au doigt,
+  // l'écran est allégé (stats, légende et bandeau masqués, « + » flottant).
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const maj = () => setMobile(mq.matches);
+    maj();
+    mq.addEventListener("change", maj);
+    return () => mq.removeEventListener("change", maj);
+  }, []);
+
+  // Date affichée. À l'intérieur du mois déjà chargé, on change de jour
+  // ou de semaine sans repasser par le serveur (un swipe doit être
+  // instantané) ; on ne recharge que quand on sort du mois.
+  const [dateCourante, setDateCourante] = useState(date);
+  useEffect(() => setDateCourante(date), [date]);
+  // Sens du dernier déplacement, pour la petite animation de glissement.
+  const [glisse, setGlisse] = useState<"gauche" | "droite" | null>(null);
+
   // Vue : URL > dernier choix (localStorage) > liste sur mobile, mois
   // sur desktop. Sans indication dans l'URL, on attend le montage pour
   // lire le choix mémorisé (pas de flash d'une autre vue).
@@ -202,7 +228,7 @@ export function AgendaCalendar({
     try {
       localStorage.setItem(CLE_VUE_AGENDA, v);
     } catch {}
-    router.replace(`/agenda?vue=${v}&date=${date}`);
+    router.replace(`/agenda?vue=${v}&date=${dateCourante}`);
   };
 
   // Fiche d'un évènement (vues jour / semaine / liste)
@@ -251,6 +277,9 @@ export function AgendaCalendar({
     heure_fin: string;
   } | null>(null);
   const [editTarget, setEditTarget] = useState<InterventionEditData | null>(null);
+  // Vue Mois sur téléphone : un tap sur un jour montre ses rendez-vous
+  // en dessous (au lieu d'ouvrir « Planifier » directement).
+  const [jourSelectionne, setJourSelectionne] = useState<string | null>(null);
 
   const openQuickAdd = (ymd: string, heures?: { debut: number; fin: number }) => {
     setEditTarget(null);
@@ -274,18 +303,30 @@ export function AgendaCalendar({
     setQuickAddOpen(true);
   };
 
-  const allerA = (d: string) => {
-    router.push(`/agenda?vue=${vue ?? "mois"}&date=${d}`);
+  const allerA = (d: string, sens: 1 | -1 | null = null) => {
+    setGlisse(sens === 1 ? "gauche" : sens === -1 ? "droite" : null);
+    const v = vue ?? "mois";
+    if (d.slice(0, 7) === `${year}-${String(month).padStart(2, "0")}`) {
+      setDateCourante(d);
+      window.history.replaceState(null, "", `/agenda?vue=${v}&date=${d}`);
+    } else {
+      router.push(`/agenda?vue=${v}&date=${d}`);
+    }
   };
-  const prevMonth = () => allerA(naviguer(vue ?? "mois", date, -1));
-  const nextMonth = () => allerA(naviguer(vue ?? "mois", date, 1));
+  const prevMonth = () => allerA(naviguer(vue ?? "mois", dateCourante, -1), -1);
+  const nextMonth = () => allerA(naviguer(vue ?? "mois", dateCourante, 1), 1);
   const goToday = () => allerA(todayYmd);
+  // Swipe gauche / droite sur le contenu : jour, semaine ou mois suivant.
+  const glissement = useGlissement((sens) => {
+    if (!vue || vue === "liste") return;
+    allerA(naviguer(vue, dateCourante, sens), sens);
+  });
 
   const titre =
     vue === "jour"
-      ? libelleJourLong(date)
+      ? libelleJourLong(dateCourante)
       : vue === "semaine"
-        ? libelleSemaine(date)
+        ? libelleSemaine(dateCourante)
         : vue === "liste"
           ? `${JOURS_LISTE} prochains jours`
           : `${MOIS_FR[month - 1]} ${year}`;
@@ -303,8 +344,8 @@ export function AgendaCalendar({
 
   return (
     <div className="space-y-4">
-      {/* Stats du mois */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+      {/* Stats du mois (desktop) */}
+      <div className="hidden grid-cols-2 gap-3 sm:grid md:grid-cols-4">
         <StatCard
           label="À facturer"
           value={stats.nbInterventionsAFacturer + stats.nbExternalAFacturer}
@@ -327,6 +368,21 @@ export function AgendaCalendar({
         <StatCard label="Devis planifiés" value={stats.nbDevis} hint="travaux prévus" />
         <StatCard label="Visites maint." value={stats.nbVisites} hint="contrats" />
       </div>
+
+      {/* Mobile : une seule puce « à facturer » remplace les stats et le bandeau */}
+      {stats.nbInterventionsAFacturer + stats.nbExternalAFacturer > 0 && (
+        <button
+          type="button"
+          onClick={() =>
+            stats.nbExternalAFacturer > 0 ? setRattacherOuvert(true) : choisirVue("liste")
+          }
+          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 sm:hidden"
+        >
+          <AlertCircle className="size-3.5" />
+          {stats.nbInterventionsAFacturer + stats.nbExternalAFacturer} à facturer ce mois
+          {stats.nbExternalAFacturer > 0 && " · RDV iPhone à rattacher"}
+        </button>
+      )}
 
       {/* Toolbar : navigation mois.
           Mobile : 2 lignes (nav + bouton Planifier en haut, légende dessous).
@@ -362,13 +418,6 @@ export function AgendaCalendar({
           <h2 className="ml-auto text-sm font-semibold tracking-tight sm:ml-2 sm:text-lg">
             {titre}
           </h2>
-          <Button
-            size="sm"
-            onClick={() => openQuickAdd(todayYmd)}
-            className="sm:hidden"
-          >
-            <Plus className="size-4" />
-          </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Sélecteur de vue : Jour | Semaine | Mois | Liste */}
@@ -403,7 +452,7 @@ export function AgendaCalendar({
             <Plus className="size-4" />
             Planifier
           </Button>
-          <div className={cn(vue !== "mois" && "max-sm:hidden")}>
+          <div className="max-sm:hidden">
             <Legend couleurs={couleurs} />
           </div>
         </div>
@@ -430,7 +479,7 @@ export function AgendaCalendar({
             }
           }}
           className={cn(
-            "flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100",
+            "flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 max-sm:hidden dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100",
             stats.nbExternalAFacturer > 0 &&
               "cursor-pointer transition-colors hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-amber-950/60",
           )}
@@ -469,14 +518,35 @@ export function AgendaCalendar({
         </div>
       )}
 
-      {/* Vues jour / semaine / liste ; le mois garde sa grille ci-dessous. */}
+      {/* Vues jour / semaine / liste ; le mois garde sa grille ci-dessous.
+          Le conteneur écoute le swipe ; la clé relance la petite
+          animation de glissement à chaque changement de date. */}
+      <div {...glissement} className="touch-pan-y">
+      <div
+        key={`${vue}-${dateCourante}`}
+        className={cn(
+          "space-y-3",
+          glisse === "gauche" && "animate-in fade-in slide-in-from-right-6 duration-200",
+          glisse === "droite" && "animate-in fade-in slide-in-from-left-6 duration-200",
+        )}
+        onAnimationEnd={() => setGlisse(null)}
+      >
       {vue === null && (
         <div className="h-64 animate-pulse rounded-lg border bg-muted/30" aria-hidden="true" />
+      )}
+      {vue === "jour" && (
+        <BandeauJours
+          date={dateCourante}
+          aujourdhui={todayYmd}
+          joursCharges={joursAvecEvenements(events, joursSemaine(dateCourante))}
+          onChoisir={(d) => allerA(d, d > dateCourante ? 1 : d < dateCourante ? -1 : null)}
+          onSemaine={(sens) => allerA(ajouterJours(dateCourante, 7 * sens), sens)}
+        />
       )}
       {(vue === "jour" || vue === "semaine") && (
         <VueGrilleHoraire
           mode={vue}
-          date={date}
+          date={dateCourante}
           aujourdhui={todayYmd}
           events={events}
           holidays={holidays}
@@ -526,13 +596,14 @@ export function AgendaCalendar({
               return (
                 <div
                   key={idx}
-                  onClick={() => openQuickAdd(ymd)}
+                  onClick={() => (mobile ? setJourSelectionne(ymd) : openQuickAdd(ymd))}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(ev) => {
                     if (ev.key === "Enter" || ev.key === " ") {
                       ev.preventDefault();
-                      openQuickAdd(ymd);
+                      if (mobile) setJourSelectionne(ymd);
+                      else openQuickAdd(ymd);
                     }
                   }}
                   title={
@@ -552,6 +623,7 @@ export function AgendaCalendar({
                     idx % 7 === 6 && "border-r-0",
                     idx >= 35 && "border-b-0",
                     !isCurrentMonth && "bg-muted/20 text-muted-foreground/60",
+                    mobile && jourSelectionne === ymd && "ring-2 ring-inset ring-primary",
                     isCurrentMonth && (isHoliday || isWeekend) &&
                       "bg-[color-mix(in_srgb,var(--teinte)_55%,transparent)] dark:bg-[color-mix(in_srgb,var(--teinte)_22%,transparent)]",
                   )}
@@ -707,7 +779,42 @@ export function AgendaCalendar({
       </Card>
       )}
 
-      <p className="text-xs text-muted-foreground">
+      {/* Mois sur téléphone : les rendez-vous du jour touché */}
+      {vue === "mois" && mobile && (
+        <div className="space-y-1.5">
+          {jourSelectionne ? (
+            <>
+              <h3 className="px-1 text-sm font-semibold">
+                {libelleJour(jourSelectionne, todayYmd)}
+              </h3>
+              {(() => {
+                const duJour = events
+                  .filter((e) => eventCoversDate(e, jourSelectionne))
+                  .sort(comparerHoraire);
+                return duJour.length > 0 ? (
+                  <ul className="divide-y overflow-hidden rounded-lg border bg-card">
+                    {duJour.map((e) => (
+                      <LigneEvenement key={`${e.kind}-${e.id}`} e={e} style={styleDe} onOuvrir={setDetail} />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-1 text-sm text-muted-foreground">
+                    Rien ce jour-là — le bouton + planifie ici.
+                  </p>
+                );
+              })()}
+            </>
+          ) : (
+            <p className="px-1 text-xs text-muted-foreground">
+              Touchez un jour pour voir ses rendez-vous.
+            </p>
+          )}
+        </div>
+      )}
+      </div>
+      </div>
+
+      <p className="hidden text-xs text-muted-foreground sm:block">
         Cliquez sur une case du calendrier pour planifier une intervention,
         ou sur un évènement existant pour ouvrir sa fiche. Tout ce qui est
         en{" "}
@@ -719,6 +826,25 @@ export function AgendaCalendar({
         <span className="font-medium">⚠︎</span> est <strong>à facturer</strong> — interventions sans facture
         associée ou RDV notés sur l'iPhone (préfixe 📱).
       </p>
+
+      {/* Bouton flottant (téléphone) : planifier sur le jour affiché ou touché */}
+      <button
+        type="button"
+        aria-label="Planifier une intervention"
+        onClick={() =>
+          openQuickAdd(
+            vue === "mois"
+              ? (jourSelectionne ?? todayYmd)
+              : vue === "liste" || vue === null
+                ? todayYmd
+                : dateCourante,
+          )
+        }
+        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-90 sm:hidden"
+      >
+        <Plus className="size-7" />
+      </button>
+      <div aria-hidden className="h-14 sm:hidden" />
 
       <QuickInterventionDialog
         open={quickAddOpen}
