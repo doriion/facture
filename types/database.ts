@@ -420,6 +420,33 @@ export type Database = {
           },
         ];
       };
+      agenda_couleurs_evenements: {
+        Row: {
+          id: string;
+          user_id: string;
+          evenement_cle: string;
+          couleur: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          evenement_cle: string;
+          couleur: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          evenement_cle?: string;
+          couleur?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       bareme_entretien_postes: {
         Row: {
           id: string;

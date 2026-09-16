@@ -11,11 +11,17 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getFrenchHolidays } from "@/lib/holidays-fr";
 import {
-  getColorClasses,
-  getSwatchClass,
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
   DEFAULT_AGENDA_COULEURS,
+  cleEvenement,
+  couleurEvenement,
+  styleEvenement,
+  type AgendaCategory,
   type AgendaCouleurs,
+  type CouleursEvenements,
 } from "@/lib/agenda-colors";
+import { CouleurEvenementDialog } from "@/components/agenda/couleur-evenement-dialog";
 import type { AgendaEvent, AgendaData } from "@/lib/actions/agenda";
 import {
   QuickInterventionDialog,
@@ -60,41 +66,44 @@ function eventCoversDate(e: AgendaEvent, ymd: string): boolean {
   return ymd >= e.date_start && ymd <= e.date_end;
 }
 
-function eventColorClasses(e: AgendaEvent, couleurs: AgendaCouleurs): string {
+/**
+ * Catégorie de couleur d'un évènement (la logique métier est inchangée :
+ * une intervention facturée prend la couleur « facturée », un RDV
+ * iPhone facturé aussi, une facture en retard la couleur « en retard »).
+ * Une facture annulée garde son rendu barré, sans couleur choisie.
+ */
+function eventCategorie(e: AgendaEvent): AgendaCategory | "annulee" {
   if (e.kind === "intervention") {
-    return getColorClasses(
-      e.facture_emise
-        ? couleurs.intervention_facturee
-        : couleurs.intervention_a_facturer,
-    );
+    return e.facture_emise ? "intervention_facturee" : "intervention_a_facturer";
   }
   if (e.kind === "facture_prestation") {
-    // Le statut nuance la couleur de base. Pour conserver une lecture
-    // métier essentielle, on garde les statuts spéciaux en hard-coded
-    // (retard = rouge, annulée = barré) ; le statut "courant" utilise
-    // la couleur utilisateur.
-    if (e.statut === "retard") {
-      return "bg-red-100 text-red-900 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-100";
-    }
-    if (e.statut === "annulee") {
-      return "bg-slate-100 text-slate-500 line-through hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400";
-    }
-    return getColorClasses(couleurs.facture);
+    if (e.statut === "retard") return "retard";
+    if (e.statut === "annulee") return "annulee";
+    return "facture";
   }
-  if (e.kind === "devis_planifie") {
-    return getColorClasses(couleurs.devis);
-  }
+  if (e.kind === "devis_planifie") return "devis";
   if (e.kind === "external") {
-    // RDV iPhone facturé = vert (mêmes classes que les interventions
-    // facturées) ; sinon couleur "à facturer" choisie par l'utilisateur.
-    return getColorClasses(
-      e.facture_emise
-        ? couleurs.intervention_facturee
-        : couleurs.external,
-    );
+    return e.facture_emise ? "intervention_facturee" : "external";
   }
-  // visite_maintenance
-  return getColorClasses(couleurs.maintenance);
+  return "maintenance";
+}
+
+const CLASSES_ANNULEE =
+  "bg-slate-100 text-slate-500 line-through hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400";
+
+/**
+ * Style inline de la pastille : la couleur propre de l'évènement si
+ * elle existe, sinon celle de son type, avec un texte sombre ou clair
+ * choisi automatiquement pour rester lisible.
+ */
+function eventStyle(
+  e: AgendaEvent,
+  couleurs: AgendaCouleurs,
+  parEvenement: CouleursEvenements,
+): React.CSSProperties | undefined {
+  const cat = eventCategorie(e);
+  if (cat === "annulee") return undefined;
+  return styleEvenement(couleurEvenement(cat, cleEvenement(e), couleurs, parEvenement));
 }
 
 /** Convertit "HH:MM:SS" en "HH:MM" pour un affichage compact. */
@@ -139,13 +148,32 @@ export function AgendaCalendar({
   data,
   clients,
   couleurs = DEFAULT_AGENDA_COULEURS,
+  couleursEvenements = {},
 }: {
   data: AgendaData;
   clients: ClientOption[];
   couleurs?: AgendaCouleurs;
+  /** Couleurs propres à certains évènements (clé « kind:id »). */
+  couleursEvenements?: CouleursEvenements;
 }) {
   const router = useRouter();
   const { year, month, events, stats } = data;
+
+  // Couleur d'un évènement précis (dialogue)
+  const [cibleCouleur, setCibleCouleur] = useState<AgendaEvent | null>(null);
+  const cibleDialogue = useMemo(() => {
+    if (!cibleCouleur) return null;
+    const cat = eventCategorie(cibleCouleur);
+    if (cat === "annulee") return null;
+    const cle = cleEvenement(cibleCouleur);
+    return {
+      cle,
+      libelle: eventShortLabel(cibleCouleur),
+      couleurActuelle: couleurEvenement(cat, cle, couleurs, couleursEvenements),
+      couleurDuType: couleurs[cat],
+      aCouleurPropre: cle in couleursEvenements,
+    };
+  }, [cibleCouleur, couleurs, couleursEvenements]);
 
   const todayYmd = useMemo(() => toYmd(new Date()), []);
 
@@ -318,8 +346,9 @@ export function AgendaCalendar({
               </p>
             )}
             <p className="text-xs opacity-80">
-              Repérables en orange dans le calendrier ci-dessous (préfixe ⚠︎📱
-              pour les RDV iPhone ; ✓📱 = déjà facturés).
+              Repérables à leur couleur « À facturer » dans le calendrier
+              ci-dessous (préfixe ⚠︎📱 pour les RDV iPhone ; ✓📱 = déjà
+              facturés).
             </p>
           </div>
         </div>
@@ -333,10 +362,7 @@ export function AgendaCalendar({
             {JOURS_FR_FULL.map((j, i) => (
               <div
                 key={j}
-                className={cn(
-                  "px-1 py-2 sm:px-2",
-                  (i === 5 || i === 6) && "text-orange-700 dark:text-orange-400",
-                )}
+                className={cn("px-1 py-2 sm:px-2", (i === 5 || i === 6) && "font-semibold")}
               >
                 <span className="sm:hidden">{JOURS_FR_SHORT[i]}</span>
                 <span className="hidden sm:inline">{j}</span>
@@ -371,13 +397,20 @@ export function AgendaCalendar({
                       ? `${holidayName} — Cliquez pour planifier`
                       : "Cliquez pour planifier une intervention"
                   }
+                  // Teinte de la case (week-end / férié) : la couleur
+                  // choisie, atténuée — plus légère en mode sombre.
+                  style={
+                    isCurrentMonth && (isHoliday || isWeekend)
+                      ? ({ "--teinte": isHoliday ? couleurs.ferie : couleurs.weekend } as React.CSSProperties)
+                      : undefined
+                  }
                   className={cn(
                     "group relative min-h-[70px] cursor-pointer border-b border-r p-1 text-xs transition-colors hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[110px] sm:p-1.5",
                     idx % 7 === 6 && "border-r-0",
                     idx >= 35 && "border-b-0",
                     !isCurrentMonth && "bg-muted/20 text-muted-foreground/60",
-                    isCurrentMonth && isWeekend && !isHoliday && "bg-orange-50/60 dark:bg-orange-950/10",
-                    isCurrentMonth && isHoliday && "bg-rose-50 dark:bg-rose-950/20",
+                    isCurrentMonth && (isHoliday || isWeekend) &&
+                      "bg-[color-mix(in_srgb,var(--teinte)_55%,transparent)] dark:bg-[color-mix(in_srgb,var(--teinte)_22%,transparent)]",
                   )}
                 >
                   <div className="mb-1 flex items-center justify-between">
@@ -385,8 +418,7 @@ export function AgendaCalendar({
                       className={cn(
                         "inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium",
                         isToday && "bg-primary text-primary-foreground",
-                        !isToday && isHoliday && "text-rose-700 dark:text-rose-300",
-                        !isToday && !isHoliday && isWeekend && "text-orange-700 dark:text-orange-400",
+                        !isToday && (isHoliday || isWeekend) && "font-semibold",
                       )}
                     >
                       {day.getDate()}
@@ -411,18 +443,51 @@ export function AgendaCalendar({
                     </div>
                   </div>
                   {holidayName && isCurrentMonth && (
-                    <div className="mb-1 truncate text-[10px] font-medium uppercase tracking-wide text-rose-700 dark:text-rose-400">
+                    <div className="mb-1 truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       {holidayName}
                     </div>
                   )}
                   <div className="space-y-0.5">
                     {dayEvents.slice(0, 3).map((e, evIdx) => {
                       const isIntervention = e.kind === "intervention";
+                      const styleEv = eventStyle(e, couleurs, couleursEvenements);
                       const commonClass = cn(
-                        "block w-full text-left line-clamp-1 break-words rounded px-1 py-0.5 text-[10px] leading-tight transition-colors sm:line-clamp-2 sm:px-1.5 sm:text-[11px]",
-                        eventColorClasses(e, couleurs),
-                        // 3e évènement masqué sur mobile pour gagner de la place
-                        evIdx === 2 && "hidden sm:block",
+                        "block w-full text-left line-clamp-1 break-words rounded px-1 py-0.5 pr-4 text-[10px] leading-tight transition-[filter] hover:brightness-95 dark:hover:brightness-110 sm:line-clamp-2 sm:px-1.5 sm:pr-4 sm:text-[11px]",
+                        // Liseré discret : une couleur très sombre reste
+                        // repérable sur le fond du mode sombre (et une
+                        // très claire sur le mode clair).
+                        styleEv !== undefined && "ring-1 ring-inset ring-black/10 dark:ring-white/20",
+                        styleEv === undefined && CLASSES_ANNULEE,
+                      );
+                      // Bouton « couleur de cet évènement » : à droite de
+                      // la pastille (frère, pas enfant : un bouton dans un
+                      // lien n'est pas du HTML valide). Discret sur
+                      // desktop (visible au survol), toujours visible mais
+                      // petit sur mobile.
+                      const boutonCouleur = styleEv && (
+                        <button
+                          type="button"
+                          aria-label="Couleur de cet évènement"
+                          title="Couleur de cet évènement"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setCibleCouleur(e);
+                          }}
+                          className="absolute right-1 top-1/2 size-2.5 -translate-y-1/2 rounded-full border border-black/30 bg-white/80 opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100 sm:opacity-0 sm:group-hover/ev:opacity-100"
+                        />
+                      );
+                      const envelopper = (contenu: React.ReactNode) => (
+                        <div
+                          key={`${e.kind}-${e.id}-${ymd}`}
+                          className={cn(
+                            "group/ev relative",
+                            // 3e évènement masqué sur mobile pour gagner de la place
+                            evIdx === 2 && "hidden sm:block",
+                          )}
+                        >
+                          {contenu}
+                          {boutonCouleur}
+                        </div>
                       );
                       const tooltip = `${e.description ? e.description + " — " : ""}${e.client_nom ?? e.title}${isIntervention ? "\n(Cliquez pour modifier)" : ""}`;
                       // Pour les interventions : clic ouvre le dialogue d'édition
@@ -430,19 +495,19 @@ export function AgendaCalendar({
                       // pour ajuster planning/description. Lien "Fiche complète"
                       // disponible dans le dialogue.
                       if (isIntervention) {
-                        return (
+                        return envelopper(
                           <button
-                            key={`${e.kind}-${e.id}-${ymd}`}
                             type="button"
                             onClick={(ev) => {
                               ev.stopPropagation();
                               openEdit(e);
                             }}
                             className={commonClass}
+                            style={styleEv}
                             title={tooltip}
                           >
                             {eventShortLabel(e)}
-                          </button>
+                          </button>,
                         );
                       }
                       // Évènements externes (calendrier iPhone) :
@@ -455,39 +520,39 @@ export function AgendaCalendar({
                           ? `${e.title}${e.description ? "\n" + e.description : ""}\n📱 RDV iPhone — déjà facturé (${e.numero ?? "facture liée"}). Cliquer pour ouvrir la facture.`
                           : `${e.title}${e.description ? "\n" + e.description : ""}\n📱 Noté sur votre iPhone — pensez à créer la facture si c'est terminé`;
                         if (e.facture_emise && e.href !== "#") {
-                          return (
+                          return envelopper(
                             <Link
-                              key={`${e.kind}-${e.id}-${ymd}`}
                               href={e.href}
                               onClick={(ev) => ev.stopPropagation()}
                               className={commonClass}
+                              style={styleEv}
                               title={tooltip}
                             >
                               {prefix} {eventShortLabel(e)}
-                            </Link>
+                            </Link>,
                           );
                         }
-                        return (
+                        return envelopper(
                           <div
-                            key={`${e.kind}-${e.id}-${ymd}`}
                             onClick={(ev) => ev.stopPropagation()}
                             className={cn(commonClass, "cursor-default")}
+                            style={styleEv}
                             title={tooltip}
                           >
                             {prefix} {eventShortLabel(e)}
-                          </div>
+                          </div>,
                         );
                       }
-                      return (
+                      return envelopper(
                         <Link
-                          key={`${e.kind}-${e.id}-${ymd}`}
                           href={e.href}
                           onClick={(ev) => ev.stopPropagation()}
                           className={commonClass}
+                          style={styleEv}
                           title={tooltip}
                         >
                           {eventShortLabel(e)}
-                        </Link>
+                        </Link>,
                       );
                     })}
                   </div>
@@ -502,10 +567,12 @@ export function AgendaCalendar({
         Cliquez sur une case du calendrier pour planifier une intervention,
         ou sur un évènement existant pour ouvrir sa fiche. Tout ce qui est
         en{" "}
-        <span className="font-medium text-amber-700 dark:text-amber-400">
-          orange ⚠︎
-        </span>{" "}
-        est <strong>à facturer</strong> — interventions sans facture
+        <span
+          className="inline-block size-2.5 rounded-full align-middle"
+          style={styleEvenement(couleurs.intervention_a_facturer)}
+          aria-hidden="true"
+        />{" "}
+        <span className="font-medium">⚠︎</span> est <strong>à facturer</strong> — interventions sans facture
         associée ou RDV notés sur l'iPhone (préfixe 📱).
       </p>
 
@@ -518,6 +585,11 @@ export function AgendaCalendar({
         date={editTarget?.date_intervention ?? quickAddDate}
         clients={clients}
         editIntervention={editTarget ?? undefined}
+      />
+
+      <CouleurEvenementDialog
+        cible={cibleDialogue}
+        onClose={() => setCibleCouleur(null)}
       />
     </div>
   );
@@ -556,47 +628,20 @@ function StatCard({
 function Legend({ couleurs }: { couleurs: AgendaCouleurs }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-      <LegendDot
-        className={getSwatchClass(couleurs.intervention_facturee)}
-        label="Facturée / payée"
-      />
-      <LegendDot
-        className={getSwatchClass(couleurs.intervention_a_facturer)}
-        label="À facturer"
-      />
-      <LegendDot
-        className={getSwatchClass(couleurs.facture)}
-        label="Facture"
-      />
-      <LegendDot className="bg-red-200" label="En retard" />
-      <LegendDot
-        className={getSwatchClass(couleurs.devis)}
-        label="Devis planifié"
-      />
-      <LegendDot
-        className={getSwatchClass(couleurs.maintenance)}
-        label="Maintenance"
-      />
-      <LegendDot
-        className={getSwatchClass(couleurs.external)}
-        label="📱 RDV iPhone à facturer"
-      />
-      <LegendDot
-        className="bg-rose-100 ring-1 ring-rose-300"
-        label="Jour férié"
-      />
-      <LegendDot
-        className="bg-orange-100 ring-1 ring-orange-300"
-        label="Week-end"
-      />
+      {CATEGORY_ORDER.map((cat) => (
+        <LegendDot key={cat} couleur={couleurs[cat]} label={CATEGORY_LABELS[cat]} />
+      ))}
     </div>
   );
 }
 
-function LegendDot({ className, label }: { className: string; label: string }) {
+function LegendDot({ couleur, label }: { couleur: string; label: string }) {
   return (
     <Badge variant="outline" className="gap-1.5 border-muted-foreground/20 font-normal">
-      <span className={cn("inline-block size-2 rounded-full", className)} />
+      <span
+        className="inline-block size-2.5 rounded-full border border-black/10 dark:border-white/20"
+        style={{ backgroundColor: couleur }}
+      />
       {label}
     </Badge>
   );
