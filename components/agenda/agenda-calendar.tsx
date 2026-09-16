@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, AlertCircle, Plus } from "lucide-react";
@@ -22,6 +22,21 @@ import {
   type CouleursEvenements,
 } from "@/lib/agenda-colors";
 import { CouleurEvenementDialog } from "@/components/agenda/couleur-evenement-dialog";
+import {
+  CLE_VUE_AGENDA,
+  JOURS_LISTE,
+  LABELS_VUE,
+  VUES_AGENDA,
+  libelleJourLong,
+  libelleSemaine,
+  naviguer,
+  vueInitiale,
+  type VueAgenda,
+} from "@/lib/agenda-vues";
+import { EvenementDetailSheet } from "@/components/agenda/evenement-detail-sheet";
+import { RdvARattacherDialog } from "@/components/agenda/rdv-a-rattacher-dialog";
+import { VueGrilleHoraire } from "@/components/agenda/vue-grille-horaire";
+import { VueListe } from "@/components/agenda/vue-liste";
 import type { AgendaEvent, AgendaData } from "@/lib/actions/agenda";
 import {
   QuickInterventionDialog,
@@ -149,15 +164,50 @@ export function AgendaCalendar({
   clients,
   couleurs = DEFAULT_AGENDA_COULEURS,
   couleursEvenements = {},
+  date,
+  vueUrl = null,
 }: {
   data: AgendaData;
   clients: ClientOption[];
   couleurs?: AgendaCouleurs;
   /** Couleurs propres à certains évènements (clé « kind:id »). */
   couleursEvenements?: CouleursEvenements;
+  /** Date sélectionnée (YYYY-MM-DD) — jour affiché, semaine et mois qui la contiennent. */
+  date: string;
+  /** Vue demandée dans l'URL (?vue=), null = dernier choix / défaut selon l'écran. */
+  vueUrl?: string | null;
 }) {
   const router = useRouter();
   const { year, month, events, stats } = data;
+
+  // Vue : URL > dernier choix (localStorage) > liste sur mobile, mois
+  // sur desktop. Sans indication dans l'URL, on attend le montage pour
+  // lire le choix mémorisé (pas de flash d'une autre vue).
+  const [vue, setVue] = useState<VueAgenda | null>(() =>
+    vueUrl ? vueInitiale({ depuisUrl: vueUrl, mobile: false }) : null,
+  );
+  useEffect(() => {
+    if (vue) return;
+    let memorisee: string | null = null;
+    try {
+      memorisee = localStorage.getItem(CLE_VUE_AGENDA);
+    } catch {}
+    const mobile = window.matchMedia("(max-width: 639px)").matches;
+    setVue(vueInitiale({ memorisee, mobile }));
+  }, [vue]);
+
+  const choisirVue = (v: VueAgenda) => {
+    setVue(v);
+    try {
+      localStorage.setItem(CLE_VUE_AGENDA, v);
+    } catch {}
+    router.replace(`/agenda?vue=${v}&date=${date}`);
+  };
+
+  // Fiche d'un évènement (vues jour / semaine / liste)
+  const [detail, setDetail] = useState<AgendaEvent | null>(null);
+  // Liste des RDV iPhone à rattacher (bandeau cliquable)
+  const [rattacherOuvert, setRattacherOuvert] = useState(false);
 
   // Couleur d'un évènement précis (dialogue)
   const [cibleCouleur, setCibleCouleur] = useState<AgendaEvent | null>(null);
@@ -216,22 +266,32 @@ export function AgendaCalendar({
     setQuickAddOpen(true);
   };
 
-  const goto = (y: number, m: number) => {
-    router.push(`/agenda?year=${y}&month=${m}`);
+  const allerA = (d: string) => {
+    router.push(`/agenda?vue=${vue ?? "mois"}&date=${d}`);
   };
+  const prevMonth = () => allerA(naviguer(vue ?? "mois", date, -1));
+  const nextMonth = () => allerA(naviguer(vue ?? "mois", date, 1));
+  const goToday = () => allerA(todayYmd);
 
-  const prevMonth = () => {
-    if (month === 1) goto(year - 1, 12);
-    else goto(year, month - 1);
+  const titre =
+    vue === "jour"
+      ? libelleJourLong(date)
+      : vue === "semaine"
+        ? libelleSemaine(date)
+        : vue === "liste"
+          ? `${JOURS_LISTE} prochains jours`
+          : `${MOIS_FR[month - 1]} ${year}`;
+
+  const styleDe = (e: AgendaEvent) => eventStyle(e, couleurs, couleursEvenements);
+
+  const inMonth = (e: AgendaEvent) => {
+    const debutMois = `${year}-${String(month).padStart(2, "0")}-01`;
+    const finMois = toYmd(new Date(year, month, 0));
+    return e.date_end >= debutMois && e.date_start <= finMois;
   };
-  const nextMonth = () => {
-    if (month === 12) goto(year + 1, 1);
-    else goto(year, month + 1);
-  };
-  const goToday = () => {
-    const now = new Date();
-    goto(now.getFullYear(), now.getMonth() + 1);
-  };
+  const rdvARattacher = events.filter(
+    (e) => e.kind === "external" && !e.facture_emise && inMonth(e),
+  );
 
   return (
     <div className="space-y-4">
@@ -292,7 +352,7 @@ export function AgendaCalendar({
             Aujourd'hui
           </Button>
           <h2 className="ml-auto text-sm font-semibold tracking-tight sm:ml-2 sm:text-lg">
-            {MOIS_FR[month - 1]} {year}
+            {titre}
           </h2>
           <Button
             size="sm"
@@ -302,7 +362,31 @@ export function AgendaCalendar({
             <Plus className="size-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Sélecteur de vue : Jour | Semaine | Mois | Liste */}
+          <div
+            role="tablist"
+            aria-label="Vue de l'agenda"
+            className="inline-flex rounded-md border bg-muted/40 p-0.5"
+          >
+            {VUES_AGENDA.map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={vue === v}
+                onClick={() => choisirVue(v)}
+                className={cn(
+                  "min-h-9 rounded px-3 text-xs font-medium transition-colors sm:text-sm",
+                  vue === v
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {LABELS_VUE[v]}
+              </button>
+            ))}
+          </div>
           <Button
             size="sm"
             onClick={() => openQuickAdd(todayYmd)}
@@ -311,7 +395,9 @@ export function AgendaCalendar({
             <Plus className="size-4" />
             Planifier
           </Button>
-          <Legend couleurs={couleurs} />
+          <div className={cn(vue !== "mois" && "max-sm:hidden")}>
+            <Legend couleurs={couleurs} />
+          </div>
         </div>
       </div>
 
@@ -325,9 +411,24 @@ export function AgendaCalendar({
 
       {/* Alerte : choses à facturer (interventions + RDV iPhone importés) */}
       {stats.nbInterventionsAFacturer + stats.nbExternalAFacturer > 0 && (
-        <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+        <div
+          role={stats.nbExternalAFacturer > 0 ? "button" : undefined}
+          tabIndex={stats.nbExternalAFacturer > 0 ? 0 : undefined}
+          onClick={() => stats.nbExternalAFacturer > 0 && setRattacherOuvert(true)}
+          onKeyDown={(ev) => {
+            if (stats.nbExternalAFacturer > 0 && (ev.key === "Enter" || ev.key === " ")) {
+              ev.preventDefault();
+              setRattacherOuvert(true);
+            }
+          }}
+          className={cn(
+            "flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100",
+            stats.nbExternalAFacturer > 0 &&
+              "cursor-pointer transition-colors hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-amber-950/60",
+          )}
+        >
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <div className="space-y-1">
+          <div className="flex-1 space-y-1">
             {stats.nbInterventionsAFacturer > 0 && (
               <p className="font-medium">
                 {stats.nbInterventionsAFacturer} intervention
@@ -349,12 +450,46 @@ export function AgendaCalendar({
               Repérables à leur couleur « À facturer » dans le calendrier
               ci-dessous (préfixe ⚠︎📱 pour les RDV iPhone ; ✓📱 = déjà
               facturés).
+              {stats.nbExternalAFacturer > 0 && (
+                <strong className="ml-1">Cliquez pour les rattacher.</strong>
+              )}
             </p>
           </div>
+          {stats.nbExternalAFacturer > 0 && (
+            <ChevronRight className="mt-0.5 size-4 shrink-0 opacity-70" />
+          )}
         </div>
       )}
 
-      {/* Calendrier */}
+      {/* Vues jour / semaine / liste ; le mois garde sa grille ci-dessous. */}
+      {vue === null && (
+        <div className="h-64 animate-pulse rounded-lg border bg-muted/30" aria-hidden="true" />
+      )}
+      {(vue === "jour" || vue === "semaine") && (
+        <VueGrilleHoraire
+          mode={vue}
+          date={date}
+          aujourdhui={todayYmd}
+          events={events}
+          holidays={holidays}
+          style={styleDe}
+          onOuvrir={setDetail}
+          onPlanifier={openQuickAdd}
+        />
+      )}
+      {vue === "liste" && (
+        <VueListe
+          events={events}
+          aujourdhui={todayYmd}
+          nbJours={JOURS_LISTE}
+          style={styleDe}
+          onOuvrir={setDetail}
+          onPlanifier={openQuickAdd}
+        />
+      )}
+
+      {/* Calendrier (vue mois, inchangée) */}
+      {vue === "mois" && (
       <Card>
         <CardContent className="p-0">
           {/* Entête jours */}
@@ -562,6 +697,7 @@ export function AgendaCalendar({
           </div>
         </CardContent>
       </Card>
+      )}
 
       <p className="text-xs text-muted-foreground">
         Cliquez sur une case du calendrier pour planifier une intervention,
@@ -590,6 +726,21 @@ export function AgendaCalendar({
       <CouleurEvenementDialog
         cible={cibleDialogue}
         onClose={() => setCibleCouleur(null)}
+      />
+
+      <EvenementDetailSheet
+        evenement={detail}
+        onClose={() => setDetail(null)}
+        style={styleDe}
+        onModifier={openEdit}
+        onRattacher={() => setRattacherOuvert(true)}
+      />
+
+      <RdvARattacherDialog
+        open={rattacherOuvert}
+        onOpenChange={setRattacherOuvert}
+        rdvs={rdvARattacher}
+        aujourdhui={todayYmd}
       />
     </div>
   );
