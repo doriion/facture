@@ -1110,6 +1110,7 @@ export type Database = {
       };
       interventions: {
         Row: {
+          a_facturer: boolean;
           client_id: string | null;
           created_at: string;
           date_intervention: string;
@@ -1139,6 +1140,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          a_facturer?: boolean;
           client_id?: string | null;
           created_at?: string;
           date_intervention: string;
@@ -1168,6 +1170,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          a_facturer?: boolean;
           client_id?: string | null;
           created_at?: string;
           date_intervention?: string;

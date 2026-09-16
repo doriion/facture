@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ExternalLink, Link2, MapPin, Navigation, Pencil, Phone, Search, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ExternalLink, Link2, Loader2, MapPin, Navigation, Pencil, Phone, Search, UserPlus, XCircle } from "lucide-react";
+import { toast } from "sonner";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
+import { setInterventionAFacturerAction } from "@/lib/actions/interventions";
 import { contactEvenement, lienAppel, lienItineraire } from "@/lib/agenda-contact";
 import { heureCourte, libelleJourLong } from "@/lib/agenda-vues";
 import { Button } from "@/components/ui/button";
@@ -38,8 +42,25 @@ export function EvenementDetailSheet({
   onModifier: (e: AgendaEvent) => void;
   onRattacher: () => void;
 }) {
+  const router = useRouter();
+  const [basculeEnCours, setBasculeEnCours] = useState(false);
   const e = evenement;
   const contact = e ? contactEvenement(e) : null;
+
+  // « Rien à facturer » ↔ « à facturer », sans ouvrir le dialogue.
+  async function basculerFacturation(ev: AgendaEvent) {
+    setBasculeEnCours(true);
+    const cible = ev.a_facturer === false;
+    const res = await setInterventionAFacturerAction(ev.id, cible);
+    setBasculeEnCours(false);
+    if (!res.ok) {
+      toast.error("Erreur", { description: res.error });
+      return;
+    }
+    toast.success(cible ? "Remise « à facturer »" : "Marquée « rien à facturer »");
+    onClose();
+    router.refresh();
+  }
   const debut = heureCourte(e?.heure_debut);
   const fin = heureCourte(e?.heure_fin);
 
@@ -165,6 +186,18 @@ export function EvenementDetailSheet({
                 >
                   <Pencil className="size-4" />
                   Modifier
+                </Button>
+              )}
+              {e.kind === "intervention" && !e.facture_emise && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="col-span-2"
+                  disabled={basculeEnCours}
+                  onClick={() => basculerFacturation(e)}
+                >
+                  {basculeEnCours ? <Loader2 className="size-4 animate-spin" /> : <XCircle className="size-4" />}
+                  {e.a_facturer === false ? "Remettre « à facturer »" : "Rien à facturer"}
                 </Button>
               )}
               {e.kind === "external" && !e.facture_emise && (

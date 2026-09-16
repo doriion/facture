@@ -18,8 +18,10 @@
  */
 
 export type AgendaCategory =
-  | "intervention_facturee"
+  | "intervention_prevue"
   | "intervention_a_facturer"
+  | "intervention_facturee"
+  | "sans_facturation"
   | "facture"
   | "retard"
   | "devis"
@@ -30,8 +32,10 @@ export type AgendaCategory =
 
 /** Ordre d'affichage (réglages et légende). */
 export const CATEGORY_ORDER: AgendaCategory[] = [
-  "intervention_facturee",
+  "intervention_prevue",
   "intervention_a_facturer",
+  "intervention_facturee",
+  "sans_facturation",
   "facture",
   "retard",
   "devis",
@@ -42,8 +46,10 @@ export const CATEGORY_ORDER: AgendaCategory[] = [
 ];
 
 export const CATEGORY_LABELS: Record<AgendaCategory, string> = {
-  intervention_facturee: "Facturée / payée",
+  intervention_prevue: "Prévue",
   intervention_a_facturer: "À facturer",
+  intervention_facturee: "Facturée / payée",
+  sans_facturation: "Rien à facturer",
   facture: "Facture",
   retard: "En retard",
   devis: "Devis planifié",
@@ -57,8 +63,10 @@ export type AgendaCouleurs = Record<AgendaCategory, string>;
 
 /** Couleurs d'origine (teintes Tailwind 100, telles qu'affichées avant). */
 export const DEFAULT_AGENDA_COULEURS: AgendaCouleurs = {
-  intervention_facturee: "#d1fae5", // emerald
+  intervention_prevue: "#e0e7ff", // indigo — planifiée, pas encore à facturer
   intervention_a_facturer: "#fef3c7", // amber
+  intervention_facturee: "#d1fae5", // emerald
+  sans_facturation: "#e2e8f0", // gris — déplacement, outils, perso
   facture: "#dbeafe", // blue
   retard: "#fee2e2", // red
   devis: "#ede9fe", // violet

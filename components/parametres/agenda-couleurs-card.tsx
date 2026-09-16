@@ -27,8 +27,10 @@ import { Label } from "@/components/ui/label";
 
 /** Exemple affiché dans l'aperçu de chaque type. */
 const APERCUS: Record<AgendaCategory, string> = {
-  intervention_facturee: "09:00–12:00 · Entretien PAC · M. Martin",
+  intervention_prevue: "Lundi 08:00 · Pose monosplit · Mme Rossi",
   intervention_a_facturer: "14:00 · Pose monosplit · Mme Rossi",
+  intervention_facturee: "09:00–12:00 · Entretien PAC · M. Martin",
+  sans_facturation: "16:00 · Aller chercher des outils",
   facture: "FAC-2026-0031 · SCI Les Érables",
   retard: "FAC-2026-0018 · M. Durand",
   devis: "DEV-2026-0060 · Mme Durand",

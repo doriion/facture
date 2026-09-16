@@ -83,6 +83,8 @@ export const interventionSchema = z.object({
 
   facture_id: z.string().uuid().nullable().optional(),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  /** false = rien à facturer (déplacement, outils, perso…). Absent = à facturer. */
+  a_facturer: z.boolean().optional(),
 }).superRefine((val, ctx) => {
   if (val.date_fin && val.date_intervention && val.date_fin < val.date_intervention) {
     ctx.addIssue({

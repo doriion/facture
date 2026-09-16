@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseIcal } from "@/lib/ical-parser";
 import { computeExternalEventKey } from "@/lib/external-event-key";
 import { adresseClient } from "@/lib/agenda-contact";
+import { aujourdhuiParis, estAFacturer } from "@/lib/agenda-facturation";
 
 export type AgendaEventKind =
   | "intervention"
@@ -32,6 +33,8 @@ export type AgendaEvent = {
    * Permet d'afficher l'alerte "à facturer".
    */
   facture_emise?: boolean;
+  /** Interventions : false = « rien à facturer » (déplacement, outils, perso). */
+  a_facturer?: boolean;
   numero?: string | null;
   type_activite?: string | null;
   /** LOCATION iCal d'un RDV iPhone (adresse saisie sur le téléphone). */
@@ -42,10 +45,27 @@ export type AgendaEvent = {
   client_telephone?: string | null;
 };
 
+/** Intervention passée, sans facture ni « rien à facturer » — panneau À facturer. */
+export type AFacturerItem = {
+  id: string;
+  date_intervention: string;
+  date_fin: string | null;
+  description: string | null;
+  type: string;
+  client_id: string | null;
+  client_nom: string | null;
+};
+
 export type AgendaData = {
   year: number;
   month: number; // 1-12
   events: AgendaEvent[];
+  /**
+   * Toutes les interventions passées à facturer, quel que soit le mois
+   * affiché (une facture oubliée ne doit pas disparaître en changeant
+   * de mois).
+   */
+  aFacturer: AFacturerItem[];
   /** Stats globales pour le mois affiché */
   stats: {
     nbInterventions: number;
@@ -54,7 +74,7 @@ export type AgendaData = {
     nbDevis: number;
     nbVisites: number;
     nbExternal: number;
-    /** RDV iPhone du mois encore à facturer (non liés à une facture) */
+    /** RDV iPhone du mois, passés, encore à facturer (non liés à une facture) */
     nbExternalAFacturer: number;
   };
   /** True si l'utilisateur a un calendrier externe configuré */
@@ -96,6 +116,7 @@ export async function getAgendaEvents(
       year,
       month,
       events: [],
+      aFacturer: [],
       stats: {
         nbInterventions: 0,
         nbInterventionsAFacturer: 0,
@@ -123,6 +144,7 @@ export async function getAgendaEvents(
 
   const ws = windowStart.toISOString().slice(0, 10);
   const we = windowEnd.toISOString().slice(0, 10);
+  const aujourdhui = aujourdhuiParis();
 
   // Récupération de l'URL externe pour fetcher en parallèle des requêtes DB
   const profilExternalRes = await supabase
@@ -138,11 +160,12 @@ export async function getAgendaEvents(
     contratsRes,
     externalEventsRes,
     externalLinksRes,
+    aFacturerRes,
   ] = await Promise.all([
     supabase
       .from("interventions")
       .select(
-        "id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, client_id, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)",
+        "id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, a_facturer, client_id, client:clients(nom, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone)",
       )
       // Pour les interventions multi-jours, on doit inclure celles qui
       // *intersectent* la fenêtre, pas seulement celles qui commencent dedans.
@@ -185,6 +208,16 @@ export async function getAgendaEvents(
       .select("external_uid, facture_id, factures:factures(numero)")
       .gte("snapshot_date_start", new Date(new Date(ws).getTime() - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10))
       .lte("snapshot_date_start", new Date(new Date(we).getTime() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10)),
+    // Panneau « À facturer » : passées, sans facture, pas « rien à facturer »,
+    // tous mois confondus.
+    supabase
+      .from("interventions")
+      .select("id, date_intervention, date_fin, description, type, client_id, client:clients(nom)")
+      .is("facture_id", null)
+      .eq("a_facturer", true)
+      .lte("date_intervention", aujourdhui)
+      .order("date_intervention", { ascending: false })
+      .limit(200),
   ]);
 
   const events: AgendaEvent[] = [];
@@ -211,6 +244,7 @@ export async function getAgendaEvents(
     type: string;
     description: string | null;
     facture_id: string | null;
+    a_facturer: boolean | null;
     client_id: string | null;
     client: ClientJoint | null;
   };
@@ -232,6 +266,7 @@ export async function getAgendaEvents(
       heure_fin: it.heure_fin,
       href: `/interventions/${it.id}`,
       facture_emise: Boolean(it.facture_id),
+      a_facturer: it.a_facturer ?? true,
       type_activite: it.type,
       ...coordonnees(it.client),
     });
@@ -396,8 +431,10 @@ export async function getAgendaEvents(
   );
   const stats = {
     nbInterventions: interventionsInMonth.length,
-    nbInterventionsAFacturer: interventionsInMonth.filter(
-      (e) => !e.facture_emise,
+    // « À facturer » = passé (ou commencé aujourd'hui), sans facture, et
+    // pas marqué « rien à facturer ».
+    nbInterventionsAFacturer: interventionsInMonth.filter((e) =>
+      estAFacturer(e, aujourdhui),
     ).length,
     nbFactures: events.filter(
       (e) => e.kind === "facture_prestation" && inMonth(e),
@@ -408,14 +445,34 @@ export async function getAgendaEvents(
       (e) => e.kind === "visite_maintenance" && inMonth(e),
     ).length,
     nbExternal: externalInMonth.length,
-    nbExternalAFacturer: externalInMonth.filter((e) => !e.facture_emise)
+    nbExternalAFacturer: externalInMonth.filter((e) => estAFacturer(e, aujourdhui))
       .length,
   };
+
+  type AFacturerRow = {
+    id: string;
+    date_intervention: string;
+    date_fin: string | null;
+    description: string | null;
+    type: string;
+    client_id: string | null;
+    client: { nom: string } | null;
+  };
+  const aFacturer: AFacturerItem[] = ((aFacturerRes.data ?? []) as AFacturerRow[]).map((r) => ({
+    id: r.id,
+    date_intervention: r.date_intervention,
+    date_fin: r.date_fin,
+    description: r.description,
+    type: r.type,
+    client_id: r.client_id,
+    client_nom: r.client?.nom ?? null,
+  }));
 
   return {
     year,
     month,
     events,
+    aFacturer,
     stats,
     hasExternalCalendar: Boolean(externalUrl),
     externalCalendarError: externalEventsRes.error,
