@@ -15,6 +15,8 @@ export type ParsedIcalEvent = {
   uid: string;
   summary: string;
   description: string | null;
+  /** LOCATION iCal (adresse saisie sur l'iPhone), null si absente */
+  location: string | null;
   /** YYYY-MM-DD (date locale, sans heure) */
   date_start: string;
   /** YYYY-MM-DD (date locale, inclusive, sans heure) */
@@ -138,6 +140,7 @@ export function parseIcal(text: string): ParsedIcalEvent[] {
     uid: string;
     summary: string;
     description: string;
+    location: string;
     rawStart: { value: string; params: Record<string, string> };
     rawEnd: { value: string; params: Record<string, string> };
   }> | null = null;
@@ -166,6 +169,7 @@ export function parseIcal(text: string): ParsedIcalEvent[] {
           uid: current.uid ?? `${Date.now()}-${Math.random()}`,
           summary: (current.summary ?? "").trim() || "(sans titre)",
           description: current.description?.trim() || null,
+          location: current.location?.trim() || null,
           date_start: start.ymd,
           date_end: end.ymd,
           time_start: start.hm,
@@ -188,6 +192,9 @@ export function parseIcal(text: string): ParsedIcalEvent[] {
         break;
       case "DESCRIPTION":
         current.description = value;
+        break;
+      case "LOCATION":
+        current.location = value;
         break;
       case "DTSTART":
         current.rawStart = { value, params };
