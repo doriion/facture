@@ -54,13 +54,17 @@ export async function middleware(request: NextRequest) {
   // - /login : authentification ;
   // - /c/… : page de signature d'un contrat par le client (l'accès est
   //   contrôlé par l'access_token du contrat, résolu côté serveur) ;
-  // - /api/public/… : les routes serveur de ce même parcours.
+  // - /api/public/… : les routes serveur de ce même parcours ;
+  // - /api/cron/… : tâches planifiées appelées SANS session (Vercel
+  //   Cron, pg_cron) — chaque route vérifie elle-même son secret
+  //   (Authorization: Bearer …) et refuse tout le reste.
   const isPublicPage =
     path === "/login" ||
     path.startsWith("/login/") ||
     path === "/hors-ligne" ||
     path.startsWith("/c/") ||
-    path.startsWith("/api/public/");
+    path.startsWith("/api/public/") ||
+    path.startsWith("/api/cron/");
 
   if (!user && !isPublicPage) {
     if (path.startsWith("/api/")) {

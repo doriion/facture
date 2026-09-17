@@ -367,6 +367,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      push_abonnements: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          appareil: string | null;
+          created_at: string;
+          derniere_utilisation: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          appareil?: string | null;
+          created_at?: string;
+          derniere_utilisation?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          appareil?: string | null;
+          created_at?: string;
+          derniere_utilisation?: string | null;
+        };
+        Relationships: [];
+      };
       taches: {
         Row: {
           id: string;
@@ -1165,6 +1198,7 @@ export type Database = {
           fluide_observations: string | null;
           id: string;
           notes: string | null;
+          rappel_push_envoye_le: string | null;
           serie_id: string | null;
           type: string;
           updated_at: string;
@@ -1196,6 +1230,7 @@ export type Database = {
           fluide_observations?: string | null;
           id?: string;
           notes?: string | null;
+          rappel_push_envoye_le?: string | null;
           serie_id?: string | null;
           type?: string;
           updated_at?: string;
@@ -1227,6 +1262,7 @@ export type Database = {
           fluide_observations?: string | null;
           id?: string;
           notes?: string | null;
+          rappel_push_envoye_le?: string | null;
           serie_id?: string | null;
           type?: string;
           updated_at?: string;
@@ -1433,6 +1469,8 @@ export type Database = {
           auto_chatel_active: boolean;
           automatisations_simulation: boolean;
           auto_email_taches_active: boolean;
+          auto_rappels_push_active: boolean;
+          rappels_push_delai_minutes: number;
           duree_validite_devis_jours: number;
           assujetti_tva: boolean;
           banque_nom: string | null;
@@ -1486,6 +1524,8 @@ export type Database = {
           auto_chatel_active?: boolean;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
+          auto_rappels_push_active?: boolean;
+          rappels_push_delai_minutes?: number;
           duree_validite_devis_jours?: number;
           assujetti_tva?: boolean;
           banque_nom?: string | null;
@@ -1539,6 +1579,8 @@ export type Database = {
           auto_chatel_active?: boolean;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
+          auto_rappels_push_active?: boolean;
+          rappels_push_delai_minutes?: number;
           duree_validite_devis_jours?: number;
           assujetti_tva?: boolean;
           banque_nom?: string | null;
