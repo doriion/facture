@@ -108,6 +108,7 @@ export function QuickInterventionDialog({
   creneau = null,
   clients,
   editIntervention,
+  modele = null,
   onOptimiste,
 }: {
   open: boolean;
@@ -119,6 +120,8 @@ export function QuickInterventionDialog({
   clients: ClientOption[];
   /** Si présent : mode édition (mise à jour de cette intervention) */
   editIntervention?: InterventionEditData;
+  /** Dupliquer : création pré-remplie depuis ce rendez-vous (la date reste à choisir). */
+  modele?: InterventionEditData | null;
   /**
    * Mise à jour optimiste : appelé AVANT l'enregistrement pour afficher
    * le résultat tout de suite ; renvoie la fonction qui annule si le
@@ -148,7 +151,7 @@ export function QuickInterventionDialog({
     resolver: zodResolver(interventionSchema),
     defaultValues: editIntervention
       ? makeDefaultsFromIntervention(editIntervention)
-      : makeDefaults(date, creneau),
+      : makeDefaults(date, creneau, modele),
   });
 
   // Réinitialise quand on change de date ou de créneau, qu'on rouvre la
@@ -165,12 +168,13 @@ export function QuickInterventionDialog({
             heureDebutPreremplie
               ? { heure_debut: heureDebutPreremplie, heure_fin: heureFinPreremplie }
               : null,
+            modele,
           ),
     );
     setRepetition("jamais");
     setFinRepetition("");
     setPortee("seule");
-  }, [open, date, heureDebutPreremplie, heureFinPreremplie, editIntervention, reset]);
+  }, [open, date, heureDebutPreremplie, heureFinPreremplie, editIntervention, modele, reset]);
 
   // Clients créés depuis ce dialogue (« + Nouveau client ») : ajoutés à
   // la liste tout de suite, sans attendre le rafraîchissement serveur.
@@ -326,11 +330,16 @@ export function QuickInterventionDialog({
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Modifier l'intervention" : "Planifier une intervention"}
+            {isEdit
+              ? "Modifier l'intervention"
+              : modele
+                ? "Dupliquer le rendez-vous"
+                : "Planifier une intervention"}
           </DialogTitle>
           <DialogDescription>
             {formattedDate}
-            {isEdit ? null : (
+            {modele ? " — copie pré-remplie, choisissez la date." : null}
+            {isEdit || modele ? null : (
               <>
                 {" "}— vous pourrez compléter les détails (équipement, fluides
                 frigo) depuis la fiche.
@@ -688,7 +697,15 @@ export function QuickInterventionDialog({
 function makeDefaults(
   date: string,
   creneau: CreneauPrerempli | null,
+  modele: InterventionEditData | null = null,
 ): InterventionFormInput {
+  if (modele) {
+    return {
+      ...makeDefaultsFromIntervention(modele),
+      date_intervention: date,
+      date_fin: "",
+    };
+  }
   return {
     client_id: "",
     date_intervention: date,

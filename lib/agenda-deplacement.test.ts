@@ -8,6 +8,7 @@ import {
   heureDeMinutes,
   libelleDeplacement,
   minutesDeHeure,
+  redimensionner,
   valeursActuelles,
 } from "./agenda-deplacement";
 import { dispositionGrille, minutesDeY, yDeMinutes } from "./agenda-vues";
@@ -157,5 +158,25 @@ describe("minutesDeY (inverse de yDeMinutes)", () => {
     expect(minutesDeY(lignes, -10)).toBe(7 * 60);
     expect(minutesDeY(lignes, 100_000)).toBe(20 * 60);
     expect(minutesDeY([], 50)).toBe(7 * 60);
+  });
+});
+
+describe("redimensionner (étirer par le bas)", () => {
+  it("nouvelle fin arrondie au quart d'heure, dates et début intacts", () => {
+    expect(redimensionner(rdv, 12 * 60 + 40)).toEqual({
+      date_intervention: "2026-09-16",
+      date_fin: null,
+      heure_debut: "09:00:00",
+      heure_fin: "12:45:00",
+    });
+  });
+
+  it("jamais moins de 15 min, jamais après 23:59, rien sans heure de début", () => {
+    expect(redimensionner(rdv, 8 * 60).heure_fin).toBe("09:15:00");
+    expect(redimensionner(rdv, 9 * 60 + 5).heure_fin).toBe("09:15:00");
+    expect(redimensionner(rdv, 25 * 60).heure_fin).toBe("23:59:00");
+    const entiere = { ...rdv, heure_debut: null, heure_fin: null };
+    expect(redimensionner(entiere, 600)).toEqual(valeursActuelles(entiere));
+    expect(aChange(rdv, redimensionner(rdv, 11 * 60 + 3))).toBe(false);
   });
 });
