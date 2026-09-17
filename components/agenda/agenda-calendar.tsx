@@ -521,7 +521,7 @@ export function AgendaCalendar({
   const nbAFacturer = data.aFacturer.length + stats.nbExternalAFacturer;
 
   return (
-    <div className="space-y-4">
+    <div className="agenda-tactile space-y-4">
       {/* Stats du mois (desktop) */}
       <div className="hidden grid-cols-2 gap-3 sm:grid md:grid-cols-4">
         <StatCard

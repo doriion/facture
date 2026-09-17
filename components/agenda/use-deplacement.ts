@@ -85,6 +85,11 @@ export function useDeplacement<T, C>({
   const demarrer = useCallback(
     (s: Saisie<T>) => {
       actif.current = true;
+      // Une sélection de texte commencée pendant l'appui long (iOS)
+      // gênerait le glissement : on l'efface.
+      try {
+        window.getSelection()?.removeAllRanges();
+      } catch {}
       if (s.tactile && typeof navigator !== "undefined" && "vibrate" in navigator) {
         try {
           navigator.vibrate(10);
@@ -98,13 +103,21 @@ export function useDeplacement<T, C>({
   );
 
   // Pendant un glissement au doigt, le navigateur ne doit pas défiler
-  // (les écouteurs React sont passifs : il faut le natif).
+  // (les écouteurs React sont passifs : il faut le natif), ni
+  // commencer une sélection de texte pendant l'appui long.
   useEffect(() => {
     const bloquer = (ev: TouchEvent) => {
       if (actif.current && ev.cancelable) ev.preventDefault();
     };
+    const bloquerSelection = (ev: Event) => {
+      if (saisie.current || actif.current) ev.preventDefault();
+    };
     document.addEventListener("touchmove", bloquer, { passive: false });
-    return () => document.removeEventListener("touchmove", bloquer);
+    document.addEventListener("selectstart", bloquerSelection);
+    return () => {
+      document.removeEventListener("touchmove", bloquer);
+      document.removeEventListener("selectstart", bloquerSelection);
+    };
   }, []);
 
   // Défilement automatique près des bords de l'écran (une boucle par

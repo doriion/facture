@@ -524,10 +524,10 @@ export function VueGrilleHoraire({
                         data-poignee-etirement=""
                         aria-hidden="true"
                         {...poigneeEtirement(e, jour)}
-                        className="absolute inset-x-0 bottom-0 flex h-3.5 cursor-ns-resize items-end justify-center pb-0.5 [touch-action:none]"
+                        className="absolute inset-x-0 bottom-0 flex h-3.5 cursor-ns-resize items-end justify-center pb-0.5 [touch-action:none] [@media(hover:none)]:h-7 [@media(hover:none)]:pb-1"
                         title="Étirer pour changer la durée"
                       >
-                        <span className="h-1 w-8 rounded-full bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-white/40 [@media(hover:none)]:opacity-70" />
+                        <span className="h-1 w-8 rounded-full bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-white/40 [@media(hover:none)]:h-1.5 [@media(hover:none)]:w-12 [@media(hover:none)]:opacity-80" />
                       </span>
                     )}
                   </button>
