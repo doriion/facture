@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Link2, Loader2, MapPin, Navigation, Pencil, Phone, Search, UserPlus, XCircle } from "lucide-react";
+import { ExternalLink, Link2, Loader2, MapPin, Navigation, Pencil, Phone, Repeat, Search, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
 import { setInterventionAFacturerAction } from "@/lib/actions/interventions";
 import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
 import { contactEvenement, lienAppel, lienItineraire } from "@/lib/agenda-contact";
+import { libelleRecurrence } from "@/lib/agenda-recurrence";
 import { heureCourte, libelleJourLong } from "@/lib/agenda-vues";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -91,6 +92,12 @@ export function EvenementDetailSheet({
                   {e.date_end !== e.date_start && ` → ${libelleJourLong(e.date_end)}`}
                   {debut && ` · ${debut}${fin ? `–${fin}` : ""}`}
                 </p>
+                {e.recurrence && (
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Repeat className="size-3.5 shrink-0" />
+                    Se répète {libelleRecurrence(e.recurrence)}
+                  </p>
+                )}
                 <div className="mt-1.5">
                   <StatutEvenementBadge e={e} />
                 </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileText, Receipt } from "lucide-react";
+import { ArrowLeft, FileText, Receipt, Repeat } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { getIntervention } from "@/lib/actions/interventions";
@@ -84,6 +84,14 @@ export default async function EditInterventionPage({
                 </>
               )}
             </p>
+            {intervention.serie_id && (
+              <div className="mt-2">
+                <Badge variant="outline" className="gap-1 font-normal text-muted-foreground">
+                  <Repeat className="size-3" />
+                  Rendez-vous récurrent — la série se modifie depuis l&apos;agenda
+                </Badge>
+              </div>
+            )}
             {!facture && intervention.a_facturer === false && (
               <div className="mt-2">
                 <Badge variant="outline" className="font-normal text-muted-foreground">

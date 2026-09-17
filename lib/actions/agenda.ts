@@ -6,6 +6,7 @@ import { computeExternalEventKey } from "@/lib/external-event-key";
 import { adresseClient } from "@/lib/agenda-contact";
 import { aujourdhuiParis } from "@/lib/agenda-facturation";
 import { fenetreAgenda, type Fenetre } from "@/lib/agenda-vues";
+import type { Frequence, Recurrence } from "@/lib/agenda-recurrence";
 
 export type AgendaEventKind =
   | "intervention"
@@ -38,6 +39,10 @@ export type AgendaEvent = {
   a_facturer?: boolean;
   numero?: string | null;
   type_activite?: string | null;
+  /** Interventions : série de rendez-vous récurrents (null = isolé). */
+  serie_id?: string | null;
+  /** Règle de la série, pour l'afficher (« toutes les semaines jusqu'au… »). */
+  recurrence?: Recurrence | null;
   /** LOCATION iCal d'un RDV iPhone (adresse saisie sur le téléphone). */
   lieu?: string | null;
   /** Adresse postale du client rattaché (pour « Itinéraire »). */
@@ -126,7 +131,7 @@ export async function getAgendaEvents(
       supabase
         .from("interventions")
         .select(
-          `id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, a_facturer, client_id, ${SELECT_CLIENT}`,
+          `id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, a_facturer, client_id, serie_id, serie:interventions_series(frequence, intervalle, date_fin), ${SELECT_CLIENT}`,
         )
         // Pour les interventions multi-jours, on doit inclure celles qui
         // *intersectent* la fenêtre, pas seulement celles qui commencent dedans.
@@ -182,6 +187,8 @@ export async function getAgendaEvents(
     facture_id: string | null;
     a_facturer: boolean | null;
     client_id: string | null;
+    serie_id: string | null;
+    serie: { frequence: string; intervalle: number; date_fin: string } | null;
     client: ClientJoint | null;
   };
   for (const it of (interventionsRes.data ?? []) as InterventionRow[]) {
@@ -204,6 +211,10 @@ export async function getAgendaEvents(
       facture_emise: Boolean(it.facture_id),
       a_facturer: it.a_facturer ?? true,
       type_activite: it.type,
+      serie_id: it.serie_id,
+      recurrence: it.serie
+        ? { frequence: it.serie.frequence as Frequence, intervalle: it.serie.intervalle, date_fin: it.serie.date_fin }
+        : null,
       ...coordonnees(it.client),
     });
   }

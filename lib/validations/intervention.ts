@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { FREQUENCES } from "@/lib/agenda-recurrence";
+
 export const TYPES_INTERVENTION = [
   "installation",
   "depannage",
@@ -157,3 +159,10 @@ export const deplacementInterventionSchema = z
   });
 
 export type DeplacementIntervention = z.infer<typeof deplacementInterventionSchema>;
+
+/** Règle de répétition d'une série de rendez-vous (formulaire agenda). */
+export const recurrenceSchema = z.object({
+  frequence: z.enum(FREQUENCES),
+  intervalle: z.number().int().min(1).max(12),
+  date_fin: z.string().regex(DATE_YMD, "Date de fin de répétition invalide."),
+});

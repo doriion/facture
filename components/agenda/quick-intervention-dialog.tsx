@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, Plus, Repeat, Save, Trash2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -13,9 +13,23 @@ import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
 
 import {
   createInterventionAction,
+  createInterventionSerieAction,
   quickEditInterventionAction,
   deleteInterventionAction,
 } from "@/lib/actions/interventions";
+import {
+  CHOIX_REPETITION,
+  LABELS_REPETITION,
+  MAX_OCCURRENCES,
+  datesOccurrences,
+  depassePlafond,
+  finParDefaut,
+  libelleRecurrence,
+  regleDuChoix,
+  type ChoixRepetition,
+  type PorteeSerie,
+  type Recurrence,
+} from "@/lib/agenda-recurrence";
 import {
   interventionSchema,
   type InterventionFormInput,
@@ -79,6 +93,9 @@ export type InterventionEditData = {
   description: string | null;
   /** false = rien à facturer */
   a_facturer: boolean;
+  /** Série de rendez-vous récurrents (null = isolé). */
+  serie_id?: string | null;
+  recurrence?: Recurrence | null;
 };
 
 /** Heures pré-remplies (HH:MM) quand on clique un créneau de la grille horaire. */
@@ -112,6 +129,13 @@ export function QuickInterventionDialog({
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const isEdit = Boolean(editIntervention);
+  // Création : répétition (jamais / semaines / quinzaine / mois / ans)
+  // et date de fin de la série. Édition d'une occurrence : portée des
+  // changements (ce rendez-vous seul, ou lui et les suivants).
+  const [repetition, setRepetition] = useState<ChoixRepetition>("jamais");
+  const [finRepetition, setFinRepetition] = useState("");
+  const [portee, setPortee] = useState<PorteeSerie>("seule");
+  const enSerie = Boolean(editIntervention?.serie_id);
 
   const {
     register,
@@ -143,6 +167,9 @@ export function QuickInterventionDialog({
               : null,
           ),
     );
+    setRepetition("jamais");
+    setFinRepetition("");
+    setPortee("seule");
   }, [open, date, heureDebutPreremplie, heureFinPreremplie, editIntervention, reset]);
 
   // Clients créés depuis ce dialogue (« + Nouveau client ») : ajoutés à
@@ -159,37 +186,96 @@ export function QuickInterventionDialog({
   const currentEnd = watch("date_fin");
   const dureeJours = computeDureeJours(currentStart, currentEnd);
 
+  // Règle de répétition choisie (création) et ses occurrences.
+  const regle = regleDuChoix(repetition);
+  const recurrence: Recurrence | null =
+    regle && currentStart
+      ? { ...regle, date_fin: finRepetition || finParDefaut(currentStart, regle.frequence) }
+      : null;
+  const tropDOccurrences = Boolean(
+    recurrence && currentStart && depassePlafond(currentStart, recurrence),
+  );
+  const nbOccurrences =
+    recurrence && currentStart && !tropDOccurrences
+      ? datesOccurrences(currentStart, recurrence).length
+      : 0;
+  const choisirRepetition = (choix: ChoixRepetition) => {
+    setRepetition(choix);
+    const r = regleDuChoix(choix);
+    setFinRepetition(r && currentStart ? finParDefaut(currentStart, r.frequence) : "");
+  };
+
   async function onSubmit(values: InterventionFormValues) {
+    if (recurrence && recurrence.date_fin < values.date_intervention) {
+      toast.error("La fin de la répétition précède le premier rendez-vous.");
+      return;
+    }
+    if (tropDOccurrences) {
+      toast.error(`Trop de rendez-vous (plus de ${MAX_OCCURRENCES}) : rapprochez la date de fin.`);
+      return;
+    }
     setSubmitting(true);
     // Affichage immédiat : le dialogue se ferme, le rendez-vous est déjà
     // dans l'agenda ; le serveur confirme derrière (ou on annule).
     const id = editIntervention?.id ?? `tmp-${Date.now()}`;
     const clientNom =
       tousLesClients.find((c) => c.id === (values.client_id || ""))?.nom ?? null;
-    const annuler = onOptimiste?.({
-      type: editIntervention ? "edition" : "creation",
-      id,
-      valeurs: values,
-      clientNom,
-    });
+    const surLesSuivantes = enSerie && portee === "suivantes";
+    const annuler = onOptimiste?.(
+      editIntervention
+        ? surLesSuivantes
+          ? {
+              type: "edition_suivantes",
+              id: editIntervention.id,
+              serie_id: editIntervention.serie_id!,
+              depuis: editIntervention.date_intervention,
+              valeurs: values,
+              clientNom,
+            }
+          : { type: "edition", id, valeurs: values, clientNom }
+        : recurrence
+          ? {
+              type: "creation_serie",
+              prefixe: id,
+              dates: datesOccurrences(values.date_intervention, recurrence),
+              valeurs: values,
+              clientNom,
+              recurrence,
+            }
+          : { type: "creation", id, valeurs: values, clientNom },
+    );
     onOpenChange(false);
 
     const result = editIntervention
-      ? await quickEditInterventionAction(editIntervention.id, {
-          client_id: values.client_id || null,
-          date_intervention: values.date_intervention,
-          date_fin: values.date_fin || null,
-          heure_debut: values.heure_debut || null,
-          heure_fin: values.heure_fin || null,
-          type: values.type,
-          description: values.description || null,
-          a_facturer: values.a_facturer ?? true,
-        })
-      : await createInterventionAction(values);
+      ? await quickEditInterventionAction(
+          editIntervention.id,
+          {
+            client_id: values.client_id || null,
+            date_intervention: values.date_intervention,
+            date_fin: values.date_fin || null,
+            heure_debut: values.heure_debut || null,
+            heure_fin: values.heure_fin || null,
+            type: values.type,
+            description: values.description || null,
+            a_facturer: values.a_facturer ?? true,
+          },
+          surLesSuivantes ? "suivantes" : "seule",
+        )
+      : recurrence
+        ? await createInterventionSerieAction(values, recurrence)
+        : await createInterventionAction(values);
     setSubmitting(false);
 
     if (result.ok) {
-      toast.success(isEdit ? "Intervention modifiée" : "Intervention planifiée");
+      toast.success(
+        isEdit
+          ? surLesSuivantes
+            ? "Série modifiée à partir de ce rendez-vous"
+            : "Intervention modifiée"
+          : recurrence
+            ? `${nbOccurrences} rendez-vous planifiés`
+            : "Intervention planifiée",
+      );
       router.refresh();
     } else {
       annuler?.();
@@ -202,12 +288,30 @@ export function QuickInterventionDialog({
   async function onDelete() {
     if (!editIntervention) return;
     setSubmitting(true);
-    const annuler = onOptimiste?.({ type: "suppression", id: editIntervention.id });
+    const surLesSuivantes = enSerie && portee === "suivantes";
+    const annuler = onOptimiste?.(
+      surLesSuivantes
+        ? {
+            type: "suppression_suivantes",
+            serie_id: editIntervention.serie_id!,
+            depuis: editIntervention.date_intervention,
+          }
+        : { type: "suppression", id: editIntervention.id },
+    );
     onOpenChange(false);
-    const result = await deleteInterventionAction(editIntervention.id);
+    const result = await deleteInterventionAction(
+      editIntervention.id,
+      surLesSuivantes ? "suivantes" : "seule",
+    );
     setSubmitting(false);
     if (result.ok) {
-      toast.success("Intervention supprimée");
+      const { supprimees, conservees } = result.data;
+      toast.success(
+        supprimees > 1 ? `${supprimees} rendez-vous supprimés` : "Intervention supprimée",
+        conservees > 0
+          ? { description: `${conservees} conservé(s) : signatures ou fiches CERFA à garder.` }
+          : undefined,
+      );
       router.refresh();
     } else {
       annuler?.();
@@ -388,6 +492,102 @@ export function QuickInterventionDialog({
             />
           </div>
 
+          {/* Création : répéter le rendez-vous (série) */}
+          {!isEdit && (
+            <div className="space-y-2 rounded-md border px-3 py-2">
+              <div className="grid grid-cols-[3fr_2fr] gap-3">
+                <div className="min-w-0 space-y-1.5">
+                  <Label htmlFor="repetition">Répéter</Label>
+                  <Select
+                    value={repetition}
+                    onValueChange={(v) => choisirRepetition(v as ChoixRepetition)}
+                  >
+                    <SelectTrigger id="repetition">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CHOIX_REPETITION.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {LABELS_REPETITION[c]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {recurrence && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fin_repetition">Jusqu&apos;au</Label>
+                    <Input
+                      id="fin_repetition"
+                      type="date"
+                      value={recurrence.date_fin}
+                      min={currentStart || undefined}
+                      onChange={(ev) => setFinRepetition(ev.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+              {recurrence && (
+                <p
+                  className={
+                    tropDOccurrences || recurrence.date_fin < currentStart
+                      ? "text-xs text-destructive"
+                      : "text-xs text-muted-foreground"
+                  }
+                >
+                  {recurrence.date_fin < currentStart
+                    ? "La fin de la répétition précède le premier rendez-vous."
+                    : tropDOccurrences
+                      ? `Plus de ${MAX_OCCURRENCES} rendez-vous : rapprochez la date de fin.`
+                      : `${nbOccurrences} rendez-vous seront créés, ${libelleRecurrence(recurrence)}. Chacun se facture, se déplace ou se supprime séparément.`}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Édition d'une occurrence : portée des changements */}
+          {isEdit && enSerie && (
+            <div className="space-y-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <p className="flex items-center gap-2">
+                <Repeat className="size-4 shrink-0 text-muted-foreground" />
+                <span>
+                  Fait partie d&apos;une série
+                  {editIntervention?.recurrence
+                    ? ` : ${libelleRecurrence(editIntervention.recurrence)}`
+                    : ""}
+                  .
+                </span>
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="radio"
+                    name="portee"
+                    className="accent-primary"
+                    checked={portee === "seule"}
+                    onChange={() => setPortee("seule")}
+                  />
+                  Ce rendez-vous seulement
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="radio"
+                    name="portee"
+                    className="accent-primary"
+                    checked={portee === "suivantes"}
+                    onChange={() => setPortee("suivantes")}
+                  />
+                  <span>
+                    Ce rendez-vous et les suivants
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      (les facturés ne bougent pas)
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
+
           {/* Tout ce qui est sur le planning n'est pas à facturer */}
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
@@ -426,10 +626,14 @@ export function QuickInterventionDialog({
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      Supprimer cette intervention ?
+                      {enSerie && portee === "suivantes"
+                        ? "Supprimer ce rendez-vous et les suivants ?"
+                        : "Supprimer cette intervention ?"}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      Cette action est irréversible.
+                      {enSerie && portee === "suivantes"
+                        ? "Tous les rendez-vous de la série à partir de celui-ci seront supprimés, sauf ceux déjà facturés ou portant des documents à conserver. Cette action est irréversible."
+                        : "Cette action est irréversible."}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
