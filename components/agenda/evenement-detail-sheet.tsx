@@ -3,17 +3,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Link2, Loader2, MapPin, Navigation, Pencil, Phone, Repeat, Search, UserPlus, XCircle } from "lucide-react";
+import { Copy, ExternalLink, Link2, Loader2, MapPin, Navigation, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
-import { setInterventionAFacturerAction } from "@/lib/actions/interventions";
+import { deleteInterventionAction, setInterventionAFacturerAction } from "@/lib/actions/interventions";
 import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
 import { contactEvenement, lienAppel, lienItineraire } from "@/lib/agenda-contact";
 import { libelleRecurrence } from "@/lib/agenda-recurrence";
 import { heureCourte, libelleJourLong } from "@/lib/agenda-vues";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   StatutEvenementBadge,
   clientARenseigner,
@@ -36,6 +47,7 @@ export function EvenementDetailSheet({
   onClose,
   style,
   onModifier,
+  onDupliquer,
   onRattacher,
   onOptimiste,
 }: {
@@ -43,6 +55,8 @@ export function EvenementDetailSheet({
   onClose: () => void;
   style: (e: AgendaEvent) => React.CSSProperties | undefined;
   onModifier: (e: AgendaEvent) => void;
+  /** Dupliquer une intervention (dialogue de planification pré-rempli). */
+  onDupliquer?: (e: AgendaEvent) => void;
   onRattacher: () => void;
   /** Mise à jour optimiste (voir QuickInterventionDialog). */
   onOptimiste?: (changement: ChangementOptimiste) => () => void;
@@ -71,6 +85,21 @@ export function EvenementDetailSheet({
   }
   const debut = heureCourte(e?.heure_debut);
   const fin = heureCourte(e?.heure_fin);
+
+  // Supprimer CE rendez-vous (pour une série, « et les suivants » passe
+  // par Modifier). Le tiroir se ferme et le créneau disparaît tout de suite.
+  async function supprimer(ev: AgendaEvent) {
+    const annuler = onOptimiste?.({ type: "suppression", id: ev.id });
+    onClose();
+    const res = await deleteInterventionAction(ev.id);
+    if (!res.ok) {
+      annuler?.();
+      toast.error("Suppression refusée", { description: res.error });
+      return;
+    }
+    toast.success("Intervention supprimée");
+    router.refresh();
+  }
 
   return (
     <Sheet open={!!e} onOpenChange={(o) => !o && onClose()}>
@@ -202,6 +231,19 @@ export function EvenementDetailSheet({
                   Modifier
                 </Button>
               )}
+              {e.kind === "intervention" && onDupliquer && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => {
+                    onClose();
+                    onDupliquer(e);
+                  }}
+                >
+                  <Copy className="size-4" />
+                  Dupliquer
+                </Button>
+              )}
               {e.kind === "intervention" && !e.facture_emise && (
                 <Button
                   size="lg"
@@ -228,7 +270,17 @@ export function EvenementDetailSheet({
                 </Button>
               )}
               {e.href !== "#" && (
-                <Button asChild size="lg" variant="outline" className={e.kind === "intervention" || (e.kind === "external" && !e.facture_emise) ? "" : "col-span-2"}>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className={
+                    (e.kind === "intervention" && !e.facture_emise) ||
+                    (e.kind === "external" && !e.facture_emise)
+                      ? ""
+                      : "col-span-2"
+                  }
+                >
                   <Link href={e.href}>
                     <ExternalLink className="size-4" />
                     {e.kind === "facture_prestation" || (e.kind === "external" && e.facture_emise)
@@ -238,6 +290,35 @@ export function EvenementDetailSheet({
                         : "Ouvrir la fiche"}
                   </Link>
                 </Button>
+              )}
+              {e.kind === "intervention" && !e.facture_emise && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="lg" variant="outline" className="text-destructive">
+                      <Trash2 className="size-4" />
+                      Supprimer
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Supprimer ce rendez-vous ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {e.serie_id
+                          ? "Seulement celui-ci. Pour supprimer aussi les suivants de la série, passez par « Modifier »."
+                          : "Cette action est irréversible."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => supprimer(e)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Supprimer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
           </div>

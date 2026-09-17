@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
 import {
+  DUREE_MIN_ETIREMENT,
   arrondirAuPas,
   estDeplacable,
   minutesDeHeure,
@@ -77,6 +78,7 @@ export function VueGrilleHoraire({
   onOuvrir,
   onPlanifier,
   onDeplacer,
+  onRedimensionner,
 }: {
   mode: "jour" | "semaine";
   date: string;
@@ -92,6 +94,8 @@ export function VueGrilleHoraire({
   onPlanifier: (ymd: string, heures?: { debut: number; fin: number }) => void;
   /** Déposer un créneau glissé : jour et, sur la grille, heure de début (minutes). */
   onDeplacer?: (e: AgendaEvent, cible: CibleDeplacement) => void;
+  /** Créneau étiré par le bas : nouvelle heure de fin (minutes depuis minuit). */
+  onRedimensionner?: (e: AgendaEvent, finMinutes: number) => void;
 }) {
   const [dimanche, setDimanche] = useState(false);
   const jours =
@@ -215,7 +219,49 @@ export function VueGrilleHoraire({
       dernierJour.current = null;
       onDeplacer?.(e, cible);
     },
+    // Appui long relâché sur place : la fiche (menu) de l'évènement.
+    onAppuiLong: onOuvrir,
     desactive: !onDeplacer,
+  });
+
+  // Étirement d'un créneau par sa poignée du bas : la fin suit le
+  // pointeur (quart d'heure, 15 min au moins), le créneau se redessine
+  // en direct, relâcher enregistre.
+  const [redim, setRedim] = useState<{ e: AgendaEvent; jour: string; fin: number } | null>(null);
+  const finSousPointeur = (e: AgendaEvent, jour: string, y: number) => {
+    const colonne = document.querySelector<HTMLElement>(`[data-grille][data-jour="${jour}"]`);
+    if (!colonne || !e.heure_debut) return null;
+    const brut = arrondirAuPas(minutesDeY(lignes, y - colonne.getBoundingClientRect().top));
+    return Math.max(brut, minutesDeHeure(e.heure_debut) + DUREE_MIN_ETIREMENT);
+  };
+  const poigneeEtirement = (e: AgendaEvent, jour: string) => ({
+    onPointerDown: (ev: React.PointerEvent<HTMLElement>) => {
+      if (ev.button !== 0) return;
+      ev.stopPropagation();
+      ev.preventDefault();
+      ev.currentTarget.setPointerCapture(ev.pointerId);
+      const fin = e.heure_fin
+        ? minutesDeHeure(e.heure_fin)
+        : minutesDeHeure(e.heure_debut!) + DUREE_DEFAUT_MIN;
+      setRedim({ e, jour, fin });
+    },
+    onPointerMove: (ev: React.PointerEvent<HTMLElement>) => {
+      if (!redim || redim.e.id !== e.id) return;
+      const fin = finSousPointeur(e, jour, ev.clientY);
+      if (fin !== null && fin !== redim.fin) setRedim({ ...redim, fin });
+    },
+    onPointerUp: (ev: React.PointerEvent<HTMLElement>) => {
+      if (!redim || redim.e.id !== e.id) return;
+      if (ev.currentTarget.hasPointerCapture(ev.pointerId)) {
+        ev.currentTarget.releasePointerCapture(ev.pointerId);
+      }
+      const fin = finSousPointeur(e, jour, ev.clientY) ?? redim.fin;
+      setRedim(null);
+      onRedimensionner?.(e, fin);
+    },
+    onPointerCancel: () => setRedim(null),
+    onClick: (ev: React.MouseEvent) => ev.stopPropagation(),
+    onTouchEnd: (ev: React.TouchEvent) => ev.stopPropagation(),
   });
   const glisse = deplacement.enCours;
   const dureeGlissee = (e: AgendaEvent) =>
@@ -280,6 +326,10 @@ export function VueGrilleHoraire({
                     type="button"
                     onClick={() => onOuvrir(e)}
                     {...(onDeplacer && estDeplacable(e) ? deplacement.poignee(e) : {})}
+                    onContextMenu={(ev) => {
+                      ev.preventDefault();
+                      onOuvrir(e);
+                    }}
                     style={style(e)}
                     className={cn(
                       "block w-full truncate rounded px-1.5 text-left text-[11px] leading-6 ring-1 ring-inset ring-black/10 hover:brightness-95 dark:ring-white/20 dark:hover:brightness-110",
@@ -420,8 +470,13 @@ export function VueGrilleHoraire({
               {creneaux.map(({ evenement: e, creneau }) => {
                 const largeur = 100 / creneau.colonnes;
                 const top = yDeMinutes(lignes, creneau.debut);
-                const height = Math.max(yDeMinutes(lignes, creneau.fin) - top, 18);
+                const enEtirement = redim?.e.id === e.id && redim.e.kind === e.kind;
+                const height = Math.max(
+                  yDeMinutes(lignes, enEtirement ? redim.fin : creneau.fin) - top,
+                  18,
+                );
                 const deplacable = Boolean(onDeplacer) && estDeplacable(e);
+                const etirable = Boolean(onRedimensionner) && estDeplacable(e) && Boolean(e.heure_debut);
                 return (
                   <button
                     key={`${e.kind}-${e.id}`}
@@ -432,6 +487,10 @@ export function VueGrilleHoraire({
                       onOuvrir(e);
                     }}
                     {...(deplacable ? deplacement.poignee(e) : {})}
+                    onContextMenu={(ev) => {
+                      ev.preventDefault();
+                      onOuvrir(e);
+                    }}
                     style={{
                       ...style(e),
                       top,
@@ -440,18 +499,37 @@ export function VueGrilleHoraire({
                       width: `calc(${largeur}% - 4px)`,
                     }}
                     className={cn(
-                      "absolute overflow-hidden rounded-md px-1.5 py-0.5 text-left ring-1 ring-inset ring-black/10 hover:brightness-95 dark:ring-white/20 dark:hover:brightness-110",
+                      "group absolute overflow-hidden rounded-md px-1.5 py-0.5 text-left ring-1 ring-inset ring-black/10 hover:brightness-95 dark:ring-white/20 dark:hover:brightness-110",
                       mode === "jour" ? "text-sm" : "text-[11px] leading-tight",
                       deplacable && "poignee-deplacement cursor-grab active:cursor-grabbing",
                       glisse?.e.id === e.id && glisse.e.kind === e.kind && "opacity-40",
+                      enEtirement && "z-30 shadow-lg ring-2 ring-primary",
                     )}
                     title={deplacable ? `${libelleEvenement(e)} — glisser pour déplacer` : libelleEvenement(e)}
                   >
                     <span className="block truncate font-medium">
                       {heureCourte(e.heure_debut)}
-                      {e.heure_fin ? `–${heureCourte(e.heure_fin)}` : ""}
+                      {enEtirement
+                        ? `–${formatMinutes(redim.fin)}`
+                        : e.heure_fin
+                          ? `–${heureCourte(e.heure_fin)}`
+                          : ""}
                     </span>
                     <span className="block truncate">{libelleEvenement(e)}</span>
+                    {/* Poignée du bas : étirer pour changer la durée (touch-action none :
+                        le doigt qui la tient n'a pas à faire défiler la page). */}
+                    {etirable && height >= 28 && (
+                      <span
+                        role="presentation"
+                        data-poignee-etirement=""
+                        aria-hidden="true"
+                        {...poigneeEtirement(e, jour)}
+                        className="absolute inset-x-0 bottom-0 flex h-3.5 cursor-ns-resize items-end justify-center pb-0.5 [touch-action:none]"
+                        title="Étirer pour changer la durée"
+                      >
+                        <span className="h-1 w-8 rounded-full bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-white/40 [@media(hover:none)]:opacity-70" />
+                      </span>
+                    )}
                   </button>
                 );
               })}

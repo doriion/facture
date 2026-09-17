@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * c'est un déplacement ; en deçà, c'est un clic qui ouvre la fiche).
  * Au doigt : appui long (350 ms sans bouger), une petite vibration, puis
  * on glisse ; un doigt qui bouge tout de suite fait défiler la page
- * comme d'habitude. Pendant le glissement, le défilement est bloqué
+ * comme d'habitude. Appui long relâché sur place = menu (onAppuiLong). Pendant le glissement, le défilement est bloqué
  * (touchmove non passif) et la page défile seule près des bords.
  *
  * Le hook ne connaît pas la grille : `resoudre` transforme la position
@@ -49,10 +49,16 @@ type Saisie<T> = {
 export function useDeplacement<T, C>({
   resoudre,
   onDeposer,
+  onAppuiLong,
   desactive = false,
 }: {
   resoudre: (e: T, point: PointDeplacement) => C | null;
   onDeposer: (e: T, cible: C) => void;
+  /**
+   * Appui long relâché SANS bouger (au doigt) : l'utilisateur voulait
+   * le menu de l'évènement, pas le déplacer.
+   */
+  onAppuiLong?: (e: T) => void;
   /** Vrai pour ne rien saisir (évènement non déplaçable). */
   desactive?: boolean;
 }) {
@@ -168,6 +174,7 @@ export function useDeplacement<T, C>({
       if (actif.current) {
         const point = { x: ev.clientX, y: ev.clientY, decalageY: s.decalageY };
         const cible = resoudre(s.e, point);
+        const immobile = Math.hypot(ev.clientX - s.x, ev.clientY - s.y) < SEUIL_DOIGT_PX;
         // Après un glissement au doigt, le navigateur n'envoie pas
         // toujours de clic : on n'avale que celui qui suit tout de suite.
         clicAAvaler.current = true;
@@ -175,7 +182,8 @@ export function useDeplacement<T, C>({
           clicAAvaler.current = false;
         }, 150);
         terminer();
-        if (cible !== null) onDeposer(s.e, cible);
+        if (s.tactile && immobile) onAppuiLong?.(s.e);
+        else if (cible !== null) onDeposer(s.e, cible);
         return;
       }
       terminer();

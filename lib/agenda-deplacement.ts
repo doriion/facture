@@ -125,3 +125,26 @@ export function libelleDeplacement(v: ValeursDeplacement, aujourdhui?: string): 
   }
   return s;
 }
+
+/** Durée minimale d'un créneau étiré (minutes). */
+export const DUREE_MIN_ETIREMENT = 15;
+
+/**
+ * Étirer un créneau par le bas : nouvelle heure de fin, arrondie au
+ * quart d'heure, jamais moins de 15 min après le début ni après 23:59.
+ * Les dates et l'heure de début ne bougent pas. Sans heure de début, on
+ * ne change rien.
+ */
+export function redimensionner(
+  e: Pick<AgendaEvent, "date_start" | "date_end" | "heure_debut" | "heure_fin">,
+  finMinutes: number,
+): ValeursDeplacement {
+  const actuel = valeursActuelles(e);
+  if (!e.heure_debut) return actuel;
+  const debut = minutesDeHeure(e.heure_debut);
+  const fin = Math.min(
+    Math.max(arrondirAuPas(finMinutes), debut + DUREE_MIN_ETIREMENT),
+    DERNIERE_MINUTE,
+  );
+  return { ...actuel, heure_fin: heureDeMinutes(fin) };
+}

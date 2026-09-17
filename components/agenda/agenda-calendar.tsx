@@ -50,6 +50,7 @@ import {
   deplacer,
   estDeplacable,
   libelleDeplacement,
+  redimensionner,
   valeursActuelles,
   type CibleDeplacement,
   type ValeursDeplacement,
@@ -284,6 +285,7 @@ export function AgendaCalendar({
     id: string,
     valeurs: ValeursDeplacement,
     retour: ValeursDeplacement | null,
+    intitule: string = "Déplacé",
   ) => {
     const annuler = appliquerOptimiste({ type: "deplacement", id, valeurs });
     const res = await deplacerInterventionAction(id, valeurs);
@@ -293,7 +295,7 @@ export function AgendaCalendar({
       return;
     }
     if (retour) {
-      toast.success(`Déplacé : ${libelleDeplacement(valeurs, todayYmd)}`, {
+      toast.success(`${intitule} : ${libelleDeplacement(valeurs, todayYmd)}`, {
         duration: 6000,
         action: {
           label: "Annuler",
@@ -311,6 +313,13 @@ export function AgendaCalendar({
     if (!aChange(e, valeurs)) return;
     void enregistrerDeplacement(e.id, valeurs, valeursActuelles(e));
   };
+  // Créneau étiré par le bas (vues jour / semaine) : nouvelle durée.
+  const redimensionnerRdv = (e: AgendaEvent, finMinutes: number) => {
+    if (!estDeplacable(e)) return;
+    const valeurs = redimensionner(e, finMinutes);
+    if (!aChange(e, valeurs)) return;
+    void enregistrerDeplacement(e.id, valeurs, valeursActuelles(e), "Durée modifiée");
+  };
   // Vue mois : on dépose sur une case (le jour change, les heures restent).
   const deplacementMois = useDeplacement<AgendaEvent, CibleDeplacement>({
     resoudre: (_e, p) => {
@@ -320,6 +329,7 @@ export function AgendaCalendar({
       return jour ? { jour } : null;
     },
     onDeposer: deplacerRdv,
+    onAppuiLong: (e) => setDetail(e),
   });
   const glisseMois = deplacementMois.enCours;
 
@@ -420,14 +430,39 @@ export function AgendaCalendar({
   const openQuickAdd = (ymd: string, heures?: { debut: number; fin: number }) => {
     setQuickMonte(true);
     setEditTarget(null);
+    setModele(null);
     setQuickAddDate(ymd);
     setQuickAddCreneau(heures ? creneauDepuisHeures(heures.debut, heures.fin) : null);
+    setQuickAddOpen(true);
+  };
+
+  // Dupliquer : dialogue de planification pré-rempli avec ce rendez-vous
+  // (client, type, description, heures) ; on choisit la date.
+  const [modele, setModele] = useState<InterventionEditData | null>(null);
+  const openDuplicate = (e: AgendaEvent) => {
+    if (e.kind !== "intervention") return;
+    setQuickMonte(true);
+    setEditTarget(null);
+    setModele({
+      id: e.id,
+      client_id: e.client_id,
+      date_intervention: e.date_start,
+      date_fin: e.date_end !== e.date_start ? e.date_end : null,
+      heure_debut: e.heure_debut,
+      heure_fin: e.heure_fin,
+      type: e.type_activite ?? "installation",
+      description: e.description,
+      a_facturer: e.a_facturer ?? true,
+    });
+    setQuickAddDate(e.date_start);
+    setQuickAddCreneau(null);
     setQuickAddOpen(true);
   };
 
   const openEdit = (e: AgendaEvent) => {
     if (e.kind !== "intervention") return;
     setQuickMonte(true);
+    setModele(null);
     setEditTarget({
       id: e.id,
       client_id: e.client_id,
@@ -649,6 +684,7 @@ export function AgendaCalendar({
           onOuvrir={setDetail}
           onPlanifier={openQuickAdd}
           onDeplacer={deplacerRdv}
+          onRedimensionner={redimensionnerRdv}
         />
       )}
       {vue === "liste" && (
@@ -817,6 +853,10 @@ export function AgendaCalendar({
                               openEdit(e);
                             }}
                             {...(deplacable ? deplacementMois.poignee(e) : {})}
+                            onContextMenu={(ev) => {
+                              ev.preventDefault();
+                              setDetail(e);
+                            }}
                             className={cn(
                               commonClass,
                               deplacable && "poignee-deplacement cursor-grab active:cursor-grabbing",
@@ -972,12 +1012,16 @@ export function AgendaCalendar({
           open={quickAddOpen}
           onOpenChange={(next) => {
             setQuickAddOpen(next);
-            if (!next) setEditTarget(null);
+            if (!next) {
+              setEditTarget(null);
+              setModele(null);
+            }
           }}
           date={editTarget?.date_intervention ?? quickAddDate}
           creneau={editTarget ? null : quickAddCreneau}
           clients={clients}
           editIntervention={editTarget ?? undefined}
+          modele={modele}
           onOptimiste={appliquerOptimiste}
         />
       )}
@@ -992,6 +1036,7 @@ export function AgendaCalendar({
         onClose={() => setDetail(null)}
         style={styleDe}
         onModifier={openEdit}
+        onDupliquer={openDuplicate}
         onRattacher={ouvrirRattacher}
         onOptimiste={appliquerOptimiste}
       />
