@@ -3,8 +3,7 @@ import { Plus } from "lucide-react";
 
 import { listDevis, listModelesDevis } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
-import { DevisTable } from "@/components/devis/devis-table";
-import { DevisToolbar } from "@/components/devis/devis-toolbar";
+import { DevisListe } from "@/components/devis/devis-liste";
 import { NouveauDepuisModeleMenu } from "@/components/devis/nouveau-depuis-modele-menu";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 
@@ -19,16 +18,9 @@ export default async function DevisPage({
   const statut = searchParams.statut ?? "";
   const type = searchParams.type ?? "";
 
-  const [devis, modeles] = await Promise.all([
-    listDevis({ search, statut, type }),
-    listModelesDevis(),
-  ]);
-
-  const totalAffiche = devis.reduce((sum, d) => sum + Number(d.total_ht), 0);
-  const accepted = devis.filter((d) => d.statut === "accepte").length;
-  const sent = devis.filter((d) => d.statut === "envoye").length;
-  const conversionRate =
-    sent + accepted > 0 ? Math.round((accepted / (sent + accepted)) * 100) : 0;
+  // Liste entière : la recherche et les filtres s'appliquent sur le
+  // téléphone (DevisListe), sans aller-retour serveur.
+  const [devis, modeles] = await Promise.all([listDevis(), listModelesDevis()]);
 
   // Le menu ne reçoit que ce qui sert à lister par nom.
   const modelesMenu = modeles.map((m) => ({
@@ -42,20 +34,6 @@ export default async function DevisPage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Devis</h1>
-          <p className="text-sm text-muted-foreground">
-            {devis.length} devis —{" "}
-            {totalAffiche.toLocaleString("fr-FR", {
-              style: "currency",
-              currency: "EUR",
-            })}{" "}
-            cumulés
-            {sent + accepted > 0 && (
-              <>
-                {" "}
-                · taux d'acceptation : <strong>{conversionRate}%</strong>
-              </>
-            )}
-          </p>
         </div>
         <div className="flex items-center gap-2 max-md:hidden">
           <NouveauDepuisModeleMenu modeles={modelesMenu} />
@@ -71,13 +49,7 @@ export default async function DevisPage({
       {/* La gestion des modèles (renommer, supprimer) vit sur
           /devis/modeles, via « Gérer mes modèles » dans le menu :
           la liste des devis reste dégagée au quotidien. */}
-      <DevisToolbar
-        initialSearch={search}
-        initialStatut={statut}
-        initialType={type}
-      />
-
-      <DevisTable devis={devis} />
+      <DevisListe devis={devis} initial={{ search, statut, type }} />
 
       <MobileActionBar>
         <NouveauDepuisModeleMenu

@@ -3,8 +3,7 @@ import { Plus } from "lucide-react";
 
 import { bilanFluidesFrigo, listInterventions } from "@/lib/actions/interventions";
 import { Button } from "@/components/ui/button";
-import { InterventionsTable } from "@/components/interventions/interventions-table";
-import { InterventionsToolbar } from "@/components/interventions/interventions-toolbar";
+import { InterventionsListe } from "@/components/interventions/interventions-liste";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -19,7 +18,8 @@ export default async function InterventionsPage({
   const type = searchParams.type ?? "";
 
   const [interventions, bilan] = await Promise.all([
-    listInterventions({ search, type }),
+    // Liste entière : recherche et filtre sur place (InterventionsListe).
+    listInterventions(),
     bilanFluidesFrigo(),
   ]);
 
@@ -81,8 +81,7 @@ export default async function InterventionsPage({
         </Card>
       )}
 
-      <InterventionsToolbar initialSearch={search} initialType={type} />
-      <InterventionsTable interventions={interventions} />
+      <InterventionsListe interventions={interventions} initial={{ search, type }} />
 
       <MobileActionBar>
         <Button asChild size="lg">

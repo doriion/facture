@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
 
+import { LABELS_STATUT_FACTURE, LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,65 +12,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { LABELS_STATUT_FACTURE, LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 
+export type FiltresFactures = { search: string; statut: string; type: string };
+
+/** Recherche + filtres, contrôlés par la liste (filtrage sur place, sans serveur). */
 export function FacturesToolbar({
-  initialSearch,
-  initialStatut,
-  initialType,
+  filtres,
+  onChange,
 }: {
-  initialSearch: string;
-  initialStatut: string;
-  initialType: string;
+  filtres: FiltresFactures;
+  onChange: (f: FiltresFactures) => void;
 }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [search, setSearch] = useState(initialSearch);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const next = new URLSearchParams(params.toString());
-      if (search) next.set("search", search);
-      else next.delete("search");
-      router.replace(`/factures?${next.toString()}`);
-    }, 250);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
-
-  function setParam(key: string, value: string, allValue: string) {
-    const next = new URLSearchParams(params.toString());
-    if (value === allValue) next.delete(key);
-    else next.set(key, value);
-    router.replace(`/factures?${next.toString()}`);
-  }
-
-  function clearAll() {
-    setSearch("");
-    router.replace("/factures");
-  }
-
   const hasFilters =
-    search ||
-    (initialStatut && initialStatut !== "tous") ||
-    (initialType && initialType !== "tous");
+    filtres.search || (filtres.statut && filtres.statut !== "tous") || (filtres.type && filtres.type !== "tous");
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="relative flex-1 min-w-[220px]">
+      <div className="relative min-w-[220px] flex-1">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher (numéro, notes)"
+          value={filtres.search}
+          onChange={(e) => onChange({ ...filtres, search: e.target.value })}
+          placeholder="Rechercher (numéro, client, notes)"
           className="pl-9"
+          type="search"
+          enterKeyHint="search"
         />
       </div>
-      <Select
-        value={initialStatut || "tous"}
-        onValueChange={(v) => setParam("statut", v, "tous")}
-      >
+      <Select value={filtres.statut || "tous"} onValueChange={(v) => onChange({ ...filtres, statut: v })}>
         <SelectTrigger className="w-[160px]">
           <SelectValue />
         </SelectTrigger>
@@ -83,10 +52,7 @@ export function FacturesToolbar({
           ))}
         </SelectContent>
       </Select>
-      <Select
-        value={initialType || "tous"}
-        onValueChange={(v) => setParam("type", v, "tous")}
-      >
+      <Select value={filtres.type || "tous"} onValueChange={(v) => onChange({ ...filtres, type: v })}>
         <SelectTrigger className="w-[220px]">
           <SelectValue />
         </SelectTrigger>
@@ -100,7 +66,7 @@ export function FacturesToolbar({
         </SelectContent>
       </Select>
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearAll}>
+        <Button variant="ghost" size="sm" onClick={() => onChange({ search: "", statut: "", type: "" })}>
           <X className="size-4" />
           Effacer
         </Button>

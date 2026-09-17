@@ -2,8 +2,7 @@ import { Plus } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
-import { ClientsTable } from "@/components/clients/clients-table";
-import { ClientsToolbar } from "@/components/clients/clients-toolbar";
+import { ClientsListe } from "@/components/clients/clients-liste";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Button } from "@/components/ui/button";
 
@@ -20,26 +19,21 @@ export default async function ClientsPage({
   const search = searchParams.search ?? "";
   const type = searchParams.type ?? "";
 
-  const clients = await listClients({ search, type });
+  // Liste entière : recherche et filtre sur place (ClientsListe).
+  const clients = await listClients();
 
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Clients</h1>
-          <p className="text-sm text-muted-foreground">
-            {clients.length} client{clients.length > 1 ? "s" : ""} enregistré
-            {clients.length > 1 ? "s" : ""}.
-          </p>
         </div>
         <div className="max-md:hidden">
           <ClientFormDialog />
         </div>
       </div>
 
-      <ClientsToolbar initialSearch={search} initialType={type} />
-
-      <ClientsTable clients={clients} />
+      <ClientsListe clients={clients} initial={{ search, type }} />
 
       <MobileActionBar>
         <ClientFormDialog
