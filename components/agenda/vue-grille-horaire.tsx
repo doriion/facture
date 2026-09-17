@@ -79,6 +79,7 @@ export function VueGrilleHoraire({
   onPlanifier,
   onDeplacer,
   onRedimensionner,
+  reglage = null,
 }: {
   mode: "jour" | "semaine";
   date: string;
@@ -96,6 +97,13 @@ export function VueGrilleHoraire({
   onDeplacer?: (e: AgendaEvent, cible: CibleDeplacement) => void;
   /** Créneau étiré par le bas : nouvelle heure de fin (minutes depuis minuit). */
   onRedimensionner?: (e: AgendaEvent, finMinutes: number) => void;
+  /**
+   * Évènement en MODE RÉGLAGE (depuis sa fiche : « Déplacer / durée ») :
+   * mis en avant, il se glisse au doigt sans appui long et sa poignée
+   * de durée est toujours visible. Le chemin sûr sur téléphone quand
+   * l'appui long ne prend pas.
+   */
+  reglage?: AgendaEvent | null;
 }) {
   const [dimanche, setDimanche] = useState(false);
   const jours =
@@ -221,8 +229,10 @@ export function VueGrilleHoraire({
     },
     // Appui long relâché sur place : la fiche (menu) de l'évènement.
     onAppuiLong: onOuvrir,
+    immediat: (e) => reglage?.id === e.id && reglage.kind === e.kind,
     desactive: !onDeplacer,
   });
+  const enReglage = (e: AgendaEvent) => reglage?.id === e.id && reglage.kind === e.kind;
 
   // Étirement d'un créneau par sa poignée du bas : la fin suit le
   // pointeur (quart d'heure, 15 min au moins), le créneau se redessine
@@ -336,6 +346,7 @@ export function VueGrilleHoraire({
                       mode === "jour" && "text-sm leading-8",
                       onDeplacer && estDeplacable(e) && "poignee-deplacement cursor-grab",
                       glisse?.e.id === e.id && glisse.e.kind === e.kind && "opacity-40",
+                      enReglage(e) && "[touch-action:none] ring-2 ring-primary shadow-lg",
                     )}
                   >
                     {libelleEvenement(e)}
@@ -477,6 +488,7 @@ export function VueGrilleHoraire({
                 );
                 const deplacable = Boolean(onDeplacer) && estDeplacable(e);
                 const etirable = Boolean(onRedimensionner) && estDeplacable(e) && Boolean(e.heure_debut);
+                const regle = enReglage(e);
                 return (
                   <button
                     key={`${e.kind}-${e.id}`}
@@ -504,6 +516,9 @@ export function VueGrilleHoraire({
                       deplacable && "poignee-deplacement cursor-grab active:cursor-grabbing",
                       glisse?.e.id === e.id && glisse.e.kind === e.kind && "opacity-40",
                       enEtirement && "z-30 shadow-lg ring-2 ring-primary",
+                      // Mode réglage : touch-action none = le doigt ne fait jamais
+                      // défiler depuis ce créneau, il le déplace.
+                      regle && "z-30 shadow-xl ring-2 ring-primary [touch-action:none]",
                     )}
                     title={deplacable ? `${libelleEvenement(e)} — glisser pour déplacer` : libelleEvenement(e)}
                   >
@@ -518,16 +533,24 @@ export function VueGrilleHoraire({
                     <span className="block truncate">{libelleEvenement(e)}</span>
                     {/* Poignée du bas : étirer pour changer la durée (touch-action none :
                         le doigt qui la tient n'a pas à faire défiler la page). */}
-                    {etirable && height >= 28 && (
+                    {etirable && (height >= 28 || regle) && (
                       <span
                         role="presentation"
                         data-poignee-etirement=""
                         aria-hidden="true"
                         {...poigneeEtirement(e, jour)}
-                        className="absolute inset-x-0 bottom-0 flex h-3.5 cursor-ns-resize items-end justify-center pb-0.5 [touch-action:none] [@media(hover:none)]:h-7 [@media(hover:none)]:pb-1"
+                        className={cn(
+                          "absolute inset-x-0 bottom-0 flex h-3.5 cursor-ns-resize items-end justify-center pb-0.5 [touch-action:none] [@media(hover:none)]:h-7 [@media(hover:none)]:pb-1",
+                          regle && "h-9 bg-gradient-to-t from-primary/25 to-transparent pb-1.5 [@media(hover:none)]:h-10",
+                        )}
                         title="Étirer pour changer la durée"
                       >
-                        <span className="h-1 w-8 rounded-full bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-white/40 [@media(hover:none)]:h-1.5 [@media(hover:none)]:w-12 [@media(hover:none)]:opacity-80" />
+                        <span
+                          className={cn(
+                            "h-1 w-8 rounded-full bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-white/40 [@media(hover:none)]:h-1.5 [@media(hover:none)]:w-12 [@media(hover:none)]:opacity-80",
+                            regle && "h-1.5 w-14 bg-primary opacity-100",
+                          )}
+                        />
                       </span>
                     )}
                   </button>

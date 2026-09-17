@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, ExternalLink, Link2, Loader2, MapPin, Navigation, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
+import { Copy, ExternalLink, Link2, Loader2, MapPin, Move, Navigation, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
@@ -48,6 +48,7 @@ export function EvenementDetailSheet({
   style,
   onModifier,
   onDupliquer,
+  onRegler,
   onRattacher,
   onOptimiste,
 }: {
@@ -57,6 +58,8 @@ export function EvenementDetailSheet({
   onModifier: (e: AgendaEvent) => void;
   /** Dupliquer une intervention (dialogue de planification pré-rempli). */
   onDupliquer?: (e: AgendaEvent) => void;
+  /** Mode réglage sur la grille : déplacer / étirer au doigt, sans appui long. */
+  onRegler?: (e: AgendaEvent) => void;
   onRattacher: () => void;
   /** Mise à jour optimiste (voir QuickInterventionDialog). */
   onOptimiste?: (changement: ChangementOptimiste) => () => void;
@@ -216,6 +219,19 @@ export function EvenementDetailSheet({
                     <Phone className="size-4" />
                     Appeler {contact.telephone}
                   </a>
+                </Button>
+              )}
+              {e.kind === "intervention" && !e.facture_emise && onRegler && (
+                <Button
+                  size="lg"
+                  className="col-span-2"
+                  onClick={() => {
+                    onClose();
+                    onRegler(e);
+                  }}
+                >
+                  <Move className="size-4" />
+                  Déplacer / changer la durée
                 </Button>
               )}
               {e.kind === "intervention" && (

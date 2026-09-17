@@ -50,6 +50,7 @@ export function useDeplacement<T, C>({
   resoudre,
   onDeposer,
   onAppuiLong,
+  immediat,
   desactive = false,
 }: {
   resoudre: (e: T, point: PointDeplacement) => C | null;
@@ -59,6 +60,12 @@ export function useDeplacement<T, C>({
    * le menu de l'évènement, pas le déplacer.
    */
   onAppuiLong?: (e: T) => void;
+  /**
+   * Vrai pour un évènement en MODE RÉGLAGE : au doigt, il se déplace dès
+   * le premier mouvement, sans appui long (son élément a touch-action:
+   * none, le défilement n'entre pas en concurrence).
+   */
+  immediat?: (e: T) => boolean;
   /** Vrai pour ne rien saisir (évènement non déplaçable). */
   desactive?: boolean;
 }) {
@@ -143,7 +150,9 @@ export function useDeplacement<T, C>({
   const poignee = (e: T) => ({
     onPointerDown: (ev: React.PointerEvent<HTMLElement>) => {
       if (desactive || ev.button !== 0 || saisie.current) return;
-      const tactile = ev.pointerType !== "mouse";
+      // « tactile » = il faut un appui long avant de glisser. En mode
+      // réglage, le doigt se comporte comme une souris.
+      const tactile = ev.pointerType !== "mouse" && !(immediat?.(e) ?? false);
       const rect = ev.currentTarget.getBoundingClientRect();
       const s: Saisie<T> = {
         e,

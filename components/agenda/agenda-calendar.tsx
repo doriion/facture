@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, AlertCircle, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertCircle, Check, Move, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -365,6 +365,7 @@ export function AgendaCalendar({
 
   const choisirVue = (v: VueAgenda) => {
     setVue(v);
+    setReglage(null);
     try {
       localStorage.setItem(CLE_VUE_AGENDA, v);
     } catch {}
@@ -374,6 +375,10 @@ export function AgendaCalendar({
 
   // Fiche d'un évènement (vues jour / semaine / liste)
   const [detail, setDetail] = useState<AgendaEvent | null>(null);
+  // MODE RÉGLAGE : un rendez-vous mis en avant sur la grille, que le
+  // doigt déplace et étire directement (sans appui long). Le chemin sûr
+  // sur téléphone. Quitté par « Terminé », ou en changeant de jour / vue.
+  const [reglage, setReglage] = useState<AgendaEvent | null>(null);
   // Liste des RDV iPhone à rattacher (bandeau cliquable)
   const [rattacherOuvert, setRattacherOuvert] = useState(false);
 
@@ -479,7 +484,27 @@ export function AgendaCalendar({
     setQuickAddOpen(true);
   };
 
+  const demarrerReglage = (e: AgendaEvent) => {
+    if (!estDeplacable(e)) return;
+    setDetail(null);
+    // Le réglage se fait sur la grille : on y va si on n'y est pas.
+    if (vue !== "jour" && vue !== "semaine") {
+      setVue("jour");
+      try {
+        localStorage.setItem(CLE_VUE_AGENDA, "jour");
+      } catch {}
+    }
+    if (e.date_start !== dateCourante && (vue !== "semaine" || !joursSemaine(dateCourante).includes(e.date_start))) {
+      if (dansFenetre("jour", e.date_start, fenetre)) {
+        setDateCourante(e.date_start);
+        window.history.replaceState(null, "", `/agenda?vue=jour&date=${e.date_start}`);
+      }
+    }
+    setReglage(e);
+  };
+
   const allerA = (d: string, sens: 1 | -1 | null = null) => {
+    setReglage(null);
     setGlisse(sens === 1 ? "gauche" : sens === -1 ? "droite" : null);
     const v = vue ?? "mois";
     if (dansFenetre(v, d, fenetre)) {
@@ -685,6 +710,7 @@ export function AgendaCalendar({
           onPlanifier={openQuickAdd}
           onDeplacer={deplacerRdv}
           onRedimensionner={redimensionnerRdv}
+          reglage={reglage}
         />
       )}
       {vue === "liste" && (
@@ -988,7 +1014,25 @@ export function AgendaCalendar({
         associée ou RDV notés sur l'iPhone (préfixe 📱).
       </p>
 
+      {/* Mode réglage : consigne + Terminé (au-dessus de la barre d'onglets) */}
+      {reglage && (
+        <div className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-3 rounded-xl border bg-card/95 px-3 py-2 text-sm shadow-lg backdrop-blur sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2">
+          <Move className="size-5 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">Réglage du rendez-vous</span>
+            <span className="block text-xs text-muted-foreground">
+              Glissez-le pour le déplacer, tirez la barre du bas pour la durée. Chaque geste est enregistré.
+            </span>
+          </span>
+          <Button type="button" size="sm" onClick={() => setReglage(null)}>
+            <Check className="size-4" />
+            Terminé
+          </Button>
+        </div>
+      )}
+
       {/* Bouton flottant (téléphone) : planifier sur le jour affiché ou touché */}
+      {!reglage && (
       <button
         type="button"
         aria-label="Planifier une intervention"
@@ -1005,6 +1049,7 @@ export function AgendaCalendar({
       >
         <Plus className="size-7" />
       </button>
+      )}
       <div aria-hidden className="h-14 sm:hidden" />
 
       {quickMonte && (
@@ -1037,6 +1082,7 @@ export function AgendaCalendar({
         style={styleDe}
         onModifier={openEdit}
         onDupliquer={openDuplicate}
+        onRegler={demarrerReglage}
         onRattacher={ouvrirRattacher}
         onOptimiste={appliquerOptimiste}
       />
