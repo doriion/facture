@@ -65,6 +65,7 @@ export async function GET(request: Request) {
       )
       .eq("user_id", userId)
       .is("rappel_push_envoye_le", null)
+      .is("supprime_le", null)
       .gte("date_intervention", depuis)
       .lte("date_intervention", jusquau);
 

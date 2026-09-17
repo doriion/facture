@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
-import { bilanFluidesFrigo, listInterventions } from "@/lib/actions/interventions";
+import { bilanFluidesFrigo, listCorbeille, listInterventions } from "@/lib/actions/interventions";
 import { Button } from "@/components/ui/button";
 import { InterventionsListe } from "@/components/interventions/interventions-liste";
 import { MobileActionBar } from "@/components/mobile-action-bar";
@@ -17,10 +17,11 @@ export default async function InterventionsPage({
   const search = searchParams.search ?? "";
   const type = searchParams.type ?? "";
 
-  const [interventions, bilan] = await Promise.all([
+  const [interventions, bilan, corbeille] = await Promise.all([
     // Liste entière : recherche et filtre sur place (InterventionsListe).
     listInterventions(),
     bilanFluidesFrigo(),
+    listCorbeille(),
   ]);
 
   const bilanEntries = Object.entries(bilan.bilan);
@@ -35,12 +36,22 @@ export default async function InterventionsPage({
             frigorigènes sont consignés pour la déclaration F-Gas.
           </p>
         </div>
-        <Button asChild className="max-md:hidden">
-          <Link href="/interventions/nouvelle">
-            <Plus className="size-4" />
-            Nouvelle intervention
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {corbeille.length > 0 && (
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/interventions/corbeille">
+                <Trash2 className="size-4" />
+                Corbeille ({corbeille.length})
+              </Link>
+            </Button>
+          )}
+          <Button asChild className="max-md:hidden">
+            <Link href="/interventions/nouvelle">
+              <Plus className="size-4" />
+              Nouvelle intervention
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {bilanEntries.length > 0 && (

@@ -36,7 +36,8 @@ export async function getFactureCoveredEvents(factureId: string): Promise<{
     supabase
       .from("interventions")
       .select("id")
-      .eq("facture_id", factureId),
+      .eq("facture_id", factureId)
+      .is("supprime_le", null),
     supabase
       .from("facture_external_events")
       .select("external_uid")
@@ -219,6 +220,7 @@ export async function getAvailableEventsForFacture(args: {
     .select(
       "id, date_intervention, date_fin, description, type, facture_id, client:clients(nom)",
     )
+    .is("supprime_le", null)
     .gte("date_intervention", from)
     .lte("date_intervention", to)
     .or(`facture_id.is.null,facture_id.eq.${args.factureId}`)

@@ -40,6 +40,7 @@ function intervention(
     a_facturer: true,
     serie_id: null,
     rappel_push_envoye_le: null,
+    supprime_le: null,
     notes: null,
     created_at: "2026-07-01T08:00:00Z",
     updated_at: "2026-07-01T08:00:00Z",

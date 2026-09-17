@@ -39,6 +39,7 @@ export async function listInterventions(params?: {
   let query = supabase
     .from("interventions")
     .select("*, client:clients(id, nom, type), facture:factures(id, numero)")
+    .is("supprime_le", null)
     .order("date_intervention", { ascending: false });
 
   if (params?.search) {
@@ -95,6 +96,7 @@ export async function bilanFluidesFrigo(annee?: number) {
     .select(
       "fluide_frigo_type,fluide_frigo_kg_ajoute,fluide_frigo_kg_recupere",
     )
+    .is("supprime_le", null)
     .gte("date_intervention", start)
     .lt("date_intervention", end);
 
@@ -317,19 +319,57 @@ async function idsProteges(
   };
 }
 
+/** Ligne de la corbeille (interventions supprimées, restaurables). */
+export type InterventionCorbeille = {
+  id: string;
+  date_intervention: string;
+  date_fin: string | null;
+  heure_debut: string | null;
+  description: string | null;
+  type: string;
+  supprime_le: string;
+  client_nom: string | null;
+};
+
+/** Corbeille : les interventions supprimées, les plus récentes d'abord. */
+export async function listCorbeille(): Promise<InterventionCorbeille[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("interventions")
+    .select("id, date_intervention, date_fin, heure_debut, description, type, supprime_le, client:clients(nom)")
+    .not("supprime_le", "is", null)
+    .order("supprime_le", { ascending: false })
+    .limit(200);
+  type Row = Omit<InterventionCorbeille, "client_nom"> & { client: { nom: string } | { nom: string }[] | null };
+  return ((data ?? []) as Row[]).map((r) => {
+    const c = Array.isArray(r.client) ? r.client[0] : r.client;
+    return {
+      id: r.id,
+      date_intervention: r.date_intervention,
+      date_fin: r.date_fin,
+      heure_debut: r.heure_debut,
+      description: r.description,
+      type: r.type,
+      supprime_le: r.supprime_le,
+      client_nom: c?.nom ?? null,
+    };
+  });
+}
+
 /**
- * Suppression. Portée « suivantes » : ce rendez-vous et tous ceux de sa
- * série à partir de cette date, sauf les facturés et ceux qui portent
- * des documents à conserver (signatures, CERFA), qui restent en place.
+ * Suppression = MISE À LA CORBEILLE (horodatage `supprime_le`) : rien
+ * n'est effacé, l'intervention se restaure d'un clic (« Annuler » ou
+ * page Corbeille). Portée « suivantes » (série) : ce rendez-vous et
+ * tous ceux de sa série à partir de cette date, sauf les facturés.
+ * L'effacement réel : supprimerDefinitivementAction.
  */
 export async function deleteInterventionAction(
   id: string,
   portee: PorteeSerie = "seule",
-): Promise<ActionResult<{ supprimees: number; conservees: number }>> {
+): Promise<ActionResult<{ supprimees: number; conservees: number; ids: string[] }>> {
   const supabase = createClient();
 
   let cibles: string[] = [id];
-  let serieId: string | null = null;
   if (portee === "suivantes") {
     const { data: orig } = await supabase
       .from("interventions")
@@ -337,64 +377,101 @@ export async function deleteInterventionAction(
       .eq("id", id)
       .maybeSingle();
     if (orig?.serie_id) {
-      serieId = orig.serie_id;
       const { data: occs } = await supabase
         .from("interventions")
         .select("id")
         .eq("serie_id", orig.serie_id)
         .gte("date_intervention", orig.date_intervention)
-        .is("facture_id", null);
+        .is("facture_id", null)
+        .is("supprime_le", null);
       cibles = (occs ?? []).map((o) => o.id);
       if (!cibles.includes(id)) cibles.push(id);
     }
   }
 
-  // Une intervention signée est un document à valeur probante
-  // (conservation 5 ans) : la FK ON DELETE RESTRICT bloque de toute
-  // façon en base, mais on renvoie une erreur claire plutôt qu'une
-  // violation de contrainte brute.
-  const proteges = await idsProteges(supabase, cibles);
-  if (cibles.length === 1) {
-    if (proteges.signatures.has(id)) {
-      return {
-        ok: false,
-        error:
-          "Impossible de supprimer : cette intervention comporte des signatures (fiche d'intervention fluides à conserver 5 ans).",
-      };
-    }
-    if (proteges.cerfa.has(id)) {
-      return {
-        ok: false,
-        error:
-          "Impossible de supprimer : des fiches CERFA sont archivées pour cette intervention. Supprimez d'abord les fiches archivées si elles sont obsolètes.",
-      };
-    }
-  }
-  const aSupprimer = cibles.filter(
-    (i) => !proteges.signatures.has(i) && !proteges.cerfa.has(i),
-  );
-  if (aSupprimer.length === 0) {
-    return { ok: false, error: "Rien à supprimer : ces rendez-vous portent des documents à conserver." };
-  }
-
-  const { error } = await supabase.from("interventions").delete().in("id", aSupprimer);
+  const { data, error } = await supabase
+    .from("interventions")
+    .update({ supprime_le: new Date().toISOString() })
+    .in("id", cibles)
+    .is("supprime_le", null)
+    .select("id");
   if (error) return { ok: false, error: error.message };
-
-  // Série vide : on retire la règle (rien ne la référence plus).
-  if (serieId) {
-    const { count } = await supabase
-      .from("interventions")
-      .select("id", { count: "exact", head: true })
-      .eq("serie_id", serieId);
-    if (!count) await supabase.from("interventions_series").delete().eq("id", serieId);
-  }
+  const ids = (data ?? []).map((r) => r.id);
+  if (ids.length === 0) return { ok: false, error: "Intervention introuvable." };
 
   revalidatePath("/interventions");
   revalidatePath("/agenda");
-  return {
-    ok: true,
-    data: { supprimees: aSupprimer.length, conservees: cibles.length - aSupprimer.length },
-  };
+  return { ok: true, data: { supprimees: ids.length, conservees: 0, ids } };
+}
+
+/** Sort une ou plusieurs interventions de la corbeille. */
+export async function restaurerInterventionAction(
+  ids: string | string[],
+): Promise<ActionResult<{ restaurees: number }>> {
+  const liste = Array.isArray(ids) ? ids : [ids];
+  if (liste.length === 0) return { ok: true, data: { restaurees: 0 } };
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("interventions")
+    .update({ supprime_le: null })
+    .in("id", liste)
+    .not("supprime_le", "is", null)
+    .select("id");
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/interventions");
+  revalidatePath("/interventions/corbeille");
+  revalidatePath("/agenda");
+  for (const id of liste) revalidatePath(`/interventions/${id}`);
+  return { ok: true, data: { restaurees: (data ?? []).length } };
+}
+
+/**
+ * Effacement RÉEL, depuis la corbeille ou la fiche. Une intervention
+ * signée ou avec fiches CERFA archivées (documents à conserver 5 ans)
+ * ne peut pas être effacée : la FK ON DELETE RESTRICT bloque de toute
+ * façon en base, mais on renvoie une erreur claire.
+ */
+export async function supprimerDefinitivementAction(
+  id: string,
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const proteges = await idsProteges(supabase, [id]);
+  if (proteges.signatures.has(id)) {
+    return {
+      ok: false,
+      error:
+        "Impossible d'effacer : cette intervention comporte des signatures (fiche d'intervention fluides à conserver 5 ans).",
+    };
+  }
+  if (proteges.cerfa.has(id)) {
+    return {
+      ok: false,
+      error:
+        "Impossible d'effacer : des fiches CERFA sont archivées pour cette intervention. Supprimez d'abord les fiches archivées si elles sont obsolètes.",
+    };
+  }
+
+  const { data: ligne } = await supabase
+    .from("interventions")
+    .select("serie_id")
+    .eq("id", id)
+    .maybeSingle();
+  const { error } = await supabase.from("interventions").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  // Série vide : on retire la règle (rien ne la référence plus).
+  if (ligne?.serie_id) {
+    const { count } = await supabase
+      .from("interventions")
+      .select("id", { count: "exact", head: true })
+      .eq("serie_id", ligne.serie_id);
+    if (!count) await supabase.from("interventions_series").delete().eq("id", ligne.serie_id);
+  }
+
+  revalidatePath("/interventions");
+  revalidatePath("/interventions/corbeille");
+  revalidatePath("/agenda");
+  return { ok: true, data: undefined };
 }
 
 /**
@@ -450,7 +527,8 @@ export async function quickEditInterventionAction(
         .select("id, date_intervention")
         .eq("serie_id", orig.serie_id)
         .gte("date_intervention", orig.date_intervention)
-        .is("facture_id", null);
+        .is("facture_id", null)
+        .is("supprime_le", null);
       if (erreurLecture) return { ok: false, error: erreurLecture.message };
       for (const occ of occs ?? []) {
         const date = occ.id === id ? partial.date_intervention : ajouterJours(occ.date_intervention, delta);

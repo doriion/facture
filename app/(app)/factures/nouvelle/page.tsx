@@ -54,7 +54,7 @@ export default async function NouvelleFacturePage({
     if (intervention?.facture_id) {
       redirect(`/factures/${intervention.facture_id}`);
     }
-    if (intervention) {
+    if (intervention && !intervention.supprime_le) {
       const p = buildFacturePrefill(intervention);
       prefill = {
         facture: {

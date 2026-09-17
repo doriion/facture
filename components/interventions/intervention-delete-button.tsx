@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteInterventionAction } from "@/lib/actions/interventions";
+import {
+  deleteInterventionAction,
+  restaurerInterventionAction,
+} from "@/lib/actions/interventions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +22,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Depuis la fiche : mise à la CORBEILLE (rien n'est effacé), retour à la
+ * liste, et « Annuler » dans le message pour la faire revenir. L'effacement
+ * réel se fait depuis la corbeille (« Supprimer définitivement »).
+ */
 export function InterventionDeleteButton({ id }: { id: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -27,12 +35,27 @@ export function InterventionDeleteButton({ id }: { id: string }) {
     setPending(true);
     const result = await deleteInterventionAction(id);
     setPending(false);
-    if (result.ok) {
-      toast.success("Intervention supprimée");
-      router.push("/interventions");
-    } else {
+    if (!result.ok) {
       toast.error("Erreur", { description: result.error });
+      return;
     }
+    toast.success("Intervention mise à la corbeille", {
+      duration: 8000,
+      action: {
+        label: "Annuler",
+        onClick: async () => {
+          const r = await restaurerInterventionAction(id);
+          if (!r.ok) {
+            toast.error("Restauration refusée", { description: r.error });
+            return;
+          }
+          toast.success("Intervention restaurée");
+          router.push(`/interventions/${id}`);
+          router.refresh();
+        },
+      },
+    });
+    router.push("/interventions");
   }
 
   return (
@@ -50,12 +73,12 @@ export function InterventionDeleteButton({ id }: { id: string }) {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Supprimer cette intervention ?</AlertDialogTitle>
+          <AlertDialogTitle>Mettre cette intervention à la corbeille ?</AlertDialogTitle>
           <AlertDialogDescription>
-            La traçabilité des fluides frigorigènes pour cette intervention
-            sera perdue. Cette action est irréversible. Une intervention
-            comportant des signatures ou des fiches CERFA archivées ne peut
-            pas être supprimée (documents à conserver 5 ans).
+            Elle disparaît de l&apos;agenda et des listes, mais rien n&apos;est
+            effacé : vous pourrez l&apos;annuler tout de suite ou la restaurer
+            depuis la corbeille des interventions. Photos, signatures et
+            fiches CERFA restent attachées.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -69,7 +92,7 @@ export function InterventionDeleteButton({ id }: { id: string }) {
             disabled={pending}
           >
             {pending && <Loader2 className="size-4 animate-spin" />}
-            Supprimer
+            Mettre à la corbeille
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

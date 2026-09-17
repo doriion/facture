@@ -7,7 +7,7 @@ import { Copy, Download, ExternalLink, Link2, Loader2, MapPin, Move, Navigation,
 import { toast } from "sonner";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
-import { deleteInterventionAction, setInterventionAFacturerAction } from "@/lib/actions/interventions";
+import { deleteInterventionAction, restaurerInterventionAction, setInterventionAFacturerAction } from "@/lib/actions/interventions";
 import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
 import { contactEvenement, lienAppel, lienItineraire } from "@/lib/agenda-contact";
 import { libelleRecurrence } from "@/lib/agenda-recurrence";
@@ -95,8 +95,9 @@ export function EvenementDetailSheet({
   const debut = heureCourte(e?.heure_debut);
   const fin = heureCourte(e?.heure_fin);
 
-  // Supprimer CE rendez-vous (pour une série, « et les suivants » passe
-  // par Modifier). Le tiroir se ferme et le créneau disparaît tout de suite.
+  // Supprimer CE rendez-vous = le mettre à la corbeille (pour une série,
+  // « et les suivants » passe par Modifier). Le tiroir se ferme, le
+  // créneau disparaît tout de suite, et « Annuler » le fait revenir.
   async function supprimer(ev: AgendaEvent) {
     const annuler = onOptimiste?.({ type: "suppression", id: ev.id });
     onClose();
@@ -106,7 +107,37 @@ export function EvenementDetailSheet({
       toast.error("Suppression refusée", { description: res.error });
       return;
     }
-    toast.success("Intervention supprimée");
+    toast.success("Mis à la corbeille", {
+      duration: 8000,
+      action: {
+        label: "Annuler",
+        onClick: async () => {
+          const retour = onOptimiste?.({
+            type: "creation",
+            id: ev.id,
+            valeurs: {
+              client_id: ev.client_id,
+              date_intervention: ev.date_start,
+              date_fin: ev.date_end !== ev.date_start ? ev.date_end : null,
+              heure_debut: ev.heure_debut,
+              heure_fin: ev.heure_fin,
+              type: ev.type_activite ?? "autre",
+              description: ev.description,
+              a_facturer: ev.a_facturer ?? true,
+            },
+            clientNom: ev.client_nom,
+          });
+          const r = await restaurerInterventionAction(ev.id);
+          if (!r.ok) {
+            retour?.();
+            toast.error("Restauration refusée", { description: r.error });
+            return;
+          }
+          toast.success("Rendez-vous restauré");
+          router.refresh();
+        },
+      },
+    });
     router.refresh();
   }
 
@@ -359,11 +390,11 @@ export function EvenementDetailSheet({
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Supprimer ce rendez-vous ?</AlertDialogTitle>
+                      <AlertDialogTitle>Mettre ce rendez-vous à la corbeille ?</AlertDialogTitle>
                       <AlertDialogDescription>
                         {e.serie_id
-                          ? "Seulement celui-ci. Pour supprimer aussi les suivants de la série, passez par « Modifier »."
-                          : "Cette action est irréversible."}
+                          ? "Seulement celui-ci. Pour les suivants de la série, passez par « Modifier ». Restaurable depuis la corbeille."
+                          : "Il disparaît de l'agenda. Vous pourrez l'annuler tout de suite, ou le restaurer depuis la corbeille."}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

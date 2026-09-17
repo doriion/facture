@@ -1233,6 +1233,7 @@ export type Database = {
           notes: string | null;
           rappel_push_envoye_le: string | null;
           serie_id: string | null;
+          supprime_le: string | null;
           type: string;
           updated_at: string;
           user_id: string;
@@ -1265,6 +1266,7 @@ export type Database = {
           notes?: string | null;
           rappel_push_envoye_le?: string | null;
           serie_id?: string | null;
+          supprime_le?: string | null;
           type?: string;
           updated_at?: string;
           user_id: string;
@@ -1297,6 +1299,7 @@ export type Database = {
           notes?: string | null;
           rappel_push_envoye_le?: string | null;
           serie_id?: string | null;
+          supprime_le?: string | null;
           type?: string;
           updated_at?: string;
           user_id?: string;
