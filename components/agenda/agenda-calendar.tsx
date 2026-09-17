@@ -56,6 +56,8 @@ import {
   type ValeursDeplacement,
 } from "@/lib/agenda-deplacement";
 import { deplacerInterventionAction } from "@/lib/actions/interventions";
+import { reprendreRdvIphoneAction } from "@/lib/actions/reprise-externe";
+import { interventionDepuisRdv } from "@/lib/reprise-externe";
 import { useDeplacement } from "@/components/agenda/use-deplacement";
 import { AFacturerPanel } from "@/components/agenda/a-facturer-panel";
 import { BandeauJours } from "@/components/agenda/bandeau-jours";
@@ -313,6 +315,38 @@ export function AgendaCalendar({
     if (!aChange(e, valeurs)) return;
     void enregistrerDeplacement(e.id, valeurs, valeursActuelles(e));
   };
+  // RDV iPhone → intervention NG Gestion (déplaçable, modifiable). La
+  // copie iPhone disparaît et l'intervention apparaît tout de suite.
+  const reprendreRdv = async (e: AgendaEvent) => {
+    if (e.kind !== "external") return;
+    const v = interventionDepuisRdv(e);
+    const idTmp = `tmp-reprise-${Date.now()}`;
+    const externesAvant = externes;
+    const locauxAvant = evenementsLocaux;
+    const sansLaCopie = (liste: AgendaEvent[]) =>
+      liste.filter((x) => !(x.kind === "external" && x.id === e.id));
+    setExternes((prev) => ({ ...prev, events: sansLaCopie(prev.events) }));
+    setEvenementsLocaux((prev) =>
+      appliquerChangement(sansLaCopie(prev), {
+        type: "creation",
+        id: idTmp,
+        valeurs: { ...v, client_id: null },
+        clientNom: null,
+      }),
+    );
+    const res = await reprendreRdvIphoneAction(e);
+    if (!res.ok) {
+      setEvenementsLocaux(locauxAvant);
+      setExternes(externesAvant);
+      toast.error("Reprise refusée", { description: res.error });
+      return;
+    }
+    toast.success("Repris dans NG Gestion", {
+      description: "Vous pouvez maintenant le déplacer, le modifier et le facturer.",
+    });
+    router.refresh();
+  };
+
   // Créneau étiré par le bas (vues jour / semaine) : nouvelle durée.
   const redimensionnerRdv = (e: AgendaEvent, finMinutes: number) => {
     if (!estDeplacable(e)) return;
@@ -917,15 +951,20 @@ export function AgendaCalendar({
                             </Link>,
                           );
                         }
+                        // Non facturé : la fiche (rattacher, reprendre dans NG Gestion).
                         return envelopper(
-                          <div
-                            onClick={(ev) => ev.stopPropagation()}
-                            className={cn(commonClass, "cursor-default")}
+                          <button
+                            type="button"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setDetail(e);
+                            }}
+                            className={commonClass}
                             style={styleEv}
                             title={tooltip}
                           >
                             {prefix} {eventShortLabel(e)}
-                          </div>,
+                          </button>,
                         );
                       }
                       return envelopper(
@@ -1083,6 +1122,7 @@ export function AgendaCalendar({
         onModifier={openEdit}
         onDupliquer={openDuplicate}
         onRegler={demarrerReglage}
+        onReprendre={reprendreRdv}
         onRattacher={ouvrirRattacher}
         onOptimiste={appliquerOptimiste}
       />

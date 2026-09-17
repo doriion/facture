@@ -971,6 +971,39 @@ export type Database = {
           },
         ];
       };
+      external_events_importes: {
+        Row: {
+          id: string;
+          user_id: string;
+          external_uid: string;
+          fallback_key: string | null;
+          intervention_id: string | null;
+          snapshot_title: string | null;
+          snapshot_date_start: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          external_uid: string;
+          fallback_key?: string | null;
+          intervention_id?: string | null;
+          snapshot_title?: string | null;
+          snapshot_date_start?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          external_uid?: string;
+          fallback_key?: string | null;
+          intervention_id?: string | null;
+          snapshot_title?: string | null;
+          snapshot_date_start?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       facture_external_events: {
         Row: {
           id: string;

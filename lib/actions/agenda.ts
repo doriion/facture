@@ -354,7 +354,7 @@ export async function getAgendaExternes(fenetre: Fenetre): Promise<AgendaExterne
 
   const ws = fenetre.debut;
   const we = fenetre.fin;
-  const [externalEventsRes, externalLinksRes] = await Promise.all([
+  const [externalEventsRes, externalLinksRes, reprisRes] = await Promise.all([
     fetchExternalCalendar(externalUrl),
     // Liens RDV iPhone → factures (fenêtre ±60 j, on filtre côté code par UID).
     supabase
@@ -362,7 +362,14 @@ export async function getAgendaExternes(fenetre: Fenetre): Promise<AgendaExterne
       .select("external_uid, facture_id, factures:factures(numero)")
       .gte("snapshot_date_start", new Date(new Date(ws).getTime() - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10))
       .lte("snapshot_date_start", new Date(new Date(we).getTime() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10)),
+    // RDV iPhone REPRIS comme interventions : leur copie externe est masquée.
+    supabase
+      .from("external_events_importes")
+      .select("external_uid")
+      .gte("snapshot_date_start", new Date(new Date(ws).getTime() - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10))
+      .lte("snapshot_date_start", new Date(new Date(we).getTime() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10)),
   ]);
+  const repris = new Set((reprisRes.data ?? []).map((r) => r.external_uid));
 
   // Construction d'une map UID → facture liée pour le match O(1).
   type LinkRow = {
@@ -389,6 +396,7 @@ export async function getAgendaExternes(fenetre: Fenetre): Promise<AgendaExterne
       date_start: ext.date_start,
       title: ext.summary,
     });
+    if (repris.has(key.external_uid)) continue;
     const linked = externalLinkByUid.get(key.external_uid);
     events.push({
       id: key.external_uid,
