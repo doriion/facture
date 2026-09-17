@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
 
+import { TYPES_CLIENT } from "@/lib/format";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,61 +12,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { TYPES_CLIENT } from "@/lib/format";
 
-/**
- * Barre de recherche + filtre type, synchronise les query params (search, type).
- * Debounce de 250ms sur la recherche.
- */
+export type FiltresClientsUi = { search: string; type: string };
+
+/** Recherche + filtre type, contrôlés par la liste (filtrage sur place, sans serveur). */
 export function ClientsToolbar({
-  initialSearch,
-  initialType,
+  filtres,
+  onChange,
 }: {
-  initialSearch: string;
-  initialType: string;
+  filtres: FiltresClientsUi;
+  onChange: (f: FiltresClientsUi) => void;
 }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [search, setSearch] = useState(initialSearch);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const next = new URLSearchParams(params.toString());
-      if (search) next.set("search", search);
-      else next.delete("search");
-      router.replace(`/clients?${next.toString()}`);
-    }, 250);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
-
-  function setType(type: string) {
-    const next = new URLSearchParams(params.toString());
-    if (type === "tous") next.delete("type");
-    else next.set("type", type);
-    router.replace(`/clients?${next.toString()}`);
-  }
-
-  function clearAll() {
-    setSearch("");
-    router.replace("/clients");
-  }
-
-  const hasFilters = search || (initialType && initialType !== "tous");
+  const hasFilters = filtres.search || (filtres.type && filtres.type !== "tous");
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="relative flex-1 min-w-[220px]">
+      <div className="relative min-w-[220px] flex-1">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher (nom, ville, email)"
+          value={filtres.search}
+          onChange={(e) => onChange({ ...filtres, search: e.target.value })}
+          placeholder="Rechercher (nom, ville, email, téléphone)"
           className="pl-9"
+          type="search"
+          enterKeyHint="search"
         />
       </div>
-      <Select value={initialType || "tous"} onValueChange={setType}>
+      <Select value={filtres.type || "tous"} onValueChange={(v) => onChange({ ...filtres, type: v })}>
         <SelectTrigger className="w-[200px]">
           <SelectValue />
         </SelectTrigger>
@@ -80,7 +52,7 @@ export function ClientsToolbar({
         </SelectContent>
       </Select>
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearAll}>
+        <Button variant="ghost" size="sm" onClick={() => onChange({ search: "", type: "" })}>
           <X className="size-4" />
           Effacer
         </Button>

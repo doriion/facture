@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegister } from "@/components/sw-register";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import "./globals.css";
 import { PRINCIPAL } from "@/lib/theme";
@@ -74,6 +75,8 @@ export default function RootLayout({
         {children}
         <Toaster />
         <ServiceWorkerRegister />
+        {/* Temps réels (LCP, INP…) mesurés depuis les vrais appareils, sans donnée personnelle. */}
+        <SpeedInsights />
       </body>
     </html>
   );
