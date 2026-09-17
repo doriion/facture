@@ -423,6 +423,23 @@ export function yDeMinutes(lignes: LigneHoraire[], minutesDepuisMinuit: number):
   return hauteurGrille(lignes);
 }
 
+/**
+ * Minutes depuis minuit d'une position en px (inverse de yDeMinutes),
+ * continues et bornées à la grille — pour poser un rendez-vous glissé
+ * au quart d'heure près, même sur les heures compactées.
+ */
+export function minutesDeY(lignes: LigneHoraire[], y: number): number {
+  const premiere = lignes[0];
+  if (!premiere) return HEURE_DEBUT_GRILLE * 60;
+  if (y <= 0) return premiere.heure * 60;
+  for (const l of lignes) {
+    if (y < l.top + l.height) {
+      return l.heure * 60 + ((y - l.top) / l.height) * 60;
+    }
+  }
+  return (lignes[lignes.length - 1]!.heure + 1) * 60;
+}
+
 /** Heure (entière) de la ligne qui contient une position en px, bornée à la grille. */
 export function heureDeY(lignes: LigneHoraire[], y: number): number {
   const premiere = lignes[0];

@@ -65,4 +65,22 @@ describe("appliquerChangement", () => {
     expect(res[0]!.a_facturer).toBe(false);
     expect(res[1]).toBe(facture);
   });
+
+  it("déplacement : dates et heures remplacées, le reste conservé", () => {
+    const res = appliquerChangement([existant, facture], {
+      type: "deplacement",
+      id: "i1",
+      valeurs: { date_intervention: "2026-09-18", date_fin: "2026-09-19", heure_debut: "14:00:00", heure_fin: "16:00:00" },
+    });
+    expect(res[0]).toMatchObject({
+      date_start: "2026-09-18", date_end: "2026-09-19", heure_debut: "14:00:00", heure_fin: "16:00:00",
+      client_nom: "BALDET Maurice", client_adresse: "580 chemin de la Croix verte", a_facturer: true,
+    });
+    expect(res[1]).toBe(facture);
+    const sansFin = appliquerChangement([existant], {
+      type: "deplacement", id: "i1",
+      valeurs: { date_intervention: "2026-09-20", date_fin: null, heure_debut: null, heure_fin: null },
+    })[0]!;
+    expect(sansFin).toMatchObject({ date_start: "2026-09-20", date_end: "2026-09-20", heure_debut: null, heure_fin: null });
+  });
 });

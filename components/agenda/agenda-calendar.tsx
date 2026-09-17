@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, AlertCircle, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,6 +45,17 @@ import {
 } from "@/lib/agenda-vues";
 import { statsDuMois, statutFacturation } from "@/lib/agenda-facturation";
 import { appliquerChangement, type ChangementOptimiste } from "@/lib/agenda-optimiste";
+import {
+  aChange,
+  deplacer,
+  estDeplacable,
+  libelleDeplacement,
+  valeursActuelles,
+  type CibleDeplacement,
+  type ValeursDeplacement,
+} from "@/lib/agenda-deplacement";
+import { deplacerInterventionAction } from "@/lib/actions/interventions";
+import { useDeplacement } from "@/components/agenda/use-deplacement";
 import { AFacturerPanel } from "@/components/agenda/a-facturer-panel";
 import { BandeauJours } from "@/components/agenda/bandeau-jours";
 import { useGlissement } from "@/components/agenda/use-glissement";
@@ -264,6 +276,52 @@ export function AgendaCalendar({
     setEvenementsLocaux((prev) => appliquerChangement(prev, c));
     return () => setEvenementsLocaux(avant);
   };
+
+  // Déplacement d'un rendez-vous (glisser-déposer) : l'agenda bouge tout
+  // de suite, le serveur confirme derrière, et « Annuler » remet le
+  // créneau à sa place (même mécanique, valeurs d'origine).
+  const enregistrerDeplacement = async (
+    id: string,
+    valeurs: ValeursDeplacement,
+    retour: ValeursDeplacement | null,
+  ) => {
+    const annuler = appliquerOptimiste({ type: "deplacement", id, valeurs });
+    const res = await deplacerInterventionAction(id, valeurs);
+    if (!res.ok) {
+      annuler();
+      toast.error("Déplacement refusé", { description: res.error });
+      return;
+    }
+    if (retour) {
+      toast.success(`Déplacé : ${libelleDeplacement(valeurs, todayYmd)}`, {
+        duration: 6000,
+        action: {
+          label: "Annuler",
+          onClick: () => void enregistrerDeplacement(id, retour, null),
+        },
+      });
+    } else {
+      toast.success("Remis à sa place");
+    }
+    router.refresh();
+  };
+  const deplacerRdv = (e: AgendaEvent, cible: CibleDeplacement) => {
+    if (!estDeplacable(e)) return;
+    const valeurs = deplacer(e, cible);
+    if (!aChange(e, valeurs)) return;
+    void enregistrerDeplacement(e.id, valeurs, valeursActuelles(e));
+  };
+  // Vue mois : on dépose sur une case (le jour change, les heures restent).
+  const deplacementMois = useDeplacement<AgendaEvent, CibleDeplacement>({
+    resoudre: (_e, p) => {
+      const jour = document
+        .elementFromPoint(p.x, p.y)
+        ?.closest<HTMLElement>("[data-jour-mois]")?.dataset.jourMois;
+      return jour ? { jour } : null;
+    },
+    onDeposer: deplacerRdv,
+  });
+  const glisseMois = deplacementMois.enCours;
 
   // Petit écran (téléphone) : l'agenda principal se pilote au doigt,
   // l'écran est allégé (stats, légende et bandeau masqués, « + » flottant).
@@ -588,6 +646,7 @@ export function AgendaCalendar({
           style={styleDe}
           onOuvrir={setDetail}
           onPlanifier={openQuickAdd}
+          onDeplacer={deplacerRdv}
         />
       )}
       {vue === "liste" && (
@@ -631,6 +690,7 @@ export function AgendaCalendar({
               return (
                 <div
                   key={idx}
+                  data-jour-mois={ymd}
                   onClick={() => (mobile ? setJourSelectionne(ymd) : openQuickAdd(ymd))}
                   role="button"
                   tabIndex={0}
@@ -659,6 +719,7 @@ export function AgendaCalendar({
                     idx >= 35 && "border-b-0",
                     !isCurrentMonth && "bg-muted/20 text-muted-foreground/60",
                     mobile && jourSelectionne === ymd && "ring-2 ring-inset ring-primary",
+                    glisseMois?.cible?.jour === ymd && "bg-primary/10 ring-2 ring-inset ring-primary",
                     isCurrentMonth && (isHoliday || isWeekend) &&
                       "bg-[color-mix(in_srgb,var(--teinte)_55%,transparent)] dark:bg-[color-mix(in_srgb,var(--teinte)_22%,transparent)]",
                   )}
@@ -745,6 +806,7 @@ export function AgendaCalendar({
                       // pour ajuster planning/description. Lien "Fiche complète"
                       // disponible dans le dialogue.
                       if (isIntervention) {
+                        const deplacable = estDeplacable(e);
                         return envelopper(
                           <button
                             type="button"
@@ -752,9 +814,14 @@ export function AgendaCalendar({
                               ev.stopPropagation();
                               openEdit(e);
                             }}
-                            className={commonClass}
+                            {...(deplacable ? deplacementMois.poignee(e) : {})}
+                            className={cn(
+                              commonClass,
+                              deplacable && "poignee-deplacement cursor-grab active:cursor-grabbing",
+                              glisseMois?.e.id === e.id && "opacity-40",
+                            )}
                             style={styleEv}
-                            title={tooltip}
+                            title={deplacable ? `${tooltip}\n(Glisser pour déplacer)` : tooltip}
                           >
                             {eventShortLabel(e)}
                           </button>,
@@ -814,6 +881,22 @@ export function AgendaCalendar({
       </Card>
       )}
 
+      {/* Étiquette qui suit le doigt / la souris pendant un déplacement en vue mois */}
+      {glisseMois && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed z-50 max-w-[60vw] truncate rounded-md px-2 py-1 text-xs font-medium shadow-lg ring-2 ring-primary"
+          style={{
+            ...styleDe(glisseMois.e),
+            left: glisseMois.point.x + 12,
+            top: glisseMois.point.y - 36,
+          }}
+        >
+          {eventShortLabel(glisseMois.e)}
+          {glisseMois.cible ? ` → ${libelleJour(glisseMois.cible.jour, todayYmd)}` : ""}
+        </div>
+      )}
+
       {/* Mois sur téléphone : les rendez-vous du jour touché */}
       {vue === "mois" && mobile && (
         <div className="space-y-1.5">
@@ -851,7 +934,8 @@ export function AgendaCalendar({
 
       <p className="hidden text-xs text-muted-foreground sm:block">
         Cliquez sur une case du calendrier pour planifier une intervention,
-        ou sur un évènement existant pour ouvrir sa fiche. Tout ce qui est
+        ou sur un évènement existant pour ouvrir sa fiche ; glissez un
+        rendez-vous pour le déplacer. Tout ce qui est
         en{" "}
         <span
           className="inline-block size-2.5 rounded-full align-middle"

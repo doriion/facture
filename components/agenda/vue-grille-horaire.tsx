@@ -5,6 +5,13 @@ import { Plus } from "lucide-react";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
 import {
+  arrondirAuPas,
+  estDeplacable,
+  minutesDeHeure,
+  type CibleDeplacement,
+} from "@/lib/agenda-deplacement";
+import {
+  DUREE_DEFAUT_MIN,
   bornesGrille,
   creneauDepuisHeures,
   creneauxDuJour,
@@ -18,13 +25,21 @@ import {
   joursSemaine,
   libelleJour,
   libelleJourCourt,
+  minutesDeY,
   yDeMinutes,
 } from "@/lib/agenda-vues";
 import { cn } from "@/lib/utils";
 import { libelleEvenement } from "@/components/agenda/evenement-commun";
+import { useDeplacement, type PointDeplacement } from "@/components/agenda/use-deplacement";
 
 /** Hauteur d'une heure vide en vue jour (les heures pleines gardent 64 px). */
 const HAUTEUR_COMPACTE = 26;
+
+/** « 14:15 » depuis des minutes depuis minuit. */
+function formatMinutes(min: number): string {
+  const m = Math.max(0, Math.round(min));
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
 
 /** Minutes depuis minuit, heure locale du téléphone. */
 function minutesMaintenant(): number {
@@ -46,6 +61,11 @@ function minutesMaintenant(): number {
  * CETTE HEURE (14 h → 14:00–15:00) ; un clic-glisser sur plusieurs
  * lignes donne la plage (14 h → 16 h). Sur téléphone, un tap suffit ;
  * le défilement vertical reste au navigateur (touch-action: pan-y).
+ * Un créneau (intervention non facturée) se DÉPLACE en le tirant à la
+ * souris, ou au doigt après un appui long : il suit le pointeur, se
+ * cale au quart d'heure et change de jour en changeant de colonne ; un
+ * fantôme montre où il va se poser. Les « journée entière » se déposent
+ * sur un jour.
  */
 export function VueGrilleHoraire({
   mode,
@@ -56,6 +76,7 @@ export function VueGrilleHoraire({
   style,
   onOuvrir,
   onPlanifier,
+  onDeplacer,
 }: {
   mode: "jour" | "semaine";
   date: string;
@@ -69,6 +90,8 @@ export function VueGrilleHoraire({
    * heures de début et de fin (exclusive) du créneau cliqué ou glissé.
    */
   onPlanifier: (ymd: string, heures?: { debut: number; fin: number }) => void;
+  /** Déposer un créneau glissé : jour et, sur la grille, heure de début (minutes). */
+  onDeplacer?: (e: AgendaEvent, cible: CibleDeplacement) => void;
 }) {
   const [dimanche, setDimanche] = useState(false);
   const jours =
@@ -172,6 +195,34 @@ export function VueGrilleHoraire({
 
   const annulerSelection = () => setSelection(null);
 
+  // Glisser-déposer d'un créneau. La cible se lit sous le pointeur :
+  // la colonne (jour) et, pour un horodaté, la position du HAUT du
+  // créneau (le point saisi garde son décalage) arrondie au quart d'heure.
+  const dernierJour = useRef<string | null>(null);
+  const resoudre = (e: AgendaEvent, p: PointDeplacement): CibleDeplacement | null => {
+    const sous = document.elementFromPoint(p.x, p.y)?.closest<HTMLElement>("[data-jour]");
+    const jour = sous?.dataset.jour ?? dernierJour.current ?? e.date_start;
+    dernierJour.current = jour;
+    if (!e.heure_debut) return { jour };
+    const colonne = document.querySelector<HTMLElement>(`[data-grille][data-jour="${jour}"]`);
+    if (!colonne) return { jour };
+    const top = p.y - p.decalageY - colonne.getBoundingClientRect().top;
+    return { jour, debut: arrondirAuPas(minutesDeY(lignes, top)) };
+  };
+  const deplacement = useDeplacement<AgendaEvent, CibleDeplacement>({
+    resoudre,
+    onDeposer: (e, cible) => {
+      dernierJour.current = null;
+      onDeplacer?.(e, cible);
+    },
+    desactive: !onDeplacer,
+  });
+  const glisse = deplacement.enCours;
+  const dureeGlissee = (e: AgendaEvent) =>
+    e.heure_debut && e.heure_fin
+      ? Math.max(minutesDeHeure(e.heure_fin) - minutesDeHeure(e.heure_debut), 15)
+      : DUREE_DEFAUT_MIN;
+
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
       {/* En-tête des jours (semaine) + bandeau journée entière */}
@@ -194,8 +245,16 @@ export function VueGrilleHoraire({
         {jours.map((jour) => {
           const entiers = journeeEntiere(events, jour);
           const ferie = holidays[jour];
+          const cibleEntiere = glisse?.cible?.jour === jour && glisse.cible.debut === undefined;
           return (
-            <div key={jour} className="min-w-0 border-r px-1 py-1 last:border-r-0">
+            <div
+              key={jour}
+              data-jour={jour}
+              className={cn(
+                "min-w-0 border-r px-1 py-1 last:border-r-0",
+                cibleEntiere && "bg-primary/10 ring-2 ring-inset ring-primary",
+              )}
+            >
               {mode === "semaine" && (
                 <div
                   className={cn(
@@ -220,10 +279,13 @@ export function VueGrilleHoraire({
                     key={`${e.kind}-${e.id}`}
                     type="button"
                     onClick={() => onOuvrir(e)}
+                    {...(onDeplacer && estDeplacable(e) ? deplacement.poignee(e) : {})}
                     style={style(e)}
                     className={cn(
                       "block w-full truncate rounded px-1.5 text-left text-[11px] leading-6 ring-1 ring-inset ring-black/10 hover:brightness-95 dark:ring-white/20 dark:hover:brightness-110",
                       mode === "jour" && "text-sm leading-8",
+                      onDeplacer && estDeplacable(e) && "poignee-deplacement cursor-grab",
+                      glisse?.e.id === e.id && glisse.e.kind === e.kind && "opacity-40",
                     )}
                   >
                     {libelleEvenement(e)}
@@ -271,6 +333,7 @@ export function VueGrilleHoraire({
             <div
               key={jour}
               data-jour={jour}
+              data-grille=""
               className={cn(
                 "relative select-none border-r last:border-r-0",
                 jour === aujourdhui && "bg-primary/[0.03]",
@@ -327,11 +390,38 @@ export function VueGrilleHoraire({
                   </span>
                 </div>
               )}
+              {/* Fantôme du créneau glissé, à l'endroit où il va se poser */}
+              {glisse?.cible?.jour === jour && glisse.cible.debut !== undefined && (() => {
+                const debut = glisse.cible.debut;
+                const top = yDeMinutes(lignes, debut);
+                const height = Math.max(
+                  yDeMinutes(lignes, debut + dureeGlissee(glisse.e)) - top,
+                  18,
+                );
+                const fin = glisse.e.heure_fin ? debut + dureeGlissee(glisse.e) : null;
+                return (
+                  <div
+                    aria-hidden="true"
+                    className={cn(
+                      "pointer-events-none absolute inset-x-0.5 z-30 overflow-hidden rounded-md px-1.5 py-0.5 shadow-lg ring-2 ring-primary",
+                      mode === "jour" ? "text-sm" : "text-[11px] leading-tight",
+                    )}
+                    style={{ ...style(glisse.e), top, height }}
+                  >
+                    <span className="block truncate font-medium">
+                      {formatMinutes(debut)}
+                      {fin !== null ? `–${formatMinutes(fin)}` : ""}
+                    </span>
+                    <span className="block truncate">{libelleEvenement(glisse.e)}</span>
+                  </div>
+                );
+              })()}
               {/* Créneaux */}
               {creneaux.map(({ evenement: e, creneau }) => {
                 const largeur = 100 / creneau.colonnes;
                 const top = yDeMinutes(lignes, creneau.debut);
                 const height = Math.max(yDeMinutes(lignes, creneau.fin) - top, 18);
+                const deplacable = Boolean(onDeplacer) && estDeplacable(e);
                 return (
                   <button
                     key={`${e.kind}-${e.id}`}
@@ -341,6 +431,7 @@ export function VueGrilleHoraire({
                       ev.stopPropagation();
                       onOuvrir(e);
                     }}
+                    {...(deplacable ? deplacement.poignee(e) : {})}
                     style={{
                       ...style(e),
                       top,
@@ -351,8 +442,10 @@ export function VueGrilleHoraire({
                     className={cn(
                       "absolute overflow-hidden rounded-md px-1.5 py-0.5 text-left ring-1 ring-inset ring-black/10 hover:brightness-95 dark:ring-white/20 dark:hover:brightness-110",
                       mode === "jour" ? "text-sm" : "text-[11px] leading-tight",
+                      deplacable && "poignee-deplacement cursor-grab active:cursor-grabbing",
+                      glisse?.e.id === e.id && glisse.e.kind === e.kind && "opacity-40",
                     )}
-                    title={libelleEvenement(e)}
+                    title={deplacable ? `${libelleEvenement(e)} — glisser pour déplacer` : libelleEvenement(e)}
                   >
                     <span className="block truncate font-medium">
                       {heureCourte(e.heure_debut)}

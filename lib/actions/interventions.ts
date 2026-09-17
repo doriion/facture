@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   interventionSchema,
   type InterventionFormValues,
+  deplacementInterventionSchema,
+  type DeplacementIntervention,
 } from "@/lib/validations/intervention";
 import type { Database } from "@/types/database";
 
@@ -303,6 +305,46 @@ export async function setInterventionAFacturerAction(
     .update({ a_facturer: aFacturer })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+  revalidatePath("/interventions");
+  revalidatePath(`/interventions/${id}`);
+  revalidatePath("/agenda");
+  return { ok: true, data: undefined };
+}
+
+/**
+ * Déplacement par glisser-déposer depuis l'agenda : seul le planning
+ * change (jour, jour de fin, heures). Refusé une fois la facture émise :
+ * le planning se corrige alors depuis la fiche, pas d'un geste sur
+ * l'agenda.
+ */
+export async function deplacerInterventionAction(
+  id: string,
+  valeurs: DeplacementIntervention,
+): Promise<ActionResult> {
+  const parsed = deplacementInterventionSchema.safeParse(valeurs);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Planning invalide." };
+  }
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("interventions")
+    .update({
+      date_intervention: parsed.data.date_intervention,
+      date_fin: parsed.data.date_fin,
+      heure_debut: parsed.data.heure_debut,
+      heure_fin: parsed.data.heure_fin,
+    })
+    .eq("id", id)
+    .is("facture_id", null)
+    .select("id");
+
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      error: "Intervention introuvable ou déjà facturée : modifiez-la depuis sa fiche.",
+    };
+  }
   revalidatePath("/interventions");
   revalidatePath(`/interventions/${id}`);
   revalidatePath("/agenda");
