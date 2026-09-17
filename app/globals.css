@@ -110,3 +110,16 @@
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* Sur écran tactile, TOUT l'agenda est insélectionnable : sinon l'appui
+   long qui sert à déplacer un rendez-vous fait apparaître la bulle
+   « Copier / Coller » d'iOS (sélection du texte voisin) une fois sur
+   deux. Sur PC, la sélection reste possible. */
+@media (hover: none) {
+  .agenda-tactile,
+  .agenda-tactile * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
