@@ -86,4 +86,19 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  /* Téléphone : pas de halo gris au tap, et pas d'attente de double-tap
+     sur les éléments cliquables (réponse immédiate au doigt). */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  a,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  label {
+    touch-action: manipulation;
+  }
 }

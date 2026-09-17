@@ -875,7 +875,7 @@ export function AgendaCalendar({
                 : dateCourante,
           )
         }
-        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-90 sm:hidden"
+        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-90 sm:hidden"
       >
         <Plus className="size-7" />
       </button>

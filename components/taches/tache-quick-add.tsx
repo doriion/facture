@@ -168,7 +168,7 @@ export function TacheQuickAdd({
         type="button"
         aria-label="Ajouter une tâche"
         onClick={() => setOpen(true)}
-        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-90 md:hidden"
+        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-90 md:hidden"
       >
         <Plus className="size-7" />
       </button>
