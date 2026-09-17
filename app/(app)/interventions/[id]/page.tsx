@@ -14,6 +14,7 @@ import { InterventionPhotos } from "@/components/interventions/intervention-phot
 import { InterventionSignatures } from "@/components/interventions/intervention-signatures";
 import { InterventionCerfa } from "@/components/interventions/intervention-cerfa";
 import { InterventionDeleteButton } from "@/components/interventions/intervention-delete-button";
+import { InterventionCorbeilleBanner } from "@/components/interventions/intervention-corbeille-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr } from "@/lib/format";
@@ -111,6 +112,7 @@ export default async function EditInterventionPage({
               </div>
             )}
           </div>
+          {intervention.supprime_le ? null : (
           <div className="flex flex-wrap items-center gap-2">
             <AjouterTacheButton
               lienLabel={`Intervention du ${formatDateFr(intervention.date_intervention)}`}
@@ -133,8 +135,13 @@ export default async function EditInterventionPage({
             )}
             <InterventionDeleteButton id={intervention.id} />
           </div>
+          )}
         </div>
       </div>
+
+      {intervention.supprime_le && (
+        <InterventionCorbeilleBanner id={intervention.id} supprimeLe={intervention.supprime_le} />
+      )}
 
       <InterventionForm clients={clients} intervention={intervention} />
 

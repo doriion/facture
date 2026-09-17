@@ -135,6 +135,7 @@ export async function getAgendaEvents(
         )
         // Pour les interventions multi-jours, on doit inclure celles qui
         // *intersectent* la fenêtre, pas seulement celles qui commencent dedans.
+        .is("supprime_le", null)
         .gte("date_intervention", new Date(new Date(ws).getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10))
         .lte("date_intervention", we)
         .order("date_intervention", { ascending: true })
@@ -168,6 +169,7 @@ export async function getAgendaEvents(
         .from("interventions")
         .select("id, date_intervention, date_fin, description, type, client_id, client:clients(nom)")
         .is("facture_id", null)
+        .is("supprime_le", null)
         .eq("a_facturer", true)
         .lte("date_intervention", aujourdhui)
         .order("date_intervention", { ascending: false })

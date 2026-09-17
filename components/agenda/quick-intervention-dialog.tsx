@@ -19,6 +19,7 @@ import {
   createInterventionSerieAction,
   quickEditInterventionAction,
   deleteInterventionAction,
+  restaurerInterventionAction,
 } from "@/lib/actions/interventions";
 import {
   CHOIX_REPETITION,
@@ -349,12 +350,45 @@ export function QuickInterventionDialog({
     );
     setSubmitting(false);
     if (result.ok) {
-      const { supprimees, conservees } = result.data;
+      const { supprimees, ids } = result.data;
+      const cible = editIntervention;
+      const clientNom =
+        tousLesClients.find((c) => c.id === (cible.client_id ?? ""))?.nom ?? null;
       toast.success(
-        supprimees > 1 ? `${supprimees} rendez-vous supprimés` : "Intervention supprimée",
-        conservees > 0
-          ? { description: `${conservees} conservé(s) : signatures ou fiches CERFA à garder.` }
-          : undefined,
+        supprimees > 1 ? `${supprimees} rendez-vous mis à la corbeille` : "Mis à la corbeille",
+        {
+          duration: 8000,
+          description: supprimees > 1 ? "Restaurables depuis la corbeille des interventions." : undefined,
+          action: {
+            label: "Annuler",
+            onClick: async () => {
+              // Le rendez-vous revient tout de suite ; le serveur confirme derrière.
+              const retour = onOptimiste?.({
+                type: "creation",
+                id: cible.id,
+                valeurs: {
+                  client_id: cible.client_id,
+                  date_intervention: cible.date_intervention,
+                  date_fin: cible.date_fin,
+                  heure_debut: cible.heure_debut,
+                  heure_fin: cible.heure_fin,
+                  type: cible.type,
+                  description: cible.description,
+                  a_facturer: cible.a_facturer,
+                },
+                clientNom,
+              });
+              const r = await restaurerInterventionAction(ids);
+              if (!r.ok) {
+                retour?.();
+                toast.error("Restauration refusée", { description: r.error });
+                return;
+              }
+              toast.success(r.data.restaurees > 1 ? `${r.data.restaurees} rendez-vous restaurés` : "Rendez-vous restauré");
+              router.refresh();
+            },
+          },
+        },
       );
       router.refresh();
     } else {
@@ -694,13 +728,13 @@ export function QuickInterventionDialog({
                   <AlertDialogHeader>
                     <AlertDialogTitle>
                       {enSerie && portee === "suivantes"
-                        ? "Supprimer ce rendez-vous et les suivants ?"
-                        : "Supprimer cette intervention ?"}
+                        ? "Mettre ce rendez-vous et les suivants à la corbeille ?"
+                        : "Mettre cette intervention à la corbeille ?"}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       {enSerie && portee === "suivantes"
-                        ? "Tous les rendez-vous de la série à partir de celui-ci seront supprimés, sauf ceux déjà facturés ou portant des documents à conserver. Cette action est irréversible."
-                        : "Cette action est irréversible."}
+                        ? "Tous les rendez-vous de la série à partir de celui-ci, sauf ceux déjà facturés. Restaurables depuis la corbeille."
+                        : "Elle disparaît de l'agenda et des listes. Vous pourrez l'annuler tout de suite, ou la restaurer plus tard depuis la corbeille."}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
