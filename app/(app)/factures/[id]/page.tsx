@@ -17,6 +17,7 @@ import { FacturePaiements } from "@/components/factures/facture-paiements";
 import { FactureAcompteSolde } from "@/components/factures/facture-acompte-solde";
 import { FactureEventsCouverts } from "@/components/factures/facture-events-couverts";
 import { FactureActions } from "@/components/factures/facture-actions";
+import { ActionsFiche } from "@/components/actions-fiche";
 import { StatutBadge } from "@/components/factures/statut-badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr, formatEuros } from "@/lib/format";
@@ -70,7 +71,7 @@ export default async function EditFacturePage({
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2">
+        <Button variant="ghost" size="sm" asChild className="mb-2 max-md:hidden">
           <Link href="/factures">
             <ArrowLeft className="size-4" />
             Retour aux factures
@@ -92,7 +93,7 @@ export default async function EditFacturePage({
               </span>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <ActionsFiche>
             <AjouterTacheButton
               lienLabel={`Facture ${facture.numero}`}
               titre={`Relancer la facture ${facture.numero}`}
@@ -106,7 +107,7 @@ export default async function EditFacturePage({
               clientNom={client?.nom ?? "le client"}
               pdfBloqueMotif={pdfBloqueMotif}
             />
-          </div>
+          </ActionsFiche>
         </div>
       </div>
 

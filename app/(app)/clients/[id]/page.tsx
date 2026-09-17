@@ -52,7 +52,7 @@ export default async function ClientDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2">
+        <Button variant="ghost" size="sm" asChild className="mb-2 max-md:hidden">
           <Link href="/clients">
             <ArrowLeft className="size-4" />
             Retour aux clients

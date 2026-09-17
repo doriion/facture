@@ -26,7 +26,7 @@ export default async function EditContratPage({
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2">
+        <Button variant="ghost" size="sm" asChild className="mb-2 max-md:hidden">
           <Link href="/maintenance">
             <ArrowLeft className="size-4" />
             Retour aux contrats
