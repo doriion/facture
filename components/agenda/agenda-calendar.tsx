@@ -438,6 +438,8 @@ export function AgendaCalendar({
       type: e.type_activite ?? "installation",
       description: e.description,
       a_facturer: e.a_facturer ?? true,
+      serie_id: e.serie_id ?? null,
+      recurrence: e.recurrence ?? null,
     });
     setQuickAddOpen(true);
   };

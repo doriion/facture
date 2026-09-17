@@ -83,4 +83,41 @@ describe("appliquerChangement", () => {
     })[0]!;
     expect(sansFin).toMatchObject({ date_start: "2026-09-20", date_end: "2026-09-20", heure_debut: null, heure_fin: null });
   });
+
+  it("série : une occurrence par date, durée en jours conservée, règle attachée", () => {
+    const res = appliquerChangement([facture], {
+      type: "creation_serie",
+      prefixe: "tmp-9",
+      dates: ["2026-09-16", "2026-09-23"],
+      valeurs: { client_id: "c1", date_intervention: "2026-09-16", date_fin: "2026-09-17", type: "entretien", heure_debut: "09:00" },
+      clientNom: "BALDET Maurice",
+      recurrence: { frequence: "hebdomadaire", intervalle: 1, date_fin: "2026-09-23" },
+    });
+    expect(res).toHaveLength(3);
+    expect(res[1]).toMatchObject({ id: "tmp-9-0", date_start: "2026-09-16", date_end: "2026-09-17", serie_id: "tmp-9", heure_debut: "09:00:00" });
+    expect(res[2]).toMatchObject({ id: "tmp-9-1", date_start: "2026-09-23", date_end: "2026-09-24", recurrence: { frequence: "hebdomadaire" } });
+  });
+
+  it("« et les suivants » : les occurrences suivantes de la série suivent, les facturées et les antérieures non", () => {
+    const occ = (id: string, date: string, extra: Partial<AgendaEvent> = {}): AgendaEvent => ({
+      ...existant, id, date_start: date, date_end: date, serie_id: "s1", ...extra,
+    });
+    const events = [occ("a", "2026-09-09"), occ("b", "2026-09-16"), occ("c", "2026-09-23", { facture_emise: true }), occ("d", "2026-09-30"), facture];
+    const res = appliquerChangement(events, {
+      type: "edition_suivantes",
+      id: "b",
+      serie_id: "s1",
+      depuis: "2026-09-16",
+      valeurs: { client_id: "c1", date_intervention: "2026-09-17", type: "entretien", description: "Filtres", heure_debut: "10:00", heure_fin: "11:00" },
+      clientNom: "BALDET Maurice",
+    });
+    expect(res[0]).toMatchObject({ id: "a", date_start: "2026-09-09", title: "Entretien PAC" });
+    expect(res[1]).toMatchObject({ id: "b", date_start: "2026-09-17", title: "Filtres", heure_debut: "10:00:00" });
+    expect(res[2]).toMatchObject({ id: "c", date_start: "2026-09-23", title: "Entretien PAC" });
+    expect(res[3]).toMatchObject({ id: "d", date_start: "2026-10-01", title: "Filtres" });
+    expect(res[4]).toBe(facture);
+
+    const restants = appliquerChangement(events, { type: "suppression_suivantes", serie_id: "s1", depuis: "2026-09-16" });
+    expect(restants.map((e) => e.id)).toEqual(["a", "c", "f1"]);
+  });
 });

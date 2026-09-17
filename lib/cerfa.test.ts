@@ -38,6 +38,7 @@ function intervention(overrides: Partial<Intervention> = {}): Intervention {
     duree_minutes: null,
     facture_id: null,
     a_facturer: true,
+    serie_id: null,
     notes: null,
     created_at: "2026-07-10T08:00:00Z",
     updated_at: "2026-07-10T08:00:00Z",

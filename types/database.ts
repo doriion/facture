@@ -337,6 +337,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      interventions_series: {
+        Row: {
+          id: string;
+          user_id: string;
+          frequence: string;
+          intervalle: number;
+          date_debut: string;
+          date_fin: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          frequence: string;
+          intervalle?: number;
+          date_debut: string;
+          date_fin: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          frequence?: string;
+          intervalle?: number;
+          date_debut?: string;
+          date_fin?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       taches: {
         Row: {
           id: string;
@@ -1135,6 +1165,7 @@ export type Database = {
           fluide_observations: string | null;
           id: string;
           notes: string | null;
+          serie_id: string | null;
           type: string;
           updated_at: string;
           user_id: string;
@@ -1165,6 +1196,7 @@ export type Database = {
           fluide_observations?: string | null;
           id?: string;
           notes?: string | null;
+          serie_id?: string | null;
           type?: string;
           updated_at?: string;
           user_id: string;
@@ -1195,11 +1227,19 @@ export type Database = {
           fluide_observations?: string | null;
           id?: string;
           notes?: string | null;
+          serie_id?: string | null;
           type?: string;
           updated_at?: string;
           user_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "interventions_serie_id_fkey";
+            columns: ["serie_id"];
+            isOneToOne: false;
+            referencedRelation: "interventions_series";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "interventions_client_id_fkey";
             columns: ["client_id"];
