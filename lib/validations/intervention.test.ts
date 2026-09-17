@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { interventionSchema, type InterventionFormInput } from "./intervention";
+import { deplacementInterventionSchema, interventionSchema, type InterventionFormInput } from "./intervention";
 
 /** Saisie minimale du dialogue rapide (agenda). */
 function saisie(overrides: Partial<InterventionFormInput> = {}): InterventionFormInput {
@@ -76,5 +76,23 @@ describe("interventionSchema — client optionnel", () => {
 
   it("la date reste obligatoire", () => {
     expect(interventionSchema.safeParse(saisie({ date_intervention: "" })).success).toBe(false);
+  });
+});
+
+describe("deplacementInterventionSchema (glisser-déposer)", () => {
+  const ok = { date_intervention: "2026-09-18", date_fin: null, heure_debut: "14:15:00", heure_fin: "16:15:00" };
+
+  it("accepte un planning cohérent, avec ou sans heures", () => {
+    expect(deplacementInterventionSchema.safeParse(ok).success).toBe(true);
+    expect(deplacementInterventionSchema.safeParse({ ...ok, heure_debut: null, heure_fin: null }).success).toBe(true);
+    expect(deplacementInterventionSchema.safeParse({ ...ok, date_fin: "2026-09-19", heure_fin: null }).success).toBe(true);
+  });
+
+  it("refuse une fin avant le début, une fin sans début, un format inattendu", () => {
+    expect(deplacementInterventionSchema.safeParse({ ...ok, date_fin: "2026-09-17" }).success).toBe(false);
+    expect(deplacementInterventionSchema.safeParse({ ...ok, heure_fin: "13:00:00" }).success).toBe(false);
+    expect(deplacementInterventionSchema.safeParse({ ...ok, heure_debut: null }).success).toBe(false);
+    expect(deplacementInterventionSchema.safeParse({ ...ok, date_intervention: "18/09/2026" }).success).toBe(false);
+    expect(deplacementInterventionSchema.safeParse({ ...ok, heure_debut: "25:00:00" }).success).toBe(false);
   });
 });

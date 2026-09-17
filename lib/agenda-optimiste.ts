@@ -2,13 +2,14 @@
  * Mises à jour OPTIMISTES de l'agenda — logique PURE, testée dans
  * agenda-optimiste.test.ts.
  *
- * Quand on planifie, modifie, supprime ou bascule « rien à facturer »,
+ * Quand on planifie, modifie, déplace, supprime ou bascule « rien à facturer »,
  * l'agenda affiche le résultat tout de suite ; le serveur confirme
  * derrière (et la page se rafraîchit avec les vraies données). En cas
  * d'échec, le composant remet la liste précédente.
  */
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
+import type { ValeursDeplacement } from "@/lib/agenda-deplacement";
 
 export type ValeursIntervention = {
   client_id?: string | null;
@@ -25,7 +26,8 @@ export type ChangementOptimiste =
   | { type: "creation"; id: string; valeurs: ValeursIntervention; clientNom: string | null }
   | { type: "edition"; id: string; valeurs: ValeursIntervention; clientNom: string | null }
   | { type: "suppression"; id: string }
-  | { type: "facturation"; id: string; a_facturer: boolean };
+  | { type: "facturation"; id: string; a_facturer: boolean }
+  | { type: "deplacement"; id: string; valeurs: ValeursDeplacement };
 
 /** « 14:00 » (saisie) ou « 14:00:00 » (base) → « 14:00:00 » ; vide → null. */
 function heureBase(h: string | null | undefined): string | null {
@@ -80,6 +82,18 @@ export function appliquerChangement(
     case "facturation":
       return events.map((e) =>
         e.kind === "intervention" && e.id === c.id ? { ...e, a_facturer: c.a_facturer } : e,
+      );
+    case "deplacement":
+      return events.map((e) =>
+        e.kind === "intervention" && e.id === c.id
+          ? {
+              ...e,
+              date_start: c.valeurs.date_intervention,
+              date_end: c.valeurs.date_fin ?? c.valeurs.date_intervention,
+              heure_debut: c.valeurs.heure_debut,
+              heure_fin: c.valeurs.heure_fin,
+            }
+          : e,
       );
   }
 }

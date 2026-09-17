@@ -102,3 +102,11 @@
     touch-action: manipulation;
   }
 }
+
+/* Créneau que l'on peut glisser (agenda) : pas de sélection de texte ni
+   de bulle iOS pendant l'appui long. */
+.poignee-deplacement {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}

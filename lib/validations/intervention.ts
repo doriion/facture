@@ -128,3 +128,32 @@ export const interventionSchema = z.object({
 
 export type InterventionFormInput = z.input<typeof interventionSchema>;
 export type InterventionFormValues = z.output<typeof interventionSchema>;
+
+/**
+ * Déplacement par glisser-déposer depuis l'agenda : seulement le
+ * planning (jour, jour de fin, heures), au format base.
+ */
+const DATE_YMD = /^\d{4}-\d{2}-\d{2}$/;
+const HEURE_BASE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+export const deplacementInterventionSchema = z
+  .object({
+    date_intervention: z.string().regex(DATE_YMD, "Date invalide."),
+    date_fin: z.string().regex(DATE_YMD, "Date de fin invalide.").nullable(),
+    heure_debut: z.string().regex(HEURE_BASE, "Heure invalide.").nullable(),
+    heure_fin: z.string().regex(HEURE_BASE, "Heure de fin invalide.").nullable(),
+  })
+  .refine((v) => !v.date_fin || v.date_fin >= v.date_intervention, {
+    message: "La date de fin précède la date de début.",
+    path: ["date_fin"],
+  })
+  .refine((v) => !v.heure_debut || !v.heure_fin || v.heure_fin > v.heure_debut, {
+    message: "L'heure de fin précède l'heure de début.",
+    path: ["heure_fin"],
+  })
+  .refine((v) => v.heure_debut || !v.heure_fin, {
+    message: "Heure de début manquante.",
+    path: ["heure_debut"],
+  });
+
+export type DeplacementIntervention = z.infer<typeof deplacementInterventionSchema>;
