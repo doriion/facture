@@ -9,10 +9,14 @@
  *   sont jamais servies depuis le cache (données personnelles, session).
  * - Tout le reste (API, actions serveur, Supabase) : réseau, sans cache.
  *
+ * Rappels push : l'évènement `push` affiche la notification envoyée par
+ * /api/cron/rappels-push ; un tap dessus ouvre (ou ramène) l'app sur le
+ * jour du rendez-vous.
+ *
  * Changer VERSION invalide les anciens caches à l'activation.
  */
 
-const VERSION = "v2";
+const VERSION = "v3";
 const CACHE_STATIQUE = `ng-statique-${VERSION}`;
 const CACHE_PAGES = `ng-pages-${VERSION}`;
 const PAGE_HORS_LIGNE = "/hors-ligne";
@@ -94,3 +98,41 @@ async function cachePuisReseau(req, nomCache) {
     .catch(() => enCache);
   return enCache || rafraichir;
 }
+
+// ---------------------------------------------------------------------------
+// Rappels push
+// ---------------------------------------------------------------------------
+self.addEventListener("push", (event) => {
+  let contenu = { titre: "NG Gestion", corps: "", url: "/agenda", tag: undefined };
+  try {
+    if (event.data) contenu = { ...contenu, ...event.data.json() };
+  } catch {
+    if (event.data) contenu.corps = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(contenu.titre, {
+      body: contenu.corps,
+      icon: "/icones/vague-192.png",
+      badge: "/icones/vague-192.png",
+      tag: contenu.tag,
+      renotify: Boolean(contenu.tag),
+      data: { url: contenu.url },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || "/agenda", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((fenetres) => {
+      for (const f of fenetres) {
+        if ("focus" in f) {
+          if ("navigate" in f) f.navigate(url).catch(() => {});
+          return f.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});

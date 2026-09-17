@@ -10,6 +10,7 @@ import { ExportDonneesCard } from "@/components/parametres/export-donnees-card";
 import { TauxCotisationsCard } from "@/components/parametres/taux-cotisations-card";
 import { BaremeEntretienCard } from "@/components/parametres/bareme-entretien-card";
 import { AutomatisationsCard } from "@/components/parametres/automatisations-card";
+import { RappelsPushCard } from "@/components/parametres/rappels-push-card";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import {
   Card,
@@ -22,6 +23,7 @@ import { getLogoUrl, getProfil } from "@/lib/actions/profil";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
 import { getBaremeEntretien } from "@/lib/actions/bareme-entretien";
 import { getJournalTaches } from "@/lib/actions/automatisations";
+import { listAppareilsPush } from "@/lib/actions/push";
 
 export const metadata = { title: "Paramètres — NG Gestion" };
 
@@ -35,6 +37,12 @@ export default async function ParametresPage() {
   const bareme = await getBaremeCotisations();
   const baremeEntretien = await getBaremeEntretien();
   const journal = await getJournalTaches();
+  const appareilsPush = await listAppareilsPush();
+  const reglagesPush = {
+    actif: profil?.auto_rappels_push_active ?? false,
+    delai_minutes: profil?.rappels_push_delai_minutes ?? 30,
+    clePublique: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
+  };
   const reglages = {
     auto_sauvegarde_active: profil?.auto_sauvegarde_active ?? true,
     auto_relances_active: profil?.auto_relances_active ?? false,
@@ -92,6 +100,8 @@ export default async function ParametresPage() {
       />
 
       <ProfilForm profil={profil} />
+
+      <RappelsPushCard reglages={reglagesPush} appareils={appareilsPush} />
 
       <AutomatisationsCard reglages={reglages} journal={journal} />
 
