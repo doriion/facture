@@ -161,6 +161,9 @@ const CLASSES_ANNULEE =
  * elle existe, sinon celle de son type, avec un texte sombre ou clair
  * choisi automatiquement pour rester lisible.
  */
+/** Valeur par défaut stable (un nouvel objet à chaque rendu relancerait les effets). */
+const AUCUNE_COULEUR_PROPRE: CouleursEvenements = {};
+
 function eventStyle(
   e: AgendaEvent,
   couleurs: AgendaCouleurs,
@@ -214,7 +217,7 @@ export function AgendaCalendar({
   data,
   clients,
   couleurs = DEFAULT_AGENDA_COULEURS,
-  couleursEvenements = {},
+  couleursEvenements: couleursEvenementsServeur = AUCUNE_COULEUR_PROPRE,
   date,
   vueUrl = null,
   externesCle = 0,
@@ -415,6 +418,28 @@ export function AgendaCalendar({
   const [reglage, setReglage] = useState<AgendaEvent | null>(null);
   // Liste des RDV iPhone à rattacher (bandeau cliquable)
   const [rattacherOuvert, setRattacherOuvert] = useState(false);
+
+  // Couleurs propres aux évènements : celles du serveur + les choix
+  // faits à l'instant (affichés tout de suite, null = retirée).
+  const [couleursLocales, setCouleursLocales] = useState<Record<string, string | null>>({});
+  // Nouvelles couleurs du serveur (après refresh) : les choix locaux ont
+  // été pris en compte, on repart de zéro — sans re-rendu si déjà vide.
+  useEffect(() => {
+    setCouleursLocales((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+  }, [couleursEvenementsServeur]);
+  const couleursEvenements = useMemo(() => {
+    const out: CouleursEvenements = { ...couleursEvenementsServeur };
+    for (const [cle, hex] of Object.entries(couleursLocales)) {
+      if (hex === null) delete out[cle];
+      else out[cle] = hex;
+    }
+    return out;
+  }, [couleursEvenementsServeur, couleursLocales]);
+  const appliquerCouleur = (cle: string, hex: string | null) => {
+    const avant = couleursLocales;
+    setCouleursLocales((prev) => ({ ...prev, [cle]: hex }));
+    return () => setCouleursLocales(avant);
+  };
 
   // Couleur d'un évènement précis (dialogue)
   const [cibleCouleur, setCibleCouleur] = useState<AgendaEvent | null>(null);
@@ -1107,12 +1132,18 @@ export function AgendaCalendar({
           editIntervention={editTarget ?? undefined}
           modele={modele}
           onOptimiste={appliquerOptimiste}
+          couleurDuType={couleurs.intervention_prevue}
+          couleurPropre={
+            editTarget ? (couleursEvenements[`intervention:${editTarget.id}`] ?? null) : null
+          }
+          onCouleurOptimiste={appliquerCouleur}
         />
       )}
 
       <CouleurEvenementDialog
         cible={cibleDialogue}
         onClose={() => setCibleCouleur(null)}
+        onOptimiste={appliquerCouleur}
       />
 
       <EvenementDetailSheet
@@ -1123,6 +1154,7 @@ export function AgendaCalendar({
         onDupliquer={openDuplicate}
         onRegler={demarrerReglage}
         onReprendre={reprendreRdv}
+        onCouleur={setCibleCouleur}
         onRattacher={ouvrirRattacher}
         onOptimiste={appliquerOptimiste}
       />

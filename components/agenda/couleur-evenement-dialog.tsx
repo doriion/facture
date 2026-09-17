@@ -25,6 +25,7 @@ import {
 export function CouleurEvenementDialog({
   cible,
   onClose,
+  onOptimiste,
 }: {
   /** Évènement visé, null = fermé. */
   cible: {
@@ -35,6 +36,8 @@ export function CouleurEvenementDialog({
     aCouleurPropre: boolean;
   } | null;
   onClose: () => void;
+  /** Affiche la couleur tout de suite (le serveur confirme derrière). */
+  onOptimiste?: (cle: string, hex: string | null) => () => void;
 }) {
   const router = useRouter();
   const [couleur, setCouleur] = useState("#dbeafe");
@@ -47,14 +50,16 @@ export function CouleurEvenementDialog({
   async function appliquer(hex: string | null) {
     if (!cible) return;
     setPending(true);
+    const annuler = onOptimiste?.(cible.cle, hex);
+    onClose();
     const res = await setCouleurEvenementAction(cible.cle, hex);
     setPending(false);
     if (!res.ok) {
+      annuler?.();
       toast.error("Erreur", { description: res.error });
       return;
     }
     toast.success(hex ? "Couleur de l'évènement enregistrée" : "Couleur du type rétablie");
-    onClose();
     router.refresh();
   }
 
