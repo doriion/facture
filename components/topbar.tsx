@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MobileNav } from "@/components/mobile-nav";
+import { BoutonRetour } from "@/components/bouton-retour";
 import { LogoMarque } from "@/components/logo-marque";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NOM_APPLICATION } from "@/lib/marque";
@@ -24,13 +24,7 @@ import { NOM_APPLICATION } from "@/lib/marque";
  * La déconnexion passe par une Server Action pour cohérence avec le
  * login (cookies serveur + redirect synchrones).
  */
-export function Topbar({
-  email,
-  badgeTaches = 0,
-}: {
-  email: string;
-  badgeTaches?: number;
-}) {
+export function Topbar({ email }: { email: string }) {
   async function handleSignOut() {
     try {
       await signOutAction();
@@ -46,7 +40,9 @@ export function Topbar({
   return (
     <header className="flex h-14 items-center justify-between gap-2 border-b bg-background px-3 sm:h-16 sm:px-6">
       <div className="flex items-center gap-2">
-        <MobileNav badgeTaches={badgeTaches} />
+        {/* Téléphone : « Retour » sur les sous-pages ; le menu est dans
+            la barre d'onglets du bas. */}
+        <BoutonRetour />
         <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
           <LogoMarque taille={28} />
           <span className="text-sm font-semibold">{NOM_APPLICATION}</span>

@@ -2,7 +2,7 @@
   "name": "NG Gestion — Auto-entrepreneur BTP",
   "short_name": "NG Gestion",
   "description": "Gestion factures, devis, agenda et interventions pour auto-entrepreneur BTP.",
-  "start_url": "/dashboard",
+  "start_url": "/agenda",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

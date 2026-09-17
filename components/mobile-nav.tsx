@@ -22,26 +22,35 @@ import {
  * sidebar sur les écrans < md. La sidebar standard reste affichée
  * en >=md, donc ce composant est masqué à ces tailles.
  */
-export function MobileNav({ badgeTaches = 0 }: { badgeTaches?: number }) {
+export function MobileNav({
+  badgeTaches = 0,
+  trigger,
+}: {
+  badgeTaches?: number;
+  /** Déclencheur à la place du bouton hamburger (onglet « Plus » de la barre du bas). */
+  trigger?: React.ReactNode;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Ouvrir le menu"
-          className="relative md:hidden"
-        >
-          <Menu className="size-5" />
-          {badgeTaches > 0 && (
-            <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground">
-              {badgeTaches}
-            </span>
-          )}
-        </Button>
+        {trigger ?? (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Ouvrir le menu"
+            className="relative md:hidden"
+          >
+            <Menu className="size-5" />
+            {badgeTaches > 0 && (
+              <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground">
+                {badgeTaches}
+              </span>
+            )}
+          </Button>
+        )}
       </SheetTrigger>
       <SheetContent side="left">
         <div className="flex h-16 items-center border-b px-6">
