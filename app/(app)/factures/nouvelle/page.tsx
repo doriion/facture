@@ -79,7 +79,7 @@ export default async function NouvelleFacturePage({
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2">
+        <Button variant="ghost" size="sm" asChild className="mb-2 max-md:hidden">
           <Link href="/factures">
             <ArrowLeft className="size-4" />
             Retour aux factures

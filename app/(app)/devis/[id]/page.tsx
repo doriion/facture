@@ -18,6 +18,7 @@ import {
 import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { DevisForm } from "@/components/devis/devis-form";
 import { DevisActions } from "@/components/devis/devis-actions";
+import { ActionsFiche } from "@/components/actions-fiche";
 import { DevisSignatureDialog } from "@/components/devis/devis-signature-dialog";
 import { StatutBadgeDevis } from "@/components/devis/statut-badge";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,7 @@ export default async function EditDevisPage({
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2">
+        <Button variant="ghost" size="sm" asChild className="mb-2 max-md:hidden">
           <Link href="/devis">
             <ArrowLeft className="size-4" />
             Retour aux devis
@@ -99,7 +100,7 @@ export default async function EditDevisPage({
               </span>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <ActionsFiche>
             {!devis.est_modele && (
               <AjouterTacheButton
                 lienLabel={`Devis ${devis.numero}`}
@@ -128,7 +129,7 @@ export default async function EditDevisPage({
               signee={signee}
               pdfBloqueMotif={pdfBloqueMotif}
             />
-          </div>
+          </ActionsFiche>
         </div>
       </div>
 

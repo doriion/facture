@@ -27,7 +27,7 @@ export default async function ModifierContratPage({
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2">
+        <Button variant="ghost" size="sm" asChild className="mb-2 max-md:hidden">
           <Link href={`/contrats/${contrat.id}`}>
             <ArrowLeft className="size-4" />
             Retour au contrat

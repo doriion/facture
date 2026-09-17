@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -166,6 +166,11 @@ export function FactureForm({
 
   const currentType = watch("type_activite") as TypeActivite;
   const showEquipement = isClimPac(currentType);
+  // Bloc « Détails techniques » ouvert d'emblée s'il contient déjà quelque chose.
+  const detailsRemplis = Boolean(
+    equip.marque || equip.modele || equip.num_serie || equip.fluide_frigo_type ||
+    typeof aides.maprimerenov === "number" || typeof aides.cee === "number" || typeof aides.eco_ptz === "number",
+  );
 
   async function onSubmit(values: FactureFormValues) {
     setSubmitting(true);
@@ -361,6 +366,18 @@ export function FactureForm({
         </CardContent>
       </Card>
 
+      {/* Détails techniques : équipement clim/PAC et aides financières.
+          Repliés par défaut (encombrants pour un dépannage), dépliés si
+          déjà renseignés ; le contenu reste MONTÉ pour ne rien perdre. */}
+      <details className="group rounded-lg border bg-card" open={detailsRemplis}>
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-6 py-4 font-semibold">
+          <ChevronRight className="size-4 shrink-0 transition-transform group-open:rotate-90" />
+          Détails techniques (optionnel)
+          <span className="ml-auto text-xs font-normal text-muted-foreground">
+            {showEquipement ? "équipement, aides financières" : "aides financières"}
+          </span>
+        </summary>
+        <div className="space-y-6 border-t p-6 pt-4">
       {/* Équipement clim/PAC */}
       {showEquipement && (
         <Card>
@@ -463,6 +480,9 @@ export function FactureForm({
           </div>
         </CardContent>
       </Card>
+
+        </div>
+      </details>
 
       {/* Conditions + Notes */}
       <Card>

@@ -20,7 +20,7 @@ export default async function CalculateurEntretienPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Button variant="ghost" size="sm" asChild className="mb-2">
+          <Button variant="ghost" size="sm" asChild className="mb-2 max-md:hidden">
             <Link href="/contrats">
               <ArrowLeft className="size-4" />
               Retour aux contrats
