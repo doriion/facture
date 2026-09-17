@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, ExternalLink, Link2, Loader2, MapPin, Move, Navigation, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
+import { Copy, Download, ExternalLink, Link2, Loader2, MapPin, Move, Navigation, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
@@ -49,6 +49,7 @@ export function EvenementDetailSheet({
   onModifier,
   onDupliquer,
   onRegler,
+  onReprendre,
   onRattacher,
   onOptimiste,
 }: {
@@ -60,6 +61,8 @@ export function EvenementDetailSheet({
   onDupliquer?: (e: AgendaEvent) => void;
   /** Mode réglage sur la grille : déplacer / étirer au doigt, sans appui long. */
   onRegler?: (e: AgendaEvent) => void;
+  /** RDV iPhone → intervention NG Gestion (déplaçable, modifiable, facturable). */
+  onReprendre?: (e: AgendaEvent) => void;
   onRattacher: () => void;
   /** Mise à jour optimiste (voir QuickInterventionDialog). */
   onOptimiste?: (changement: ChangementOptimiste) => () => void;
@@ -220,6 +223,28 @@ export function EvenementDetailSheet({
                     Appeler {contact.telephone}
                   </a>
                 </Button>
+              )}
+              {e.kind === "external" && onReprendre && (
+                <div className="col-span-2 space-y-2">
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={() => {
+                      onClose();
+                      onReprendre(e);
+                    }}
+                  >
+                    <Download className="size-4" />
+                    Reprendre dans NG Gestion
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Ce rendez-vous vient du calendrier de votre téléphone, en
+                    lecture seule. Repris ici, il devient un rendez-vous NG
+                    Gestion : déplaçable, modifiable, facturable. Sa copie
+                    téléphone disparaît de cet agenda (elle reste sur le
+                    téléphone).
+                  </p>
+                </div>
               )}
               {e.kind === "intervention" && !e.facture_emise && onRegler && (
                 <Button
