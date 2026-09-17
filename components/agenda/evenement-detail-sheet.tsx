@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Download, ExternalLink, Link2, Loader2, MapPin, Move, Navigation, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
+import { Copy, Download, ExternalLink, Link2, Loader2, MapPin, Move, Navigation, Palette, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
@@ -50,6 +50,7 @@ export function EvenementDetailSheet({
   onDupliquer,
   onRegler,
   onReprendre,
+  onCouleur,
   onRattacher,
   onOptimiste,
 }: {
@@ -63,6 +64,8 @@ export function EvenementDetailSheet({
   onRegler?: (e: AgendaEvent) => void;
   /** RDV iPhone → intervention NG Gestion (déplaçable, modifiable, facturable). */
   onReprendre?: (e: AgendaEvent) => void;
+  /** Couleur propre à cet évènement (dialogue). */
+  onCouleur?: (e: AgendaEvent) => void;
   onRattacher: () => void;
   /** Mise à jour optimiste (voir QuickInterventionDialog). */
   onOptimiste?: (changement: ChangementOptimiste) => () => void;
@@ -270,6 +273,20 @@ export function EvenementDetailSheet({
                 >
                   <Pencil className="size-4" />
                   Modifier
+                </Button>
+              )}
+              {onCouleur && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className={e.kind === "intervention" ? "" : "col-span-2"}
+                  onClick={() => {
+                    onClose();
+                    onCouleur(e);
+                  }}
+                >
+                  <Palette className="size-4" />
+                  Couleur
                 </Button>
               )}
               {e.kind === "intervention" && onDupliquer && (

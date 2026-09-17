@@ -9,6 +9,9 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
+import { SelecteurCouleur } from "@/components/agenda/selecteur-couleur";
+import { setCouleurEvenementAction } from "@/lib/actions/agenda-couleurs";
+import { normaliserCouleur } from "@/lib/agenda-colors";
 import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
 
 import {
@@ -110,6 +113,9 @@ export function QuickInterventionDialog({
   editIntervention,
   modele = null,
   onOptimiste,
+  couleurDuType,
+  couleurPropre = null,
+  onCouleurOptimiste,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -128,6 +134,12 @@ export function QuickInterventionDialog({
    * serveur refuse.
    */
   onOptimiste?: (changement: ChangementOptimiste) => () => void;
+  /** Couleur des interventions prévues (réglages) : le choix par défaut. */
+  couleurDuType?: string;
+  /** Couleur propre de l'intervention éditée (null = celle du type). */
+  couleurPropre?: string | null;
+  /** Affiche la couleur choisie tout de suite (clé « intervention:id »). */
+  onCouleurOptimiste?: (cle: string, hex: string | null) => () => void;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -139,6 +151,8 @@ export function QuickInterventionDialog({
   const [finRepetition, setFinRepetition] = useState("");
   const [portee, setPortee] = useState<PorteeSerie>("seule");
   const enSerie = Boolean(editIntervention?.serie_id);
+  // Couleur propre du rendez-vous (null = couleur du type).
+  const [couleur, setCouleur] = useState<string | null>(couleurPropre);
 
   const {
     register,
@@ -174,7 +188,8 @@ export function QuickInterventionDialog({
     setRepetition("jamais");
     setFinRepetition("");
     setPortee("seule");
-  }, [open, date, heureDebutPreremplie, heureFinPreremplie, editIntervention, modele, reset]);
+    setCouleur(couleurPropre);
+  }, [open, date, heureDebutPreremplie, heureFinPreremplie, editIntervention, modele, couleurPropre, reset]);
 
   // Clients créés depuis ce dialogue (« + Nouveau client ») : ajoutés à
   // la liste tout de suite, sans attendre le rafraîchissement serveur.
@@ -225,6 +240,15 @@ export function QuickInterventionDialog({
     const clientNom =
       tousLesClients.find((c) => c.id === (values.client_id || ""))?.nom ?? null;
     const surLesSuivantes = enSerie && portee === "suivantes";
+    if (!editIntervention && couleur) {
+      // Le rendez-vous provisoire prend déjà la couleur choisie.
+      onCouleurOptimiste?.(`intervention:${id}`, couleur);
+      if (recurrence) {
+        datesOccurrences(values.date_intervention, recurrence).forEach((_, i) =>
+          onCouleurOptimiste?.(`intervention:${id}-${i}`, couleur),
+        );
+      }
+    }
     const annuler = onOptimiste?.(
       editIntervention
         ? surLesSuivantes
@@ -271,6 +295,22 @@ export function QuickInterventionDialog({
     setSubmitting(false);
 
     if (result.ok) {
+      // Couleur propre : après la création (il faut l'identifiant), ou si
+      // elle a changé en édition. Les occurrences d'une série la partagent.
+      const couleurChangee = (couleur ?? null) !== (couleurPropre ?? null);
+      const ids = editIntervention
+        ? couleurChangee
+          ? [editIntervention.id]
+          : []
+        : couleur && result.data
+          ? "ids" in result.data
+            ? result.data.ids
+            : [result.data.id]
+          : [];
+      for (const cible of ids) {
+        onCouleurOptimiste?.(`intervention:${cible}`, couleur);
+        await setCouleurEvenementAction(`intervention:${cible}`, couleur);
+      }
       toast.success(
         isEdit
           ? surLesSuivantes
@@ -594,6 +634,24 @@ export function QuickInterventionDialog({
                   </span>
                 </label>
               </div>
+            </div>
+          )}
+
+          {/* Couleur du rendez-vous sur l'agenda (par défaut : celle du type) */}
+          {couleurDuType && (
+            <div className="space-y-1.5">
+              <Label>Couleur sur l&apos;agenda</Label>
+              <SelecteurCouleur
+                valeur={couleur ?? normaliserCouleur(couleurDuType) ?? "#e0e7ff"}
+                onChange={setCouleur}
+                nom="ce rendez-vous"
+                apercu={watch("description") || "Ce rendez-vous"}
+                auto={{
+                  actif: couleur === null,
+                  onChoisir: () => setCouleur(null),
+                  couleurDuType,
+                }}
+              />
             </div>
           )}
 
