@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis } from "@/lib/dates";
 import {
   computeExternalEventKey,
   type ExternalEventKeyInput,
@@ -203,7 +204,7 @@ export async function getAvailableEventsForFacture(args: {
   } = await supabase.auth.getUser();
   if (!user) return { interventions: [], externals: [] };
 
-  const center = args.centerDate ?? new Date().toISOString().slice(0, 10);
+  const center = args.centerDate ?? aujourdhuiParis();
   const windowDays = args.windowDays ?? 90;
   const fromMs =
     new Date(center + "T00:00:00Z").getTime() -

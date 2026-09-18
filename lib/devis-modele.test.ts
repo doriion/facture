@@ -9,6 +9,7 @@ import {
   joursDeValidite,
   ligneAcompte,
   ligneePiedDePage,
+  mentionsReglementairesDevis,
   MODELE_DEVIS_HISTORIQUE,
   MODELE_DEVIS_SIMPLE,
   versionModeleDevis,
@@ -79,6 +80,46 @@ describe("coordonneesEmetteur", () => {
     expect(coordonneesEmetteur({ ville: "Grenoble" })).toEqual(["Grenoble"]);
     expect(coordonneesEmetteur({ adresse_ligne1: "   " })).toEqual([]);
     expect(coordonneesEmetteur(null)).toEqual([]);
+  });
+});
+
+describe("mentionsReglementairesDevis", () => {
+  const profil = {
+    num_attestation_fluides_frigo: "FF-2024-001",
+    num_rge_qualipac: "QPAC-42",
+    num_rm: "123 456 789 RM 38",
+    mediateur_nom: "CM2C",
+    mediateur_site_web: "https://cm2c.net",
+  };
+
+  it("clim/PAC pour un particulier : fluides, RGE, RM et médiateur", () => {
+    const ligne = mentionsReglementairesDevis(profil, {
+      typeActivite: "installation_pac",
+      typeClient: "particulier",
+    });
+    expect(ligne).toContain("fluides frigorigènes catégorie I n° FF-2024-001");
+    expect(ligne).toContain("RGE QualiPAC n° QPAC-42");
+    expect(ligne).toContain("Répertoire des Métiers — n° 123 456 789 RM 38");
+    expect(ligne).toContain("Médiateur de la consommation : CM2C — https://cm2c.net");
+  });
+
+  it("plomberie pour un professionnel : ni fluides, ni RGE, ni médiateur", () => {
+    expect(
+      mentionsReglementairesDevis(profil, {
+        typeActivite: "plomberie",
+        typeClient: "professionnel",
+      }),
+    ).toBe("Inscrit au Répertoire des Métiers — n° 123 456 789 RM 38.");
+  });
+
+  it("profil vide : rien d'inventé", () => {
+    expect(
+      mentionsReglementairesDevis(null, {
+        typeActivite: "installation_clim",
+        typeClient: "particulier",
+      }),
+    ).toBe("");
+    expect(mentionsReglementairesDevis({}, {})).toBe("");
   });
 });
 

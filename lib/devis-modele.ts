@@ -9,6 +9,12 @@
  */
 
 import { formatEuros, formatSiret } from "@/lib/format";
+import {
+  mentionFluidesFrigo,
+  mentionMediateur,
+  mentionRgeQualipac,
+  mentionRm,
+} from "@/lib/legal-text";
 
 /** Modèle d'origine — rend tous les devis émis avant la migration. */
 export const MODELE_DEVIS_HISTORIQUE = 1;
@@ -34,6 +40,12 @@ type ProfilEntete = {
   siret?: string | null;
   num_assurance_decennale?: string | null;
   assureur_decennale?: string | null;
+  num_attestation_fluides_frigo?: string | null;
+  num_rge_qualipac?: string | null;
+  num_rm?: string | null;
+  mediateur_nom?: string | null;
+  mediateur_site_web?: string | null;
+  mediateur_adresse?: string | null;
 };
 
 /**
@@ -85,6 +97,41 @@ export function ligneePiedDePage(profil: ProfilEntete | null): string {
         : `Assurance décennale n° ${profil.num_assurance_decennale}`,
     );
   }
+  return morceaux.join(" — ");
+}
+
+/**
+ * Deuxième ligne du pied de page : les mentions que la loi impose sur
+ * un devis selon le contexte, et que le modèle simple omettait (le
+ * modèle historique les imprimait déjà) :
+ * - attestation de capacité fluides frigorigènes (F-Gas) : obligatoire
+ *   sur devis ET facture dès qu'on manipule du fluide (clim, PAC) ;
+ * - RGE QualiPAC, seulement pour clim/PAC (conditionne les aides) ;
+ * - immatriculation au Répertoire des Métiers (artisan) ;
+ * - médiateur de la consommation : clients particuliers seulement
+ *   (art. L616-1 du Code de la consommation).
+ * Comme la première ligne : rien d'inventé, une mention absente du
+ * profil n'est pas imprimée.
+ */
+export function mentionsReglementairesDevis(
+  profil: ProfilEntete | null,
+  contexte: { typeActivite?: string | null; typeClient?: string | null },
+): string {
+  const climPac =
+    contexte.typeActivite === "installation_clim" ||
+    contexte.typeActivite === "installation_pac";
+  const morceaux = [
+    climPac ? mentionFluidesFrigo(profil?.num_attestation_fluides_frigo) : null,
+    climPac ? mentionRgeQualipac(profil?.num_rge_qualipac) : null,
+    mentionRm(profil?.num_rm),
+    contexte.typeClient === "particulier"
+      ? mentionMediateur({
+          nom: profil?.mediateur_nom,
+          siteWeb: profil?.mediateur_site_web,
+          adresse: profil?.mediateur_adresse,
+        })
+      : null,
+  ].filter((m): m is string => Boolean(m));
   return morceaux.join(" — ");
 }
 

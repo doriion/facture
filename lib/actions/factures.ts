@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis } from "@/lib/dates";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
 import {
@@ -53,7 +54,7 @@ export async function listFactures(params?: {
 
   const { data } = await query;
   // Statut dérivé "retard" (calculé pour l'affichage uniquement, pas persisté ici).
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   const result = (data ?? []).map((f) => {
     const isLate =
       f.statut === "envoyee" && f.date_echeance && f.date_echeance < today;
@@ -330,7 +331,7 @@ export async function setFactureStatutAction(
   // Gestion spécifique annulation : on enregistre date + motif pour la
   // traçabilité fiscale (justifie le « trou » dans la séquence des numéros).
   // Si on sort du statut annulée (restauration), on nettoie les champs.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   const update: {
     statut: string;
     date_annulation?: string | null;
@@ -408,7 +409,7 @@ export async function duplicateFactureAction(
     };
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -524,7 +525,7 @@ export async function createAcompteAction(
     return { ok: false, error: numeroErr?.message ?? "Échec numérotation." };
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -626,7 +627,7 @@ export async function createSoldeAction(
     return { ok: false, error: numeroErr?.message ?? "Échec numérotation." };
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);

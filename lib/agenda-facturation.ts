@@ -37,10 +37,8 @@ export function estAFacturer(e: EvenementFacturable, aujourdhui: string): boolea
   return statutFacturation(e, aujourdhui) === "a_facturer";
 }
 
-/** Date du jour (YYYY-MM-DD) en heure de Paris, quel que soit le serveur. */
-export function aujourdhuiParis(maintenant: Date = new Date()): string {
-  return maintenant.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" });
-}
+/** Date du jour (YYYY-MM-DD) en heure de Paris — source : lib/dates. */
+export { aujourdhuiParis } from "@/lib/dates";
 
 export type AgendaStats = {
   nbInterventions: number;

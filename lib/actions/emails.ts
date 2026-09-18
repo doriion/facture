@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { renderToBuffer } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis } from "@/lib/dates";
 import { payloadLignesPdf } from "@/lib/pdf-payload";
 import { estErreurMoteurTva, verifierMoteurTva } from "@/lib/tva-garde";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
@@ -269,7 +270,7 @@ export async function envoyerRelanceFactureAction(
   if (facture.statut !== "envoyee") {
     return { ok: false, error: "Seules les factures envoyées peuvent être relancées." };
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   if (facture.date_echeance >= today) {
     return { ok: false, error: "Échéance pas encore dépassée." };
   }

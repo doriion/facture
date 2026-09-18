@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis } from "@/lib/dates";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
 import {
@@ -53,7 +54,7 @@ export async function listDevis(params?: {
   // validité est dépassée. Sans ce cas particulier, le filtre
   // « Expiré » ne renvoyait jamais rien, et le filtre « Envoyé »
   // ramenait aussi des devis affichés « Expiré ».
-  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const aujourdhui = aujourdhuiParis();
   if (params?.statut && params.statut !== "tous") {
     if (params.statut === "expire") {
       query = query.eq("statut", "envoye").lt("date_validite", aujourdhui);
@@ -557,7 +558,7 @@ export async function convertirDevisEnFactureAction(
   }
 
   // Création facture (brouillon)
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);

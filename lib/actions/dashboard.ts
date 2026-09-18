@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis, composantesYmd } from "@/lib/dates";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
@@ -121,10 +122,11 @@ export type DashboardData = {
  */
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = createClient();
-  const now = new Date();
-  const annee = now.getFullYear();
-  const mois = now.getMonth(); // 0-11
-  const today = now.toISOString().slice(0, 10);
+  // Heure de Paris : à 0 h 30 un 1er du mois, le serveur (UTC) est
+  // encore la veille — le mois courant serait faux.
+  const today = aujourdhuiParis();
+  const { annee, mois: moisParis } = composantesYmd(today);
+  const mois = moisParis - 1; // 0-11
 
   const startOfYear = `${annee}-01-01`;
   const startOfNextYear = `${annee + 1}-01-01`;
@@ -138,7 +140,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       ? `${annee - 1}-12-01`
       : `${annee}-${String(mois).padStart(2, "0")}-01`;
   // 12 mois glissants — bornes sûres même un 31 (lib/mois, testé)
-  const moisGlissants = derniers12Mois(now);
+  const moisGlissants = derniers12Mois(new Date(`${today}T00:00:00Z`));
   const start12moisAgo = moisGlissants[0]!.start;
 
   const trimestre = trimestreCourant(today);

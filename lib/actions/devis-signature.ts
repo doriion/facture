@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis } from "@/lib/dates";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import { signatureDevisAutorisee } from "@/lib/devis-transitions";
 import { statutAffichageDevis } from "@/lib/validations/devis";
@@ -69,7 +70,7 @@ export async function signerDevisAction(
   if (uploadErr) return { ok: false, error: uploadErr.message };
 
   // `.is(..., null)` : jamais d'écrasement, même en cas de course.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   const { data: updated, error: updateErr } = await supabase
     .from("devis")
     .update({

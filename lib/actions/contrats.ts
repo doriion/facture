@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis } from "@/lib/dates";
 import {
   contratSchema,
   nextVisitDate,
@@ -49,7 +50,7 @@ export async function listContrats(params?: {
  */
 export async function prochainesVisites(joursAVenir = 60) {
   const supabase = createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   const limite = new Date(Date.now() + joursAVenir * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -225,7 +226,7 @@ export async function genererFactureVisiteAction(
     Number(contrat.prix_annuel_ht),
     contrat.frequence as Frequence,
   );
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);
