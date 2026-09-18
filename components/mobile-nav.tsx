@@ -25,13 +25,65 @@ import {
 export function MobileNav({
   badgeTaches = 0,
   trigger,
+  masquer = [],
 }: {
   badgeTaches?: number;
   /** Déclencheur à la place du bouton hamburger (onglet « Plus » de la barre du bas). */
   trigger?: React.ReactNode;
+  /** Écrans déjà présents dans la barre du bas : inutile de les répéter. */
+  masquer?: string[];
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const estActif = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
+  // Depuis l'onglet « Plus » : feuille qui monte du bas, tuiles en
+  // grille sous le pouce — au lieu d'un tiroir latéral avec une liste
+  // qui commence en haut de l'écran, hors de portée à une main.
+  if (trigger) {
+    const items = NAV_ITEMS.filter((item) => !masquer.includes(item.href));
+    return (
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>{trigger}</SheetTrigger>
+        <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-2xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <SheetTitle className="mb-3 text-base">Plus</SheetTitle>
+          <Button asChild className="mb-3 w-full" size="lg">
+            <Link href="/taches?ajouter=1" onClick={() => setOpen(false)}>
+              <Plus className="size-4" />
+              Nouvelle tâche
+            </Link>
+          </Button>
+          <nav className="grid grid-cols-3 gap-2" aria-label="Autres écrans">
+            {items.map((item) => {
+              const Icon = item.icon;
+              const actif = estActif(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "relative flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-xs font-medium transition-colors active:scale-95",
+                    actif
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "bg-card text-foreground/90 hover:bg-accent",
+                  )}
+                >
+                  <Icon className="size-5" />
+                  <span className="leading-tight">{item.label}</span>
+                  {item.href === "/taches" && badgeTaches > 0 && (
+                    <span className="absolute right-2 top-2 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold leading-none text-destructive-foreground">
+                      {badgeTaches}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

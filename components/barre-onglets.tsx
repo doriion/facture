@@ -58,6 +58,7 @@ export function BarreOnglets({ badgeTaches = 0 }: { badgeTaches?: number }) {
       })}
       <MobileNav
         badgeTaches={badgeTaches}
+        masquer={ONGLETS.map((o) => o.href)}
         trigger={
           <button
             type="button"

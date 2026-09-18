@@ -13,30 +13,30 @@ describe("sanitizeNextPath", () => {
   });
 
   it("rejette les URL externes et protocol-relative", () => {
-    expect(sanitizeNextPath("https://evil.com")).toBe("/dashboard");
-    expect(sanitizeNextPath("http://evil.com/factures")).toBe("/dashboard");
-    expect(sanitizeNextPath("//evil.com")).toBe("/dashboard");
-    expect(sanitizeNextPath("//evil.com/factures")).toBe("/dashboard");
+    expect(sanitizeNextPath("https://evil.com")).toBe("/agenda");
+    expect(sanitizeNextPath("http://evil.com/factures")).toBe("/agenda");
+    expect(sanitizeNextPath("//evil.com")).toBe("/agenda");
+    expect(sanitizeNextPath("//evil.com/factures")).toBe("/agenda");
   });
 
   it("rejette les contournements par backslash et caractères de contrôle", () => {
-    expect(sanitizeNextPath("/\\evil.com")).toBe("/dashboard");
-    expect(sanitizeNextPath("/factures\\..")).toBe("/dashboard");
-    expect(sanitizeNextPath("/factures\nSet-Cookie: x")).toBe("/dashboard");
+    expect(sanitizeNextPath("/\\evil.com")).toBe("/agenda");
+    expect(sanitizeNextPath("/factures\\..")).toBe("/agenda");
+    expect(sanitizeNextPath("/factures\nSet-Cookie: x")).toBe("/agenda");
   });
 
   it("rejette les valeurs vides ou non-string", () => {
-    expect(sanitizeNextPath("")).toBe("/dashboard");
-    expect(sanitizeNextPath(null)).toBe("/dashboard");
-    expect(sanitizeNextPath(undefined)).toBe("/dashboard");
-    expect(sanitizeNextPath(42)).toBe("/dashboard");
-    expect(sanitizeNextPath("factures")).toBe("/dashboard");
+    expect(sanitizeNextPath("")).toBe("/agenda");
+    expect(sanitizeNextPath(null)).toBe("/agenda");
+    expect(sanitizeNextPath(undefined)).toBe("/agenda");
+    expect(sanitizeNextPath(42)).toBe("/agenda");
+    expect(sanitizeNextPath("factures")).toBe("/agenda");
   });
 
   it("évite les boucles vers /login", () => {
-    expect(sanitizeNextPath("/login")).toBe("/dashboard");
-    expect(sanitizeNextPath("/login/")).toBe("/dashboard");
-    expect(sanitizeNextPath("/login?next=/factures")).toBe("/dashboard");
+    expect(sanitizeNextPath("/login")).toBe("/agenda");
+    expect(sanitizeNextPath("/login/")).toBe("/agenda");
+    expect(sanitizeNextPath("/login?next=/factures")).toBe("/agenda");
     // Mais un chemin qui commence par "login" sans en être un reste valide
     expect(sanitizeNextPath("/logineries")).toBe("/logineries");
   });
