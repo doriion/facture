@@ -42,14 +42,14 @@ const SheetContent = React.forwardRef<
             // coins arrondis en haut, safe-area iPhone
             "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-2xl border-t pb-[env(safe-area-inset-bottom)] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom"
           : side === "left"
-            ? "inset-y-0 left-0 w-72 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left"
-            : "inset-y-0 right-0 w-72 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+            ? "inset-y-0 left-0 w-72 border-r pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left"
+            : "inset-y-0 right-0 w-72 border-l pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
         className,
       )}
       {...props}
     >
       {children}
-      <SheetPrimitive.Close className="absolute right-3 top-3 rounded-md p-1.5 opacity-70 transition-opacity hover:opacity-100 hover:bg-accent">
+      <SheetPrimitive.Close className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] rounded-md p-1.5 opacity-70 transition-opacity hover:opacity-100 hover:bg-accent">
         <X className="size-4" />
         <span className="sr-only">Fermer</span>
       </SheetPrimitive.Close>

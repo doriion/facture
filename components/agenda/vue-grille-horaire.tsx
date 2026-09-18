@@ -80,6 +80,7 @@ export function VueGrilleHoraire({
   onDeplacer,
   onRedimensionner,
   reglage = null,
+  onSurvolJour,
 }: {
   mode: "jour" | "semaine";
   date: string;
@@ -104,8 +105,25 @@ export function VueGrilleHoraire({
    * l'appui long ne prend pas.
    */
   reglage?: AgendaEvent | null;
+  /** Jour survolé pendant un glissement (pour surligner le bandeau des jours). */
+  onSurvolJour?: (jour: string | null) => void;
 }) {
-  const [dimanche, setDimanche] = useState(false);
+  // Dimanche affiché : choix mémorisé (le composant est remonté à chaque
+  // changement de date, l'état seul ne suffirait pas).
+  const [dimanche, setDimancheEtat] = useState(false);
+  useEffect(() => {
+    try {
+      setDimancheEtat(localStorage.getItem("agenda:dimanche") === "1");
+    } catch {}
+  }, []);
+  const setDimanche = (f: (v: boolean) => boolean) =>
+    setDimancheEtat((v) => {
+      const n = f(v);
+      try {
+        localStorage.setItem("agenda:dimanche", n ? "1" : "0");
+      } catch {}
+      return n;
+    });
   const jours =
     mode === "jour" ? [date] : joursSemaine(date).slice(0, dimanche ? 7 : 6);
   const hauteurHeure = mode === "jour" ? 64 : 48; // px
@@ -213,9 +231,13 @@ export function VueGrilleHoraire({
   const dernierJour = useRef<string | null>(null);
   const resoudre = (e: AgendaEvent, p: PointDeplacement): CibleDeplacement | null => {
     const sous = document.elementFromPoint(p.x, p.y)?.closest<HTMLElement>("[data-jour]");
+    // Déposé sur le bandeau des jours (vue jour) ou sur l'en-tête d'une
+    // colonne : le jour change, les heures restent.
+    const surUnJourSeul = Boolean(sous) && sous!.dataset.grille === undefined;
     const jour = sous?.dataset.jour ?? dernierJour.current ?? e.date_start;
     dernierJour.current = jour;
-    if (!e.heure_debut) return { jour };
+    onSurvolJour?.(surUnJourSeul ? jour : null);
+    if (!e.heure_debut || surUnJourSeul) return { jour };
     const colonne = document.querySelector<HTMLElement>(`[data-grille][data-jour="${jour}"]`);
     if (!colonne) return { jour };
     const top = p.y - p.decalageY - colonne.getBoundingClientRect().top;
@@ -225,6 +247,7 @@ export function VueGrilleHoraire({
     resoudre,
     onDeposer: (e, cible) => {
       dernierJour.current = null;
+      onSurvolJour?.(null);
       onDeplacer?.(e, cible);
     },
     // Appui long relâché sur place : la fiche (menu) de l'évènement.
@@ -533,6 +556,8 @@ export function VueGrilleHoraire({
                     <span className="block truncate">{libelleEvenement(e)}</span>
                     {/* Poignée du bas : étirer pour changer la durée (touch-action none :
                         le doigt qui la tient n'a pas à faire défiler la page). */}
+                    {/* Au doigt, la poignée n'existe qu'en mode réglage : sinon elle
+                        avalait la moitié basse du créneau et le tap n'ouvrait plus la fiche. */}
                     {etirable && (height >= 28 || regle) && (
                       <span
                         role="presentation"
@@ -540,7 +565,8 @@ export function VueGrilleHoraire({
                         aria-hidden="true"
                         {...poigneeEtirement(e, jour)}
                         className={cn(
-                          "absolute inset-x-0 bottom-0 flex h-3.5 cursor-ns-resize items-end justify-center pb-0.5 [touch-action:none] [@media(hover:none)]:h-7 [@media(hover:none)]:pb-1",
+                          "absolute inset-x-0 bottom-0 flex h-3.5 cursor-ns-resize items-end justify-center pb-0.5 [touch-action:none]",
+                          !regle && "[@media(hover:none)]:hidden",
                           regle && "h-9 bg-gradient-to-t from-primary/25 to-transparent pb-1.5 [@media(hover:none)]:h-10",
                         )}
                         title="Étirer pour changer la durée"

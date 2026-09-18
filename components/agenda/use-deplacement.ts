@@ -133,11 +133,17 @@ export function useDeplacement<T, C>({
   useEffect(() => {
     if (!glissementAffiche) return;
     let cadre = 0;
+    // Le conteneur qui défile est <main> (la page ne défile pas au
+    // niveau de la fenêtre) ; à défaut, le document.
+    const scroller: Element | null =
+      saisie.current?.cible.closest("main") ??
+      document.querySelector("main") ??
+      document.scrollingElement;
     const boucle = () => {
       const p = dernierPoint.current;
-      if (p) {
-        if (p.y < BORD_DEFILEMENT_PX) window.scrollBy(0, -PAS_DEFILEMENT_PX);
-        else if (p.y > window.innerHeight - BORD_DEFILEMENT_PX) window.scrollBy(0, PAS_DEFILEMENT_PX);
+      if (p && scroller) {
+        if (p.y < BORD_DEFILEMENT_PX) scroller.scrollBy(0, -PAS_DEFILEMENT_PX);
+        else if (p.y > window.innerHeight - BORD_DEFILEMENT_PX) scroller.scrollBy(0, PAS_DEFILEMENT_PX);
       }
       cadre = window.requestAnimationFrame(boucle);
     };

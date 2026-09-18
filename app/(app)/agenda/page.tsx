@@ -5,6 +5,7 @@ import { getAgendaEvents } from "@/lib/actions/agenda";
 import { listClientsLegers } from "@/lib/actions/clients";
 import { getProfil } from "@/lib/actions/profil";
 import { getCouleursEvenements } from "@/lib/actions/agenda-couleurs";
+import { aujourdhuiParis } from "@/lib/agenda-facturation";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
 import {
   JOURS_LISTE,
@@ -12,7 +13,6 @@ import {
   dernierDuMois,
   normaliserVue,
   premierDuMois,
-  ymd,
 } from "@/lib/agenda-vues";
 import { AgendaCalendar } from "@/components/agenda/agenda-calendar";
 
@@ -38,7 +38,9 @@ export default async function AgendaPage({
   searchParams: { year?: string; month?: string; vue?: string; date?: string };
 }) {
   const now = new Date();
-  const aujourdhui = ymd(now);
+  // Date du jour en heure de Paris (le serveur tourne en UTC : entre
+  // minuit et 2 h, la date UTC est encore la veille).
+  const aujourdhui = aujourdhuiParis(now);
   // Date sélectionnée : ?date= (vues jour / semaine), sinon ?year&month
   // (anciens liens), sinon aujourd'hui.
   const dateParam = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date ?? "")
@@ -106,6 +108,7 @@ export default async function AgendaPage({
         date={date}
         vueUrl={vue}
         externesCle={Date.now()}
+        aujourdhui={aujourdhui}
       />
     </div>
   );
