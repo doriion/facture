@@ -18,7 +18,7 @@ export default function LoginPage({
   searchParams: { next?: string };
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-muted/40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-primary">

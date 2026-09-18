@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, AlertCircle, Check, Move, Plus } from "lucide-react";
+import { CalendarSearch, ChevronLeft, ChevronRight, AlertCircle, Check, Move, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -702,6 +702,32 @@ export function AgendaCalendar({
               >
                 Aujourd'hui
               </Button>
+              {/* Aller à une date : le sélecteur natif du téléphone
+                  (roue iOS) recouvre le bouton, invisible ; un tap sur
+                  l'icône l'ouvre. */}
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-hidden
+                  tabIndex={-1}
+                  className="sm:h-9 sm:w-9"
+                >
+                  <CalendarSearch className="size-4" />
+                </Button>
+                <input
+                  type="date"
+                  aria-label="Aller à une date"
+                  value={dateCourante}
+                  onChange={(e) => {
+                    const d = e.target.value;
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                      allerA(d, d > dateCourante ? 1 : d < dateCourante ? -1 : null);
+                    }
+                  }}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+              </div>
             </>
           )}
           <h2 className="ml-auto text-sm font-semibold tracking-tight sm:ml-2 sm:text-lg">

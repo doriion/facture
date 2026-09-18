@@ -1,6 +1,7 @@
 "use client";
 
-import { MapPin, Phone } from "lucide-react";
+import { useState } from "react";
+import { MapPin, Phone, Search } from "lucide-react";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
 import { contactEvenement } from "@/lib/agenda-contact";
@@ -97,7 +98,39 @@ export function VueListe({
   onOuvrir: (e: AgendaEvent) => void;
   onPlanifier: (ymd: string) => void;
 }) {
-  const groupes = grouperParJour(events, aujourdhui, nbJours);
+  // Recherche : client, titre, lieu — filtre les évènements à venir
+  // avant regroupement par jour (pas de casse ni d'accents).
+  const [recherche, setRecherche] = useState("");
+  const q = normaliserRecherche(recherche);
+  const filtres = q
+    ? events.filter((e) => normaliserRecherche(texteRecherche(e)).includes(q))
+    : events;
+  const groupes = grouperParJour(filtres, aujourdhui, nbJours);
+
+  const champRecherche = (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <input
+        type="search"
+        value={recherche}
+        onChange={(e) => setRecherche(e.target.value)}
+        placeholder="Rechercher un client, un rendez-vous…"
+        aria-label="Rechercher dans les rendez-vous à venir"
+        className="h-11 w-full rounded-md border bg-background pl-9 pr-3 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:h-9 sm:text-sm"
+      />
+    </div>
+  );
+
+  if (groupes.length === 0 && q) {
+    return (
+      <div className="space-y-3">
+        {champRecherche}
+        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+          Aucun rendez-vous à venir ne correspond à « {recherche} ».
+        </p>
+      </div>
+    );
+  }
 
   if (groupes.length === 0) {
     return (
@@ -116,6 +149,7 @@ export function VueListe({
 
   return (
     <div className="space-y-5">
+      {champRecherche}
       {groupes.map(({ jour, evenements }) => (
         <section key={jour}>
           <h3
@@ -138,4 +172,19 @@ export function VueListe({
       ))}
     </div>
   );
+}
+
+function normaliserRecherche(t: string): string {
+  return t
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function texteRecherche(e: AgendaEvent): string {
+  const c = contactEvenement(e);
+  return [e.title, e.client_nom, e.description, c.adresse, c.telephone]
+    .filter(Boolean)
+    .join(" ");
 }

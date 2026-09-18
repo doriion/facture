@@ -67,7 +67,14 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/api/cron/");
 
   if (!user && !isPublicPage) {
-    if (path.startsWith("/api/")) {
+    // Navigation directe vers une route API (PDF ouvert dans un onglet,
+    // lien mémorisé) avec session expirée : on emmène à la connexion
+    // puis on revient au document, au lieu d'un « Non authentifié » nu.
+    // Les appels fetch/JS gardent le 401.
+    const navigation =
+      request.method === "GET" &&
+      (request.headers.get("accept") ?? "").includes("text/html");
+    if (path.startsWith("/api/") && !navigation) {
       return new NextResponse("Non authentifié", { status: 401 });
     }
     const url = request.nextUrl.clone();
@@ -76,7 +83,7 @@ export async function middleware(request: NextRequest) {
     url.search = "";
     // Mémorise la page demandée pour y revenir après connexion
     // (validé côté login par sanitizeNextPath — chemin interne only).
-    if (nextPath !== "/" && nextPath !== "/dashboard") {
+    if (nextPath !== "/" && nextPath !== "/agenda") {
       url.searchParams.set("next", nextPath);
     }
     return NextResponse.redirect(url);

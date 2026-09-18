@@ -7,7 +7,8 @@
  * `/\hôte` (les navigateurs assimilent le backslash à un slash).
  */
 
-const FALLBACK = "/dashboard";
+// L'agenda est l'écran de travail principal (barre du bas, PWA).
+const FALLBACK = "/agenda";
 
 export function sanitizeNextPath(next: unknown): string {
   if (typeof next !== "string" || next.length === 0) return FALLBACK;
