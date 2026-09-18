@@ -103,6 +103,16 @@
   }
 }
 
+/* Fondu d'arrivée d'une page : opacité seule, jamais de transform (un
+   transform ferait des boutons flottants « fixed » des enfants de la page). */
+@keyframes page-fondu {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.page-fondu {
+  animation: page-fondu 200ms ease-out;
+}
+
 /* Créneau que l'on peut glisser (agenda) : pas de sélection de texte ni
    de bulle iOS pendant l'appui long. */
 .poignee-deplacement {

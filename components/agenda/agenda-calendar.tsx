@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { getFrenchHolidays } from "@/lib/holidays-fr";
 import {
@@ -221,6 +222,7 @@ export function AgendaCalendar({
   date,
   vueUrl = null,
   externesCle = 0,
+  aujourdhui,
 }: {
   data: AgendaData;
   clients: ClientOption[];
@@ -233,9 +235,26 @@ export function AgendaCalendar({
   vueUrl?: string | null;
   /** Change à chaque rendu serveur : force le rechargement des RDV iPhone après un refresh. */
   externesCle?: number;
+  /** Date du jour (heure de Paris) calculée par le serveur : même rendu des deux côtés. */
+  aujourdhui?: string;
 }) {
   const router = useRouter();
-  const todayYmd = useMemo(() => toYmd(new Date()), []);
+  // « Aujourd'hui » vit : une PWA laissée ouverte passe minuit, et le
+  // bouton, la ligne rouge et les statuts doivent suivre.
+  const [todayYmd, setTodayYmd] = useState(() => aujourdhui ?? toYmd(new Date()));
+  useEffect(() => {
+    const maj = () => setTodayYmd((prev) => {
+      const n = toYmd(new Date());
+      return n === prev ? prev : n;
+    });
+    maj();
+    const id = window.setInterval(maj, 60_000);
+    document.addEventListener("visibilitychange", maj);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", maj);
+    };
+  }, []);
   const { fenetre } = data;
 
   // Date affichée. À l'intérieur de la fenêtre chargée (le mois et ses
@@ -490,6 +509,14 @@ export function AgendaCalendar({
   // Vue Mois sur téléphone : un tap sur un jour montre ses rendez-vous
   // en dessous (au lieu d'ouvrir « Planifier » directement).
   const [jourSelectionne, setJourSelectionne] = useState<string | null>(null);
+  const listeDuJour = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (jourSelectionne) listeDuJour.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [jourSelectionne]);
+  // Téléphone : feuille « à facturer » (le panneau PC est masqué sur mobile).
+  const [aFacturerOuvert, setAFacturerOuvert] = useState(false);
+  // Jour du bandeau survolé par un rendez-vous glissé.
+  const [jourSurvole, setJourSurvole] = useState<string | null>(null);
 
   const openQuickAdd = (ymd: string, heures?: { debut: number; fin: number }) => {
     setQuickMonte(true);
@@ -570,7 +597,7 @@ export function AgendaCalendar({
       setDateCourante(d);
       window.history.replaceState(null, "", `/agenda?vue=${v}&date=${d}`);
     } else {
-      router.push(`/agenda?vue=${v}&date=${d}`);
+      router.replace(`/agenda?vue=${v}&date=${d}`);
     }
   };
   const prevMonth = () => allerA(naviguer(vue ?? "mois", dateCourante, -1), -1);
@@ -627,13 +654,12 @@ export function AgendaCalendar({
         <StatCard label="Visites maint." value={stats.nbVisites} hint="contrats" />
       </div>
 
-      {/* Mobile : une seule puce « à facturer » remplace les stats et le bandeau */}
+      {/* Mobile : une seule puce « à facturer » remplace les stats et le bandeau ;
+          elle ouvre la liste des interventions à facturer (feuille du bas). */}
       {nbAFacturer > 0 && (
         <button
           type="button"
-          onClick={() =>
-            stats.nbExternalAFacturer > 0 ? ouvrirRattacher() : choisirVue("liste")
-          }
+          onClick={() => setAFacturerOuvert(true)}
           className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 sm:hidden"
         >
           <AlertCircle className="size-3.5" />
@@ -647,32 +673,37 @@ export function AgendaCalendar({
           Desktop : 1 ligne (nav à gauche, planifier + légende à droite). */}
       <div className="space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:space-y-0">
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={prevMonth}
-            aria-label="Mois précédent"
-            className="h-9 w-9"
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={nextMonth}
-            aria-label="Mois suivant"
-            className="h-9 w-9"
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={goToday}
-            className="px-2 sm:px-3"
-          >
-            Aujourd'hui
-          </Button>
+          {/* La vue Liste part toujours d'aujourd'hui : pas de navigation. */}
+          {vue !== "liste" && (
+            <>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={prevMonth}
+                aria-label="Précédent"
+                className="sm:h-9 sm:w-9"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={nextMonth}
+                aria-label="Suivant"
+                className="sm:h-9 sm:w-9"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToday}
+                className="px-2 sm:px-3"
+              >
+                Aujourd'hui
+              </Button>
+            </>
+          )}
           <h2 className="ml-auto text-sm font-semibold tracking-tight sm:ml-2 sm:text-lg">
             {titre}
           </h2>
@@ -692,7 +723,7 @@ export function AgendaCalendar({
                 aria-selected={vue === v}
                 onClick={() => choisirVue(v)}
                 className={cn(
-                  "min-h-9 rounded px-3 text-xs font-medium transition-colors sm:text-sm",
+                  "min-h-11 rounded px-3 text-xs font-medium transition-colors sm:min-h-9 sm:text-sm",
                   vue === v
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
@@ -755,6 +786,7 @@ export function AgendaCalendar({
           joursCharges={joursAvecEvenements(events, joursSemaine(dateCourante))}
           onChoisir={(d) => allerA(d, d > dateCourante ? 1 : d < dateCourante ? -1 : null)}
           onSemaine={(sens) => allerA(ajouterJours(dateCourante, 7 * sens), sens)}
+          jourCible={jourSurvole}
         />
       )}
       {(vue === "jour" || vue === "semaine") && (
@@ -770,6 +802,7 @@ export function AgendaCalendar({
           onDeplacer={deplacerRdv}
           onRedimensionner={redimensionnerRdv}
           reglage={reglage}
+          onSurvolJour={setJourSurvole}
         />
       )}
       {vue === "liste" && (
@@ -864,9 +897,26 @@ export function AgendaCalendar({
                         </span>
                       )}
                       {isCurrentMonth && dayEvents.length > 3 && (
-                        <span className="hidden text-[10px] text-muted-foreground sm:inline">
+                        <button
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setVue("jour");
+                            try {
+                              localStorage.setItem(CLE_VUE_AGENDA, "jour");
+                            } catch {}
+                            if (dansFenetre("jour", ymd, fenetre)) {
+                              setDateCourante(ymd);
+                              window.history.replaceState(null, "", `/agenda?vue=jour&date=${ymd}`);
+                            } else {
+                              router.replace(`/agenda?vue=jour&date=${ymd}`);
+                            }
+                          }}
+                          title="Voir tous les rendez-vous de ce jour"
+                          className="hidden rounded px-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground sm:inline"
+                        >
                           +{dayEvents.length - 3}
-                        </span>
+                        </button>
                       )}
                       <span
                         aria-hidden="true"
@@ -935,7 +985,7 @@ export function AgendaCalendar({
                             type="button"
                             onClick={(ev) => {
                               ev.stopPropagation();
-                              openEdit(e);
+                              setDetail(e);
                             }}
                             {...(deplacable ? deplacementMois.poignee(e) : {})}
                             onContextMenu={(ev) => {
@@ -1031,7 +1081,7 @@ export function AgendaCalendar({
 
       {/* Mois sur téléphone : les rendez-vous du jour touché */}
       {vue === "mois" && mobile && (
-        <div className="space-y-1.5">
+        <div ref={listeDuJour} className="space-y-1.5">
           {jourSelectionne ? (
             <>
               <h3 className="px-1 text-sm font-semibold">
@@ -1145,6 +1195,22 @@ export function AgendaCalendar({
         onClose={() => setCibleCouleur(null)}
         onOptimiste={appliquerCouleur}
       />
+
+      {/* Téléphone : la liste « à facturer » (tous mois) dans une feuille du bas */}
+      <Sheet open={aFacturerOuvert} onOpenChange={setAFacturerOuvert}>
+        <SheetContent side="bottom" className="mx-auto max-w-lg overflow-y-auto p-4 pb-6">
+          <SheetTitle className="mb-3 text-base font-semibold">À facturer</SheetTitle>
+          <AFacturerPanel
+            items={data.aFacturer}
+            nbExternal={stats.nbExternalAFacturer}
+            onRattacher={() => {
+              setAFacturerOuvert(false);
+              ouvrirRattacher();
+            }}
+            className="border-0 p-0 shadow-none"
+          />
+        </SheetContent>
+      </Sheet>
 
       <EvenementDetailSheet
         evenement={detail}

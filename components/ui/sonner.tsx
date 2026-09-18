@@ -1,17 +1,29 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Toaster as Sonner } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 /**
- * Wrapper Sonner avec thème harmonisé (light uniquement pour Phase 1).
- * Permet d'afficher des toasts via toast.success(), toast.error()...
+ * Wrapper Sonner. Sur téléphone, les toasts arrivent en bas AU-DESSUS de
+ * la barre d'onglets et de la barre d'action (sinon ils passaient
+ * derrière), et le thème suit celui de l'app (classe « dark » sur html).
  */
 const Toaster = ({ ...props }: ToasterProps) => {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  useEffect(() => {
+    const lire = () =>
+      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    lire();
+    const obs = new MutationObserver(lire);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
   return (
     <Sonner
-      theme="light"
+      theme={theme}
+      mobileOffset={{ bottom: "calc(8.5rem + env(safe-area-inset-bottom))", left: "1rem", right: "1rem" }}
       className="toaster group"
       toastOptions={{
         classNames: {
