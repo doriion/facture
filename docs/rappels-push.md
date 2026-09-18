@@ -70,3 +70,30 @@ Les notifications Web Push ne fonctionnent que depuis l'app **ajoutée
 d'accueil », ouvrir NG Gestion depuis l'icône, puis Paramètres →
 « Recevoir les rappels sur cet appareil ». Le bouton doit être touché
 par l'utilisateur (iOS refuse une demande de permission automatique).
+
+## Cron quotidien : deux déclencheurs, un seul secret côté pg_cron
+
+`/api/cron/quotidien` (sauvegarde, relances, rappels, Chatel, email des
+tâches) accepte deux secrets : `CRON_SECRET` (Vercel Cron, `vercel.json`)
+**ou** `PUSH_CRON_SECRET` (pg_cron, ci-dessous). Le journal
+(`taches_journal`) rend l'exécution idempotente : si les deux
+déclencheurs tirent le même jour, le second ne refait rien.
+
+Le déclencheur pg_cron est la ceinture de sécurité : le cron Vercel
+(plan Hobby) n'avait laissé aucune trace en septembre 2026.
+
+```sql
+select cron.schedule(
+  'quotidien',
+  '10 5 * * *',   -- 05:10 UTC, après le cron Vercel de 05:00
+  $$
+  select net.http_get(
+    url := 'https://facture-green.vercel.app/api/cron/quotidien',
+    headers := jsonb_build_object('Authorization', 'Bearer <PUSH_CRON_SECRET>')
+  );
+  $$
+);
+```
+
+Sur l'écran Paramètres, un bandeau signale « Aucune exécution depuis
+N jours » : si vous le voyez, l'un des secrets manque sur Vercel.

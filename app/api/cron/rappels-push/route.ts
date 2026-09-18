@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { createServiceClient } from "@/lib/supabase/service";
+import { estAppelCronAutorise } from "@/lib/cron/protect";
+import { journaliser } from "@/lib/cron/journal";
+import { aujourdhuiParis } from "@/lib/dates";
 import { envoyerNotification, pushConfigure } from "@/lib/push/envoi";
 import { adresseClient } from "@/lib/agenda-contact";
 import {
@@ -28,8 +31,7 @@ export const maxDuration = 60;
  * (404 / 410) est retiré.
  */
 export async function GET(request: Request) {
-  const secret = process.env.PUSH_CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!estAppelCronAutorise(request)) {
     return new NextResponse("Non autorisé", { status: 401 });
   }
   if (!pushConfigure()) {
@@ -89,6 +91,7 @@ export async function GET(request: Request) {
     let envoyes = 0;
     let expires = 0;
     let erreurs = 0;
+    let rearmes = 0;
     for (const i of dus) {
       // Marqué AVANT l'envoi : un déclencheur concurrent ne renvoie pas.
       const { data: marque } = await service
@@ -100,10 +103,12 @@ export async function GET(request: Request) {
       if (!marque || marque.length === 0) continue;
 
       const contenu = contenuRappel(i, delai);
+      let joints = 0;
       for (const a of abonnements) {
         const r = await envoyerNotification(a, contenu);
         if (r.resultat === "ok") {
           envoyes += 1;
+          joints += 1;
           await service
             .from("push_abonnements")
             .update({ derniere_utilisation: new Date(maintenant).toISOString() })
@@ -116,8 +121,44 @@ export async function GET(request: Request) {
           console.error("[cron:rappels-push]", r.erreur);
         }
       }
+      // Aucun appareil joint (erreur réseau, service push indisponible) :
+      // on réarme le rappel, le passage suivant réessaie tant que la
+      // fenêtre de grâce n'est pas passée.
+      if (joints === 0 && erreurs > 0) {
+        await service
+          .from("interventions")
+          .update({ rappel_push_envoye_le: null })
+          .eq("id", i.id);
+        rearmes += 1;
+      }
     }
     compteRendu.push({ user: userId, rappels: dus.length, envoyes, expires, erreurs });
+    // Journal (une ligne par jour, cumulée) dès qu'il s'est passé
+    // quelque chose : l'écran Paramètres montre ainsi que les rappels
+    // vivent, et une panne d'envoi devient visible.
+    if (dus.length > 0) {
+      const today = aujourdhuiParis();
+      const { data: ligne } = await service
+        .from("taches_journal")
+        .select("details")
+        .eq("user_id", userId)
+        .eq("tache", "rappels-push")
+        .eq("date_execution", today)
+        .maybeSingle();
+      const cumul = `${ligne?.details ? `${ligne.details} · ` : ""}${new Date(maintenant).toISOString().slice(11, 16)} UTC : ${envoyes} envoyé(s)${erreurs ? `, ${erreurs} erreur(s)` : ""}${rearmes ? `, ${rearmes} réarmé(s)` : ""}${expires ? `, ${expires} appareil(s) expiré(s)` : ""}`;
+      try {
+        await journaliser(
+          service,
+          userId,
+          "rappels-push",
+          today,
+          { statut: erreurs > 0 && envoyes === 0 ? "erreur" : "succes", details: cumul },
+          false,
+        );
+      } catch (e) {
+        console.error("[cron:rappels-push] journal", e instanceof Error ? e.message : e);
+      }
+    }
   }
 
   return NextResponse.json({ ok: true, a: new Date(maintenant).toISOString(), utilisateurs: compteRendu });

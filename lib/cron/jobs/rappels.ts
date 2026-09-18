@@ -118,12 +118,17 @@ async function executerRappels({
       echecs.push(`${objet(c)} : ${res.error}`);
       continue;
     }
-    // Un seul rappel par échéance : on mémorise la date rappelée
-    await service
+    // Un seul rappel par échéance : on mémorise la date rappelée. Si
+    // cette marque ne peut pas être posée, le job passe en erreur.
+    const { error: erreurMarque } = await service
       .from("contrats_maintenance")
       .update({ rappel_envoye_pour: c.prochaine_visite })
       .eq("id", c.id)
       .eq("user_id", userId);
+    if (erreurMarque) {
+      echecs.push(`${objet(c)} : rappel envoyé mais anti-doublon non enregistré (${erreurMarque.message})`);
+      continue;
+    }
     envoyes.push(
       `${objet(c)} — ${c.client_nom} — visite le ${formatDateFr(c.prochaine_visite!)}`,
     );

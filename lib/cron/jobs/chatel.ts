@@ -139,7 +139,7 @@ async function executerChatel({
     // Anti-doublon : mémorise l'échéance avisée AVANT toute autre
     // étape — mieux vaut un avis non copié à l'artisan qu'un second
     // avis au client demain matin.
-    await service
+    const { error: erreurMarque } = await service
       .from("contrats")
       .update({
         rappel_chatel_envoye_pour: echeance,
@@ -147,6 +147,12 @@ async function executerChatel({
       })
       .eq("id", c.id)
       .eq("user_id", userId);
+    if (erreurMarque) {
+      // L'avis est parti mais l'anti-doublon n'a pas pu être posé :
+      // signalé en erreur pour qu'on le voie avant demain matin.
+      echecs.push(`${c.numero ?? c.id} : avis envoyé mais anti-doublon non enregistré (${erreurMarque.message})`);
+      continue;
+    }
 
     // Copie à l'artisan : trace de l'information délivrée, utile en
     // cas de contestation ultérieure.

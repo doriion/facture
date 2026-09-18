@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { estAppelCronAutorise } from "@/lib/cron/protect";
 import { dejaExecuteeAujourdhui, journaliser } from "@/lib/cron/journal";
 import { JOBS } from "@/lib/cron/registre";
+import { aujourdhuiParis } from "@/lib/dates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+// Plan Hobby : 60 s maximum par exécution. Les jobs journalisent au fil
+// de l'eau, une coupure ne rejoue donc pas ce qui est déjà passé.
+export const maxDuration = 60;
 
 /**
  * Orchestrateur des tâches planifiées — appelé chaque matin par Vercel
@@ -30,7 +34,9 @@ export async function GET(request: Request) {
   }
 
   const service = createServiceClient();
-  const today = new Date().toISOString().slice(0, 10);
+  // Heure de Paris : même clé de jour que la sauvegarde manuelle et les
+  // fenêtres métier (entre 0 h et 2 h, la date UTC est encore la veille).
+  const today = aujourdhuiParis();
 
   const { data: profils, error } = await service
     .from("profil_entreprise")
@@ -51,7 +57,18 @@ export async function GET(request: Request) {
     for (const job of JOBS) {
       if (!job.doitTournerAujourdhui(today)) continue;
       if (!job.estActive(profil)) continue;
-      if (await dejaExecuteeAujourdhui(service, userId, job.tache, today)) {
+      // Journal illisible : on n'exécute RIEN pour cette tâche (on ne
+      // rejoue pas des envois sur une panne de lecture).
+      let dejaFaite: boolean;
+      try {
+        dejaFaite = await dejaExecuteeAujourdhui(service, userId, job.tache, today);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        Sentry.captureException(e, { tags: { tache: job.tache } });
+        compteRendu.push({ user: userId, tache: job.tache, statut: "erreur", details: message });
+        continue;
+      }
+      if (dejaFaite) {
         compteRendu.push({
           user: userId,
           tache: job.tache,
@@ -82,16 +99,21 @@ export async function GET(request: Request) {
         });
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
-        await journaliser(
-          service,
-          userId,
-          job.tache,
-          today,
-          { statut: "erreur", details: message },
-          dryRun,
-        );
-        // Remonté à Sentry par l'instrumentation globale, sans données
-        // client (le message ne contient pas de PII).
+        // Remonté explicitement à Sentry (un console.error n'y va pas),
+        // sans données client : le message ne contient pas de PII.
+        Sentry.captureException(e, { tags: { tache: job.tache } });
+        try {
+          await journaliser(
+            service,
+            userId,
+            job.tache,
+            today,
+            { statut: "erreur", details: message },
+            dryRun,
+          );
+        } catch (ej) {
+          Sentry.captureException(ej, { tags: { tache: job.tache, etape: "journal" } });
+        }
         console.error(`[cron:${job.tache}]`, message);
         compteRendu.push({
           user: userId,
