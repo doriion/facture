@@ -13,6 +13,7 @@ import {
 } from "@/lib/paiements-constants";
 import { estSoldee, montantRestant } from "@/lib/paiements-helpers";
 import { formatEuros, parseMoneyInput } from "@/lib/format";
+import { aujourdhuiParis } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -63,14 +64,22 @@ export function MarquerPayeeButton({
   // (tient compte d'éventuels acomptes déjà enregistrés).
   useEffect(() => {
     if (!open) return;
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(aujourdhuiParis());
     setLoading(true);
-    getFacturePaiements(factureId).then((summary) => {
-      setTotalFacture(summary.total_facture);
-      setDejaEncaisse(summary.total_encaisse);
-      setMontant(summary.reste_du.toFixed(2).replace(".", ","));
-      setLoading(false);
-    });
+    getFacturePaiements(factureId)
+      .then((summary) => {
+        setTotalFacture(summary.total_facture);
+        setDejaEncaisse(summary.total_encaisse);
+        setMontant(summary.reste_du.toFixed(2).replace(".", ","));
+        setLoading(false);
+      })
+      .catch((e: unknown) => {
+        setLoading(false);
+        setOpen(false);
+        toast.error("Facture indisponible", {
+          description: e instanceof Error ? e.message : "Réessayez.",
+        });
+      });
   }, [open, factureId]);
 
   async function onConfirm() {

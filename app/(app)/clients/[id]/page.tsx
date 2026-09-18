@@ -4,6 +4,8 @@ import { ArrowLeft, FileSignature, FileText, Mail, MapPin, Phone, ScrollText } f
 
 import { getClient } from "@/lib/actions/clients";
 import { statutAffichageDevis } from "@/lib/validations/devis";
+import { aujourdhuiParis } from "@/lib/dates";
+import { statutAffichageFacture } from "@/lib/factures-transitions";
 import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { DeleteClientDialog } from "@/components/clients/delete-client-dialog";
@@ -218,11 +220,7 @@ export default async function ClientDetailPage({
               </TableHeader>
               <TableBody>
                 {factures.map((f) => {
-                  const today = new Date().toISOString().slice(0, 10);
-                  const isLate =
-                    f.statut === "envoyee" &&
-                    f.date_echeance &&
-                    f.date_echeance < today;
+                  const statutAffiche = statutAffichageFacture(f, aujourdhuiParis());
                   return (
                     <TableRow key={f.id}>
                       <TableCell className="font-mono text-sm">
@@ -235,7 +233,7 @@ export default async function ClientDetailPage({
                       </TableCell>
                       <TableCell>{formatDateFr(f.date_emission)}</TableCell>
                       <TableCell>
-                        <StatutBadge statut={isLate ? "retard" : f.statut} />
+                        <StatutBadge statut={statutAffiche} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatEuros(Number(f.total_ht))}

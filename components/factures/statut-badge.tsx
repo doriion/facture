@@ -9,6 +9,7 @@ const variantByStatut: Record<
   envoyee: "default",
   payee: "success",
   retard: "warning",
+  ventilee: "secondary",
   annulee: "destructive",
 };
 

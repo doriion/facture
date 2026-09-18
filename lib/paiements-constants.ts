@@ -40,4 +40,7 @@ export type FacturePaiementsSummary = {
   total_encaisse: number;
   reste_du: number;
   paiements: Paiement[];
+  /** Statut stocké et type (normale/acompte/solde), pour les gardes métier. */
+  statut: string;
+  type_facture: string;
 };

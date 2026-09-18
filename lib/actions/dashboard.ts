@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { aujourdhuiParis, composantesYmd } from "@/lib/dates";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
+import { idsParentsVentiles } from "@/lib/actions/factures";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
 import { computeTauxConversionDevis } from "@/lib/devis-stats";
 import { derniers12Mois } from "@/lib/mois";
@@ -159,6 +160,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     devisRecentsRes,
     contratsRes,
     profilRes,
+    parentsVentiles,
   ] = await Promise.all([
     // Factures ÉMISES sur 12 mois glissants (brouillons et annulées
     // exclus : un brouillon n'est pas émis, il ne doit pas gonfler le
@@ -226,9 +228,12 @@ export async function getDashboardData(): Promise<DashboardData> {
       .from("profil_entreprise")
       .select("decennale_valide_jusquau, fluides_valide_jusquau")
       .maybeSingle(),
+    // Factures d'origine ventilées en acomptes/solde : exclues du facturé
+    // et de l'impayé, sinon le montant est compté deux fois.
+    idsParentsVentiles(),
   ]);
 
-  const facturesAnnee = (facturesAnneeRes.data ?? []) as Array<{
+  const facturesAnnee = ((facturesAnneeRes.data ?? []) as Array<{
     id: string;
     numero: string;
     date_emission: string;
@@ -238,7 +243,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     type_activite: string;
     client_id: string;
     client: { id: string; nom: string } | null;
-  }>;
+  }>).filter((f) => !parentsVentiles.has(f.id));
 
   // Facturé du mois courant (factures émises : envoyées + payées)
   const caMois = facturesAnnee
@@ -288,20 +293,42 @@ export async function getDashboardData(): Promise<DashboardData> {
       : null,
   };
 
-  // Factures impayées
-  const facturesEnvoyees = (facturesEnvoyeesRes.data ?? []) as Array<{
+  // Factures impayées (envoyées, hors factures d'origine ventilées)
+  const facturesEnvoyees = ((facturesEnvoyeesRes.data ?? []) as Array<{
     id: string;
     numero: string;
     date_echeance: string;
     total_ht: number;
     client_id: string;
     client: { id: string; nom: string } | null;
-  }>;
+  }>).filter((f) => !parentsVentiles.has(f.id));
   const nbFacturesImpayees = facturesEnvoyees.length;
-  const montantImpaye = facturesEnvoyees.reduce(
-    (sum, f) => sum + Number(f.total_ht),
-    0,
-  );
+  // « À recouvrer » = reste dû réel : une facture envoyée payée en
+  // partie (acompte enregistré) ne compte que pour ce qui reste.
+  const encaisseParFacture = new Map<string, number>();
+  if (facturesEnvoyees.length > 0) {
+    const { data: paiementsEnvoyees } = await supabase
+      .from("paiements")
+      .select("facture_id, montant")
+      .in(
+        "facture_id",
+        facturesEnvoyees.map((f) => f.id),
+      );
+    for (const p of paiementsEnvoyees ?? []) {
+      encaisseParFacture.set(
+        p.facture_id,
+        (encaisseParFacture.get(p.facture_id) ?? 0) + Number(p.montant),
+      );
+    }
+  }
+  const montantImpaye =
+    Math.round(
+      facturesEnvoyees.reduce(
+        (sum, f) =>
+          sum + Math.max(0, Number(f.total_ht) - (encaisseParFacture.get(f.id) ?? 0)),
+        0,
+      ) * 100,
+    ) / 100;
 
   // Factures en retard (= envoyees + échéance dépassée)
   const facturesEnRetard = facturesEnvoyees

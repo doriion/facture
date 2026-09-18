@@ -190,6 +190,7 @@ export const LABELS_STATUT_FACTURE = {
   envoyee: "Envoyée",
   payee: "Payée",
   retard: "En retard",
+  ventilee: "Ventilée (acompte / solde)",
   annulee: "Annulée",
 } as const;
 
