@@ -10,6 +10,7 @@
  */
 
 import { dateValiditeDevis } from "@/lib/devis-validite";
+import { aujourdhuiParis } from "@/lib/dates";
 import type { Database } from "@/types/database";
 
 type DevisRow = Database["public"]["Tables"]["devis"]["Row"];
@@ -50,7 +51,7 @@ export function buildDevisDuplicata(
   options: OptionsDuplicata = {},
 ): DevisPrefill {
   const now = options.now ?? new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = aujourdhuiParis(now);
   const validite = dateValiditeDevis(today, options.dureeValiditeJours);
 
   return {

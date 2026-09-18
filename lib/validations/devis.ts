@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { parseMoneyInput } from "@/lib/format";
+import { aujourdhuiParis } from "@/lib/dates";
 import { ligneFactureSchema } from "@/lib/validations/facture";
 
 const moneyInputOrNull = (v: unknown) =>
@@ -152,7 +153,7 @@ export function statutAffichageDevis(
   statut: string,
   dateValidite: string,
 ): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   if (statut === "envoye" && dateValidite && dateValidite < today) {
     return "expire";
   }

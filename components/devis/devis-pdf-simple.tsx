@@ -28,6 +28,7 @@ import {
   joursDeValidite,
   ligneAcompte,
   ligneePiedDePage,
+  mentionsReglementairesDevis,
 } from "@/lib/devis-modele";
 import type { Database } from "@/types/database";
 import type { LignePdf } from "@/lib/pdf-payload";
@@ -275,6 +276,12 @@ export function DevisPdfSimple({
   const enseigne = enseigneEmetteur(profil);
   const coordonnees = coordonneesEmetteur(profil);
   const pied = ligneePiedDePage(profil);
+  // Mentions imposées par la loi selon l'activité et le client
+  // (fluides, RGE, RM, médiateur) : deuxième ligne du pied de page.
+  const piedReglementaire = mentionsReglementairesDevis(profil, {
+    typeActivite: devis.type_activite,
+    typeClient: client?.type,
+  });
   const validiteJours = joursDeValidite(devis.date_emission, devis.date_validite);
   const totalHt = Number(devis.total_ht);
   // null quand aucun acompte n'est renseigné : rien n'est imprimé,
@@ -512,10 +519,15 @@ export function DevisPdfSimple({
           </View>
         )}
 
-        {/* Pied de page discret : SIRET + assurance, une seule ligne */}
-        {pied && (
+        {/* Pied de page discret : SIRET + assurance sur une ligne,
+            mentions réglementaires (fluides, RGE, RM, médiateur) sur
+            une seconde, seulement quand elles s'appliquent */}
+        {(pied || piedReglementaire) && (
           <View style={styles.footer} fixed>
-            <Text>{pied}</Text>
+            {pied ? <Text>{pied}</Text> : null}
+            {piedReglementaire ? (
+              <Text style={{ marginTop: 2 }}>{piedReglementaire}</Text>
+            ) : null}
           </View>
         )}
 

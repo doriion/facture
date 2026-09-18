@@ -7,46 +7,11 @@ import { isEmailConfigured, sendEmail } from "@/lib/email";
 import {
   nomFichierSauvegarde,
   sauvegardesASupprimer,
+  TABLES_SAUVEGARDE,
 } from "@/lib/sauvegarde-helpers";
 
 type AnyClient = SupabaseClient<Database>;
 
-/**
- * Tables métier exportées.
- * INVARIANT : couvrir TOUTES les tables du schéma public (vérifié le
- * 04/09/2026 : 22/22 avec contrats). Toute migration qui crée une
- * table doit l'ajouter ici.
- *
- * CONFIDENTIALITÉ : cette sauvegarde est PRIVÉE (elle part sur votre
- * adresse et dans votre stockage). Le `select *` embarque donc aussi
- * les coûts d'achat et les fournisseurs — des lignes de documents
- * comme du catalogue. C'est voulu : une sauvegarde amputée ne
- * permettrait pas de restaurer. Ne la transmettez jamais à un client.
- */
-export const TABLES_SAUVEGARDE = [
-  "profil_entreprise",
-  "clients",
-  "produits_services",
-  "factures",
-  "factures_lignes",
-  "devis",
-  "devis_lignes",
-  "paiements",
-  "relances",
-  "declarations_urssaf",
-  "taux_cotisations",
-  "taches_journal",
-  "taches",
-  "taches_photos",
-  "contrats",
-  "interventions",
-  "intervention_photos",
-  "intervention_signatures",
-  "intervention_cerfa",
-  "contrats_maintenance",
-  "facture_external_events",
-  "numerotation",
-] as const;
 
 const NOTE =
   "Sauvegarde JSON complète (obligation de conservation des pièces : 10 ans — conservez ce fichier hors de l'application). Les fichiers du Storage (logo, photos, signatures, CERFA PDF) ne sont pas inclus, seulement leurs chemins : téléchargez aussi les PDF archivés depuis les fiches.";

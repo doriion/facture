@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis } from "@/lib/dates";
 import { totalVentilation, type Ventilation } from "@/lib/fiscal";
 
 type ActionResult<T = void> =
@@ -82,7 +83,7 @@ export async function marquerDeclareeAction(input: {
       periode_end: input.end,
       montant_declare: input.montant,
       ventilation: input.ventilation,
-      declare_le: input.declare_le || new Date().toISOString().slice(0, 10),
+      declare_le: input.declare_le || aujourdhuiParis(),
       notes: input.notes?.trim() || null,
     },
     { onConflict: "user_id,periode_start,periode_end" },

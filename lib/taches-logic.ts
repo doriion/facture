@@ -135,9 +135,7 @@ export function filtrerTaches<T extends { titre: string; notes: string | null }>
  * la date UTC est encore celle de la veille — d'où ce helper, utilisé
  * partout où l'on classe les tâches.
  */
-export function aujourdhuiParis(now: Date = new Date()): string {
-  return now.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
-}
+export { aujourdhuiParis } from "@/lib/dates";
 
 export type RaccourciDate = "aujourdhui" | "demain" | "semaine";
 

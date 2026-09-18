@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis } from "@/lib/dates";
 import { estEnRetard, joursDeRetard } from "@/lib/relances-helpers";
 
 export type FactureEnRetard = {
@@ -38,7 +39,7 @@ export async function getFacturesEnRetard(): Promise<FacturesEnRetardData> {
   } = await supabase.auth.getUser();
   if (!user) return { factures: [], tracageDisponible: true };
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
 
   const { data: factures } = await supabase
     .from("factures")

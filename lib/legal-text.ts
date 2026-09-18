@@ -13,6 +13,8 @@
  * IMPORTANT : ne pas modifier ces textes sans validation juridique.
  */
 
+import { aujourdhuiParis } from "@/lib/dates";
+
 /**
  * Date de bascule CGI → CIBS pour la mention de franchise.
  *
@@ -59,7 +61,7 @@ export const MENTION_TVA_FRANCHISE_CIBS =
  * Sans date fournie, on prend la date du jour (nouveau document).
  */
 export function mentionTvaFranchise(dateEmission?: string | null): string {
-  const date = dateEmission || new Date().toISOString().slice(0, 10);
+  const date = dateEmission || aujourdhuiParis();
   return date >= DATE_BASCULE_MENTION_CIBS
     ? MENTION_TVA_FRANCHISE_CIBS
     : MENTION_TVA_FRANCHISE_CGI;

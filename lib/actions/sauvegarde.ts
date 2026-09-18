@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { aujourdhuiParis } from "@/lib/dates";
 import { effectuerSauvegarde } from "@/lib/sauvegarde-core";
 
 type ActionResult<T = void> =
@@ -31,7 +32,7 @@ export async function sauvegarderMaintenantAction(): Promise<
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = aujourdhuiParis();
   try {
     const resultat = await effectuerSauvegarde({
       client: supabase,
