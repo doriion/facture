@@ -179,11 +179,16 @@ export type FactureFormValues = z.output<typeof factureSchema>;
 export function computeTotalHt(
   lignes: Array<{ quantite: number; prix_unitaire_ht: number }>,
 ): number {
-  const total = lignes.reduce(
-    (sum, l) => sum + Number(l.quantite) * Number(l.prix_unitaire_ht),
-    0,
-  );
+  // Somme des totaux de ligne ARRONDIS (ceux qui sont imprimés) : en
+  // sommant les produits bruts, le total pouvait différer d'un centime
+  // de l'addition des lignes du PDF (ex. 3 × 1,005 €).
+  const total = lignes.reduce((sum, l) => sum + computeLigneTotalHt(l), 0);
   return Math.round(total * 100) / 100;
+}
+
+/** Total d'une ligne, arrondi au centime — même arrondi qu'à l'enregistrement. */
+export function computeLigneTotalHt(l: { quantite: number; prix_unitaire_ht: number }): number {
+  return Math.round(Number(l.quantite) * Number(l.prix_unitaire_ht) * 100) / 100;
 }
 
 /**

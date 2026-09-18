@@ -27,15 +27,16 @@ export type StatutDevisStocke = (typeof STATUTS_DEVIS_STOCKES)[number];
 
 /**
  * Passages manuels autorisés, depuis le statut AFFICHÉ.
- * « accepte » n'a aucune sortie manuelle : un devis accepté est
- * engageant (mentions figées, souvent signé, parfois converti).
+ * « accepte » ne peut que revenir en brouillon, et seulement s'il n'est
+ * ni signé ni converti (motifVerrouDevis) : une acceptation cochée par
+ * erreur se corrige, un devis signé ou facturé reste figé.
  */
 export const TRANSITIONS_DEVIS: Record<string, readonly StatutDevisStocke[]> = {
   brouillon: ["envoye"],
   envoye: ["accepte", "refuse", "brouillon"],
   expire: ["brouillon"],
   refuse: ["brouillon"],
-  accepte: [],
+  accepte: ["brouillon"],
 };
 
 export type ContexteDevis = {

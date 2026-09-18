@@ -262,8 +262,29 @@ export function DevisForm({
     }
   }
 
+  // Validation refusée : sur le téléphone, l'erreur sous un champ hors
+  // écran est invisible — on prévient et on y amène.
+  function onInvalid(errs: Record<string, unknown>) {
+    const premier = Object.keys(errs)[0];
+    const labels: Record<string, string> = {
+      client_id: "le client",
+      type_activite: "le type d'activité",
+      lignes: "les lignes",
+      date_emission: "la date d'émission",
+      date_validite: "la date de validité",
+    };
+    toast.error("Devis incomplet", {
+      description: premier
+        ? `Vérifiez ${labels[premier] ?? `le champ « ${premier} »`}.`
+        : "Vérifiez les champs signalés.",
+    });
+    document
+      .querySelector<HTMLElement>("[aria-invalid='true'], .text-destructive")
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
       {/* Client d'abord : un devis commence par « pour qui ».
           Recherche instantanée, et création en dialogue pour ne pas
           casser le fil quand c'est un nouveau client. */}

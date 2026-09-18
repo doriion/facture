@@ -19,6 +19,11 @@ export type LignePrefill = {
   designation: string;
   quantite: number;
   prix_unitaire_ht: number;
+  /** Renseignés lors d'une duplication ; absents depuis une intervention. */
+  nature_fiscale?: string | null;
+  type?: string | null;
+  prix_achat_ttc_unitaire?: number | null;
+  fournisseur?: string | null;
 };
 
 export type FacturePrefill = {

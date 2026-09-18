@@ -158,6 +158,7 @@ export default async function EditFacturePage({
           lignes={lignes}
           defaultConditionsPaiement={profil?.conditions_paiement_default}
           assujettiTva={assujettiTva}
+          verrouillee={facture.statut !== "brouillon"}
         />
       )}
 

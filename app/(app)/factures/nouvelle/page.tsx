@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, UserRound, Wrench } from "lucide-react";
+import { ArrowLeft, Copy, UserRound, Wrench } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { listProduits } from "@/lib/actions/produits";
 import { getProfil } from "@/lib/actions/profil";
 import { getIntervention } from "@/lib/actions/interventions";
+import { getFacture } from "@/lib/actions/factures";
 import { buildFacturePrefill } from "@/lib/facture-prefill";
 import { assujettiTvaEffectif } from "@/lib/tva-garde";
 import { formatDateFr } from "@/lib/format";
@@ -20,7 +21,7 @@ type Facture = Database["public"]["Tables"]["factures"]["Row"];
 export default async function NouvelleFacturePage({
   searchParams,
 }: {
-  searchParams: { intervention?: string };
+  searchParams: { intervention?: string; source?: string };
 }) {
   const [clients, produits, profil] = await Promise.all([
     listClients(),
@@ -44,6 +45,36 @@ export default async function NouvelleFacturePage({
   let interventionId: string | undefined;
   let interventionResume: string | undefined;
   let interventionSansClient = false;
+  let sourceNumero: string | undefined;
+
+  // Duplication : copie du contenu d'une facture existante, sans rien
+  // créer ni numéroter tant que le formulaire n'est pas validé (un
+  // brouillon dupliqué puis supprimé laissait un trou de numérotation).
+  if (searchParams.source && !searchParams.intervention) {
+    const { facture: source, lignes: lignesSource } = await getFacture(searchParams.source);
+    if (source) {
+      prefill = {
+        facture: {
+          client_id: source.client_id,
+          type_activite: source.type_activite,
+          conditions_paiement: source.conditions_paiement,
+          notes: source.notes,
+          equipement_info: source.equipement_info,
+          aides_financieres: source.aides_financieres,
+        },
+        lignes: lignesSource.map((l) => ({
+          designation: l.designation,
+          quantite: Number(l.quantite),
+          prix_unitaire_ht: Number(l.prix_unitaire_ht),
+          nature_fiscale: l.nature_fiscale,
+          type: l.type,
+          prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire,
+          fournisseur: l.fournisseur,
+        })),
+      };
+      sourceNumero = source.numero;
+    }
+  }
 
   if (searchParams.intervention) {
     const { intervention, client } = await getIntervention(
@@ -91,6 +122,17 @@ export default async function NouvelleFacturePage({
           envoyée et générer le PDF.
         </p>
       </div>
+
+      {sourceNumero && (
+        <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <Copy className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p>
+            Copie de la facture <strong>{sourceNumero}</strong> : dates du
+            jour, contenu repris. Rien n&apos;est créé ni numéroté tant que
+            vous ne validez pas.
+          </p>
+        </div>
+      )}
 
       {interventionResume && (
         <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">

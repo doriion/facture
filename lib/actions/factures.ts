@@ -270,6 +270,17 @@ export async function updateFactureAction(
   if (existing.statut === "annulee") {
     return { ok: false, error: "Cette facture est annulée et ne peut pas être modifiée." };
   }
+  // Une facture émise (envoyée, payée, en retard) est un document
+  // comptable figé : on ne réécrit pas son contenu. Le chemin légitime
+  // existe déjà : « Repasser en brouillon » (numéro conservé), corriger,
+  // renvoyer.
+  if (existing.statut !== "brouillon") {
+    return {
+      ok: false,
+      error:
+        "Facture émise : son contenu est figé. Repassez-la en brouillon pour la corriger (le numéro est conservé).",
+    };
+  }
 
   const total_ht = computeTotalHt(v.lignes);
 
