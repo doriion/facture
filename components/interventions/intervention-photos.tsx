@@ -65,6 +65,7 @@ export function InterventionPhotos({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [progression, setProgression] = useState<{ faites: number; total: number } | null>(null);
   const [moment, setMoment] = useState<string>("apres");
   const [legende, setLegende] = useState("");
   const [pending, startTransition] = useTransition();
@@ -73,24 +74,33 @@ export function InterventionPhotos({
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     setUploading(true);
+    const liste = Array.from(files);
+    setProgression({ faites: 0, total: liste.length });
     let success = 0;
     let failed = 0;
-    for (const file of Array.from(files)) {
-      // Compression côté client (max ~1600 px, JPEG) : une photo de
-      // téléphone passe de plusieurs Mo à quelques centaines de Ko.
-      const compressed = await compressImage(file);
-      const fd = new FormData();
-      fd.append("file", compressed);
-      fd.append("moment", moment);
-      fd.append("legende", legende);
-      const res = await uploadInterventionPhotoAction(interventionId, fd);
-      if (res.ok) success++;
-      else {
-        failed++;
-        toast.error(`Échec ${file.name}`, { description: res.error });
-      }
-    }
+    // Toutes les photos partent en même temps (compression + envoi)
+    // au lieu d'une par une : cinq photos de chantier prenaient cinq
+    // fois le temps d'un aller-retour, sur réseau de chantier.
+    await Promise.all(
+      liste.map(async (file) => {
+        // Compression côté client (max ~1600 px, JPEG) : une photo de
+        // téléphone passe de plusieurs Mo à quelques centaines de Ko.
+        const compressed = await compressImage(file);
+        const fd = new FormData();
+        fd.append("file", compressed);
+        fd.append("moment", moment);
+        fd.append("legende", legende);
+        const res = await uploadInterventionPhotoAction(interventionId, fd);
+        if (res.ok) success++;
+        else {
+          failed++;
+          toast.error(`Échec ${file.name}`, { description: res.error });
+        }
+        setProgression((p) => (p ? { ...p, faites: p.faites + 1 } : p));
+      }),
+    );
     setUploading(false);
+    setProgression(null);
     setLegende("");
     if (success > 0) {
       toast.success(`${success} photo${success > 1 ? "s" : ""} ajoutée${success > 1 ? "s" : ""}`);
@@ -200,7 +210,11 @@ export function InterventionPhotos({
             ) : (
               <Camera className="size-4" />
             )}
-            {uploading ? "Envoi en cours…" : "Prendre une photo"}
+            {uploading
+              ? progression && progression.total > 1
+                ? `Envoi ${progression.faites}/${progression.total}…`
+                : "Envoi en cours…"
+              : "Prendre une photo"}
           </Button>
           <Button
             type="button"
@@ -259,10 +273,10 @@ export function InterventionPhotos({
                       <button
                         type="button"
                         title="Supprimer la photo"
-                        className="rounded-full bg-black/40 p-1 opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100"
+                        className="rounded-full bg-black/40 p-1.5 transition-opacity hover:bg-red-600 md:p-1 md:opacity-0 md:group-hover:opacity-100"
                         disabled={pending}
                       >
-                        <Trash2 className="size-3" />
+                        <Trash2 className="size-4 md:size-3" />
                       </button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

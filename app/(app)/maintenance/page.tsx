@@ -17,7 +17,7 @@ import { ContratsTable } from "@/components/maintenance/contrats-table";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { formatDateFr } from "@/lib/format";
 
-export const metadata = { title: "Maintenance — NG Gestion" };
+export const metadata = { title: "Échéancier des visites — NG Gestion" };
 
 export default async function MaintenancePage() {
   const [contrats, prochaines] = await Promise.all([
@@ -38,11 +38,12 @@ export default async function MaintenancePage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-            Contrats de maintenance
+            Échéancier des visites
           </h1>
           <p className="text-sm text-muted-foreground">
-            Contrats récurrents annuels, semestriels ou trimestriels — la
-            facture peut être générée à chaque visite en 1 clic.
+            Visites d&apos;entretien récurrentes (annuelles, semestrielles ou
+            trimestrielles) — la facture se génère à chaque visite en 1 clic.
+            Les contrats signés sont dans « Contrats d&apos;entretien ».
           </p>
         </div>
         <Button asChild className="max-md:hidden">

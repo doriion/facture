@@ -10,6 +10,7 @@ import { DeleteClientDialog } from "@/components/clients/delete-client-dialog";
 import { StatutBadge } from "@/components/factures/statut-badge";
 import { StatutBadgeDevis } from "@/components/devis/statut-badge";
 import { Button } from "@/components/ui/button";
+import { adresseClient, lienAppel, lienItineraire } from "@/lib/agenda-contact";
 import {
   Card,
   CardContent,
@@ -97,6 +98,28 @@ export default async function ClientDetailPage({
         </div>
       </div>
 
+      {/* Téléphone : appeler / y aller en un tap, en tête de fiche */}
+      {(client.telephone || adresseClient(client)) && (
+        <div className="flex gap-2 md:hidden">
+          {client.telephone && (
+            <Button asChild variant="outline" size="lg" className="flex-1">
+              <a href={lienAppel(client.telephone)}>
+                <Phone className="size-4" />
+                Appeler
+              </a>
+            </Button>
+          )}
+          {adresseClient(client) && (
+            <Button asChild variant="outline" size="lg" className="flex-1">
+              <a href={lienItineraire(adresseClient(client)!)} target="_blank" rel="noopener">
+                <MapPin className="size-4" />
+                Y aller
+              </a>
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -135,7 +158,7 @@ export default async function ClientDetailPage({
               <div className="flex gap-2">
                 <Phone className="size-4 shrink-0 text-muted-foreground" />
                 <a
-                  href={`tel:${client.telephone}`}
+                  href={lienAppel(client.telephone)}
                   className="hover:underline"
                 >
                   {client.telephone}

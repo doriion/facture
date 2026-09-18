@@ -71,7 +71,10 @@ export function CalculateurEntretien({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <div className="space-y-5">
+      {/* min-w-0 : sans lui, les libellés de tranches (« 1 : 199 € · 2 à
+          5 : 146 € … ») élargissaient la colonne au-delà de l'écran du
+          téléphone (défilement horizontal) au lieu d'être tronqués. */}
+      <div className="min-w-0 space-y-5">
         {groupes.map(({ groupe, postes }) => (
           <section key={groupe} className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -163,6 +166,17 @@ export function CalculateurEntretien({
           )}
         </section>
       </div>
+
+      {/* Total toujours visible sur le téléphone : le récapitulatif
+          est sous la liste, on voit le montant changer en saisissant. */}
+      {(calcul.lignes.length > 0 || calcul.deplacement) && (
+        <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 flex items-baseline justify-between border-t bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
+          <span className="text-sm font-medium">Total net</span>
+          <span className="text-lg font-bold tabular-nums text-primary">
+            {formatEuros(calcul.total)}
+          </span>
+        </div>
+      )}
 
       {/* Récapitulatif */}
       <aside className="h-fit space-y-3 rounded-lg border bg-muted/30 p-4 lg:sticky lg:top-4">

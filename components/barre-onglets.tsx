@@ -26,7 +26,7 @@ export const ONGLETS: Array<{ href: string; label: string; icon: LucideIcon }> =
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/devis", label: "Devis", icon: FileSignature },
   { href: "/factures", label: "Factures", icon: FileText },
-  { href: "/contrats", label: "Entretiens", icon: ScrollText },
+  { href: "/contrats", label: "Contrats", icon: ScrollText },
 ];
 
 export function BarreOnglets({ badgeTaches = 0 }: { badgeTaches?: number }) {

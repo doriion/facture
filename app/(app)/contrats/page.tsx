@@ -60,6 +60,12 @@ export default async function ContratsPage({
       <ContratsEntretienListe contrats={contrats} />
 
       <MobileActionBar>
+        <Button asChild size="lg" variant="outline">
+          <Link href="/contrats/calculateur">
+            <Calculator className="size-4" />
+            Calculateur
+          </Link>
+        </Button>
         <Button asChild size="lg">
           <Link href="/contrats/nouveau">
             <Plus className="size-4" />

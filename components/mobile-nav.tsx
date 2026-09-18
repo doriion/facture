@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
+import { Menu, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
@@ -64,6 +64,14 @@ export function MobileNav({
           </Link>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+          {/* Pense-bête depuis n'importe quel écran : deux taps
+              (« Plus » puis ce bouton) et la saisie éclair s'ouvre. */}
+          <Button asChild className="mb-2 w-full justify-start" size="lg">
+            <Link href="/taches?ajouter=1" onClick={() => setOpen(false)}>
+              <Plus className="size-4" />
+              Nouvelle tâche
+            </Link>
+          </Button>
           {NAV_ITEMS.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
