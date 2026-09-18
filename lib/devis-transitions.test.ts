@@ -34,7 +34,7 @@ describe("TRANSITIONS_DEVIS (table)", () => {
   });
 
   it("un devis accepté n'a aucune sortie manuelle", () => {
-    expect(TRANSITIONS_DEVIS.accepte).toEqual([]);
+    expect(TRANSITIONS_DEVIS.accepte).toEqual(["brouillon"]);
   });
 });
 
@@ -44,7 +44,7 @@ describe("transitionDevisAutorisee — matrice complète", () => {
     envoye: ["accepte", "refuse", "brouillon"],
     expire: ["brouillon"],
     refuse: ["brouillon"],
-    accepte: [],
+    accepte: ["brouillon"],
   };
 
   it.each(STATUTS_AFFICHES)("depuis « %s »", (depart) => {

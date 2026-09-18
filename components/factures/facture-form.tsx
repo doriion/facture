@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Save, ChevronRight } from "lucide-react";
+import { Loader2, Save, ChevronRight, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -15,6 +15,9 @@ import {
   type TypeActivite,
 } from "@/lib/validations/facture";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
+import { aujourdhuiParis } from "@/lib/dates";
+import { ajouterJours } from "@/lib/agenda-vues";
+import { ClientPicker } from "@/components/clients/client-picker";
 import {
   createFactureAction,
   updateFactureAction,
@@ -65,6 +68,7 @@ export function FactureForm({
   prefill,
   interventionId,
   assujettiTva = false,
+  verrouillee = false,
 }: {
   clients: Client[];
   produits: Produit[];
@@ -79,9 +83,15 @@ export function FactureForm({
       designation: string;
       quantite: number;
       prix_unitaire_ht: number;
+      nature_fiscale?: string | null;
+      type?: string | null;
+      prix_achat_ttc_unitaire?: number | null;
+      fournisseur?: string | null;
     }>;
   };
   interventionId?: string;
+  /** Facture émise : tout est affiché mais rien n'est modifiable. */
+  verrouillee?: boolean;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -108,14 +118,19 @@ export function FactureForm({
         designation: l.designation,
         quantite: l.quantite,
         prix_unitaire_ht: l.prix_unitaire_ht,
-        nature_fiscale: "bic_prestations" as NatureFiscale,
-        type: "ligne" as const,
+        prix_achat_ttc_unitaire:
+          l.prix_achat_ttc_unitaire === null || l.prix_achat_ttc_unitaire === undefined
+            ? null
+            : Number(l.prix_achat_ttc_unitaire),
+        fournisseur: l.fournisseur ?? "",
+        nature_fiscale: (l.nature_fiscale ?? "bic_prestations") as NatureFiscale,
+        type: (l.type ?? "ligne") as "ligne" | "titre",
       }));
 
-  const today = new Date().toISOString().slice(0, 10);
-  const inThirtyDays = new Date(Date.now() + 30 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  // Date du jour en heure de Paris : à 0 h 30, la date UTC du téléphone
+  // (toISOString) était encore la veille.
+  const today = aujourdhuiParis();
+  const inThirtyDays = ajouterJours(today, 30);
 
   const equip = (base?.equipement_info ?? {}) as Record<string, unknown>;
   const aides = (base?.aides_financieres ?? {}) as Record<string, unknown>;
@@ -172,7 +187,29 @@ export function FactureForm({
     typeof aides.maprimerenov === "number" || typeof aides.cee === "number" || typeof aides.eco_ptz === "number",
   );
 
+  // Validation refusée : sur le téléphone, l'erreur sous un champ hors
+  // écran est invisible — on prévient et on y amène.
+  function onInvalid(errs: Record<string, unknown>) {
+    const premier = Object.keys(errs)[0];
+    const labels: Record<string, string> = {
+      client_id: "le client",
+      type_activite: "le type d'activité",
+      lignes: "les lignes",
+      date_emission: "la date d'émission",
+      date_echeance: "la date d'échéance",
+    };
+    toast.error("Facture incomplète", {
+      description: premier
+        ? `Vérifiez ${labels[premier] ?? `le champ « ${premier} »`}.`
+        : "Vérifiez les champs signalés.",
+    });
+    document
+      .querySelector<HTMLElement>("[aria-invalid='true'], .text-destructive")
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
   async function onSubmit(values: FactureFormValues) {
+    if (verrouillee) return;
     setSubmitting(true);
     if (isEdit) {
       const result = await updateFactureAction(facture!.id, values);
@@ -190,8 +227,15 @@ export function FactureForm({
       );
       setSubmitting(false);
       if (result.ok) {
-        toast.success(`Facture ${result.data.numero} créée`);
-        router.push(`/factures/${result.data.id}`);
+        const id = result.data.id;
+        toast.success(`Facture ${result.data.numero} créée`, {
+          description: "En brouillon : vérifiez, puis marquez-la envoyée.",
+          action: {
+            label: "Voir le PDF",
+            onClick: () => window.open(`/api/factures/${id}/pdf`, "_blank", "noopener"),
+          },
+        });
+        router.push(`/factures/${id}`);
       } else {
         toast.error("Erreur", { description: result.error });
       }
@@ -199,7 +243,18 @@ export function FactureForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+      {verrouillee && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+          <Lock className="mt-0.5 size-4 shrink-0" />
+          <p>
+            Facture émise : son contenu est figé (document comptable).
+            Pour corriger, utilisez « Repasser en brouillon » dans les
+            actions — le numéro est conservé.
+          </p>
+        </div>
+      )}
+      <fieldset disabled={verrouillee} className="min-w-0 space-y-6">
       {/* Type d'activité */}
       <Card>
         <CardHeader>
@@ -241,37 +296,16 @@ export function FactureForm({
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5 md:col-span-2">
             <Label htmlFor="client_id">Client *</Label>
-            <Select
+            {/* Même sélecteur que le devis : recherche instantanée et
+                création d'un nouveau client sans quitter la facture. */}
+            <ClientPicker
+              clients={clients}
               value={watch("client_id")}
-              onValueChange={(v) =>
+              onChange={(v) =>
                 setValue("client_id", v, { shouldValidate: true })
               }
-            >
-              <SelectTrigger id="client_id">
-                <SelectValue placeholder="Sélectionner un client" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    Aucun client. Créez-en un d'abord.
-                  </div>
-                ) : (
-                  clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nom}
-                      {c.ville && (
-                        <span className="text-muted-foreground"> · {c.ville}</span>
-                      )}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            {errors.client_id && (
-              <p className="text-xs text-destructive">
-                {errors.client_id.message}
-              </p>
-            )}
+              error={errors.client_id?.message}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="date_emission">Date d'émission *</Label>
@@ -508,6 +542,8 @@ export function FactureForm({
 
       {/* Barre d'enregistrement collante : alignée sur le padding du
           layout (p-3 mobile / p-6 desktop), safe-area iPhone incluse. */}
+      </fieldset>
+      {!verrouillee && (
       <div className="sticky bottom-0 z-30 -mx-3 flex justify-end gap-2 border-t bg-background/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:-mx-6 sm:px-6 sm:py-4">
         <Button
           type="button"
@@ -530,6 +566,7 @@ export function FactureForm({
           {isEdit ? "Enregistrer" : "Créer la facture"}
         </Button>
       </div>
+      )}
     </form>
   );
 }

@@ -26,6 +26,7 @@ import {
   mentionRm,
 } from "@/lib/legal-text";
 import { profilEffectif } from "@/lib/emetteur";
+import { enseigneEmetteur } from "@/lib/devis-modele";
 import { computeSections } from "@/lib/sections";
 import type { Database } from "@/types/database";
 
@@ -315,10 +316,17 @@ export function FacturePdf({
         : null,
   };
 
-  const entrepriseNom =
-    profil?.nom_commercial ||
-    [profil?.prenom, profil?.nom].filter(Boolean).join(" ") ||
-    "Auto-entrepreneur";
+  // Raison + « EI » (obligatoire pour l'entrepreneur individuel, loi du
+  // 14 février 2022), même règle que le devis simple.
+  const entrepriseNom = enseigneEmetteur(profil);
+  const typeFacture = (facture as { type_facture?: string | null }).type_facture ?? "normale";
+  const pctAcompte = (facture as { pourcentage_acompte?: number | null }).pourcentage_acompte;
+  const titreFacture =
+    typeFacture === "acompte"
+      ? "FACTURE D'ACOMPTE"
+      : typeFacture === "solde"
+        ? "FACTURE DE SOLDE"
+        : "FACTURE";
 
   return (
     <Document
@@ -359,8 +367,19 @@ export function FacturePdf({
             </View>
           </View>
           <View style={styles.factureBlock}>
-            <Text style={styles.factureTitle}>FACTURE</Text>
+            <Text style={styles.factureTitle}>{titreFacture}</Text>
             <Text style={styles.factureNumero}>{facture.numero}</Text>
+            {typeFacture === "acompte" && (
+              <Text style={styles.factureDate}>
+                Acompte{pctAcompte ? ` de ${pctAcompte} %` : ""} sur les travaux
+                convenus — à déduire de la facture de solde
+              </Text>
+            )}
+            {typeFacture === "solde" && (
+              <Text style={styles.factureDate}>
+                Déduction faite des acomptes déjà facturés
+              </Text>
+            )}
             <Text style={styles.factureDate}>
               Émise le {formatDateFr(facture.date_emission)}
             </Text>

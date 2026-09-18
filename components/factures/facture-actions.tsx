@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Ban,
@@ -16,7 +17,6 @@ import { toast } from "sonner";
 
 import {
   deleteFactureAction,
-  duplicateFactureAction,
   setFactureStatutAction,
 } from "@/lib/actions/factures";
 import {
@@ -156,20 +156,6 @@ export function FactureActions({
     }
   }
 
-  async function onDuplicate() {
-    setPending("duplicate");
-    const result = await duplicateFactureAction(factureId);
-    setPending(null);
-    if (result.ok) {
-      toast.success(`Facture ${result.data.numero} créée`, {
-        description: "Brouillon dupliqué — modifiez avant envoi.",
-      });
-      router.push(`/factures/${result.data.factureId}`);
-    } else {
-      toast.error("Erreur", { description: result.error });
-    }
-  }
-
   return (
     <div className="flex flex-wrap items-center gap-2">
       {pdfBloqueMotif ? (
@@ -210,17 +196,13 @@ export function FactureActions({
         />
       )}
 
-      <Button
-        variant="outline"
-        onClick={onDuplicate}
-        disabled={pending === "duplicate"}
-      >
-        {pending === "duplicate" ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
+      {/* Duplication par pré-remplissage : rien n'est créé ni numéroté
+          tant que la nouvelle facture n'est pas validée. */}
+      <Button variant="outline" asChild>
+        <Link href={`/factures/nouvelle?source=${factureId}`}>
           <Copy className="size-4" />
-        )}
-        Dupliquer
+          Dupliquer
+        </Link>
       </Button>
 
       {statut === "brouillon" && (

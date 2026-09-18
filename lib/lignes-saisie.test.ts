@@ -9,7 +9,7 @@ import {
   quantiteSaisie,
 } from "./lignes-saisie";
 import { chercherPrestations } from "./catalogue-recherche";
-import { computeTotalHt, ligneFactureSchema } from "./validations/facture";
+import { computeLigneTotalHt, computeTotalHt, ligneFactureSchema } from "./validations/facture";
 
 describe("champVide", () => {
   it("vide pour '', null, undefined — pas pour 0 ni '0'", () => {
@@ -151,5 +151,18 @@ describe("ligneFactureSchema : champs vides au départ", () => {
     if (!r.success) {
       expect(r.error.issues[0]?.message).toBe("Quantité invalide.");
     }
+  });
+});
+
+describe("computeTotalHt — arrondi ligne par ligne", () => {
+  it("le total est la somme des totaux de ligne imprimés (pas des produits bruts)", () => {
+    // 3 lignes à 0,125 € : brut 0,375 → 0,38 ; imprimé 3 × 0,13 = 0,39.
+    const lignes = [1, 2, 3].map(() => ({ quantite: 1, prix_unitaire_ht: 0.125 }));
+    expect(computeLigneTotalHt(lignes[0]!)).toBe(0.13);
+    expect(computeTotalHt(lignes)).toBe(0.39);
+  });
+
+  it("inchangé sur des montants ordinaires", () => {
+    expect(computeTotalHt([{ quantite: 2, prix_unitaire_ht: 45.5 }, { quantite: 1.5, prix_unitaire_ht: 60 }])).toBe(181);
   });
 });

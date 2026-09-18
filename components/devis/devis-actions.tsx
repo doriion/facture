@@ -369,6 +369,20 @@ export function DevisActions({
           Repasser en brouillon
         </Button>
       )}
+
+      {/* Acceptation cochée par erreur : retour possible tant que le
+          devis n'est ni signé par le client ni converti en facture. */}
+      {statut === "accepte" && !factureId && !signee && (
+        <Button
+          variant="outline"
+          onClick={() => changeStatut("brouillon", "Repassé en brouillon")}
+          disabled={pending === "brouillon"}
+          title="Annule l'acceptation — possible tant que le devis n'est ni signé ni facturé"
+        >
+          <Undo2 className="size-4" />
+          Repasser en brouillon
+        </Button>
+      )}
     </div>
   );
 }
