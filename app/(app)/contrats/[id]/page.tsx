@@ -27,10 +27,12 @@ export default async function ContratDetailPage({
 }: {
   params: { id: string };
 }) {
-  const contrat = await getContratEntretien(params.id);
+  const [contrat, profil] = await Promise.all([
+    getContratEntretien(params.id),
+    getProfil(),
+  ]);
   if (!contrat) notFound();
 
-  const profil = await getProfil();
   const prestataire = prestataireEffectif(profil, contrat.prestataire);
 
   // Coordonnées client : le snapshot figé fait foi ; en brouillon, on

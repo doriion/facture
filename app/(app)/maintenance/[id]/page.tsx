@@ -18,10 +18,11 @@ export default async function EditContratPage({
 }: {
   params: { id: string };
 }) {
-  const { contrat, client } = await getContrat(params.id);
+  const [{ contrat, client }, clients] = await Promise.all([
+    getContrat(params.id),
+    listClients(),
+  ]);
   if (!contrat) notFound();
-
-  const clients = await listClients();
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">

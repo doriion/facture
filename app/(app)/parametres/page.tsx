@@ -32,12 +32,17 @@ export const metadata = { title: "Paramètres — NG Gestion" };
  * Server Component — fetch direct, hydrate le ProfilForm (client).
  */
 export default async function ParametresPage() {
-  const profil = await getProfil();
+  // Tout en parallèle : six allers-retours en série faisaient
+  // attendre la page plusieurs secondes sur réseau mobile.
+  const [profil, bareme, baremeEntretien, journal, appareilsPush] =
+    await Promise.all([
+      getProfil(),
+      getBaremeCotisations(),
+      getBaremeEntretien(),
+      getJournalTaches(),
+      listAppareilsPush(),
+    ]);
   const logoUrl = await getLogoUrl(profil?.logo_url);
-  const bareme = await getBaremeCotisations();
-  const baremeEntretien = await getBaremeEntretien();
-  const journal = await getJournalTaches();
-  const appareilsPush = await listAppareilsPush();
   const reglagesPush = {
     actif: profil?.auto_rappels_push_active ?? false,
     delai_minutes: profil?.rappels_push_delai_minutes ?? 30,

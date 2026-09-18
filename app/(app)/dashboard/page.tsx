@@ -4,8 +4,10 @@ import { TachesDuJourCard } from "@/components/dashboard/taches-du-jour-card";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { CotisationsCard } from "@/components/dashboard/cotisations-card";
 import { SeuilsMicroCard } from "@/components/dashboard/seuils-micro-card";
-import { CaMensuelChart } from "@/components/dashboard/ca-mensuel-chart";
-import { RepartitionActiviteChart } from "@/components/dashboard/repartition-activite-chart";
+import {
+  CaMensuelChart,
+  RepartitionActiviteChart,
+} from "@/components/dashboard/graphiques-differes";
 import { AlertesSection } from "@/components/dashboard/alertes-section";
 import { AttestationsAlerte } from "@/components/dashboard/attestations-alerte";
 import { TopClients } from "@/components/dashboard/top-clients";
