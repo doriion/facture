@@ -46,26 +46,28 @@ export async function buildExportUrssaf(
   // Paiements de la période (date_paiement >= start, < end), avec les
   // infos facture/client jointes + les lignes (nature fiscale) pour
   // ventiler chaque encaissement dans les 3 cases URSSAF au prorata.
-  const { data: paiements } = await supabase
-    .from("paiements")
-    .select(
-      "id, date_paiement, montant, mode, reference, facture:factures(id, numero, date_emission, total_ht, type_activite, statut, client:clients(nom), lignes:factures_lignes(total_ht, nature_fiscale))",
-    )
-    .gte("date_paiement", start)
-    .lt("date_paiement", end)
-    .order("date_paiement", { ascending: true });
+  // Les deux requêtes sont indépendantes : en parallèle.
+  const [{ data: paiements }, { data: facturesEmises }] = await Promise.all([
+    supabase
+      .from("paiements")
+      .select(
+        "id, date_paiement, montant, mode, reference, facture:factures(id, numero, date_emission, total_ht, type_activite, statut, client:clients(nom), lignes:factures_lignes(total_ht, nature_fiscale))",
+      )
+      .gte("date_paiement", start)
+      .lt("date_paiement", end)
+      .order("date_paiement", { ascending: true }),
+    // Factures émises sur la période (info complémentaire, hors annulées)
+    supabase
+      .from("factures")
+      .select("total_ht")
+      .gte("date_emission", start)
+      .lt("date_emission", end)
+      .neq("statut", "annulee"),
+  ]);
 
   const { rows, total_encaisse, ventilation, nb_factures } = summarizeEncaissements(
     (paiements ?? []) as unknown as PaiementExportInput[],
   );
-
-  // Factures émises sur la période (info complémentaire, hors annulées)
-  const { data: facturesEmises } = await supabase
-    .from("factures")
-    .select("total_ht")
-    .gte("date_emission", start)
-    .lt("date_emission", end)
-    .neq("statut", "annulee");
 
   return {
     periode: { label: "", start, end },
