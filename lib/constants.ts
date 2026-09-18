@@ -76,15 +76,15 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/contrats",
-    label: "Contrats",
+    label: "Contrats d'entretien",
     icon: ScrollText,
-    description: "Contrats d'entretien signés en ligne",
+    description: "Contrats signés en ligne et calculateur",
   },
   {
     href: "/maintenance",
-    label: "Maintenance",
+    label: "Échéancier des visites",
     icon: CalendarClock,
-    description: "Contrats récurrents",
+    description: "Prochaines visites d'entretien à planifier",
   },
   {
     href: "/exports",

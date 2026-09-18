@@ -143,22 +143,35 @@ export default async function EditInterventionPage({
         <InterventionCorbeilleBanner id={intervention.id} supprimeLe={intervention.supprime_le} />
       )}
 
-      <InterventionForm clients={clients} intervention={intervention} />
+      {/* Sur le téléphone (sur le chantier), photos et signatures
+          d'abord : c'est ce qu'on fait sur place. Le formulaire complet
+          et la fiche fluides suivent. Sur PC, ordre inchangé. */}
+      <div className="flex flex-col gap-6">
+        <div className="max-md:order-3">
+          <InterventionForm clients={clients} intervention={intervention} />
+        </div>
 
-      <InterventionCerfa
-        intervention={intervention}
-        documents={cerfaDocs}
-        attestationManquante={!profil?.num_attestation_fluides_frigo}
-      />
+        <div className="max-md:order-4">
+          <InterventionCerfa
+            intervention={intervention}
+            documents={cerfaDocs}
+            attestationManquante={!profil?.num_attestation_fluides_frigo}
+          />
+        </div>
 
-      <InterventionSignatures
-        interventionId={intervention.id}
-        operateur={signatures.operateur}
-        detenteur={signatures.detenteur}
-        operateurNom={operateurNom}
-      />
+        <div className="max-md:order-2">
+          <InterventionSignatures
+            interventionId={intervention.id}
+            operateur={signatures.operateur}
+            detenteur={signatures.detenteur}
+            operateurNom={operateurNom}
+          />
+        </div>
 
-      <InterventionPhotos interventionId={intervention.id} photos={photos} />
+        <div className="max-md:order-1">
+          <InterventionPhotos interventionId={intervention.id} photos={photos} />
+        </div>
+      </div>
     </div>
   );
 }

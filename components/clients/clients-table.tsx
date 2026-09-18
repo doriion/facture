@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import { MapPin, Pencil, Phone } from "lucide-react";
 
 import {
   Table,
@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TYPES_CLIENT } from "@/lib/format";
+import { adresseClient, lienAppel, lienItineraire } from "@/lib/agenda-contact";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { DeleteClientDialog } from "@/components/clients/delete-client-dialog";
 import type { Database } from "@/types/database";
@@ -73,6 +74,28 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
               {c.email && <p className="truncate">{c.email}</p>}
               {c.telephone && <p>{c.telephone}</p>}
             </div>
+            {/* Sur le chantier : appeler ou lancer l'itinéraire sans
+                ouvrir la fiche. Vrais liens, au-dessus du lien étiré. */}
+            {(c.telephone || adresseClient(c)) && (
+              <div className="relative z-10 mt-3 flex gap-2">
+                {c.telephone && (
+                  <Button asChild variant="outline" size="sm" className="flex-1 bg-background">
+                    <a href={lienAppel(c.telephone)}>
+                      <Phone className="size-4" />
+                      Appeler
+                    </a>
+                  </Button>
+                )}
+                {adresseClient(c) && (
+                  <Button asChild variant="outline" size="sm" className="flex-1 bg-background">
+                    <a href={lienItineraire(adresseClient(c)!)} target="_blank" rel="noopener">
+                      <MapPin className="size-4" />
+                      Y aller
+                    </a>
+                  </Button>
+                )}
+              </div>
+            )}
             <div className="relative z-10 mt-3 flex items-center justify-between border-t pt-2">
               <ClientFormDialog
                 client={c}

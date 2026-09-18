@@ -19,7 +19,12 @@ export async function compressImage(
   if (!file.type.startsWith("image/")) return file;
 
   try {
-    const bitmap = await createImageBitmap(file);
+    // `imageOrientation: "from-image"` applique la rotation EXIF : une
+    // photo iPhone prise en portrait était enregistrée couchée (le
+    // ré-encodage JPEG perd l'EXIF, le navigateur ne la redressait
+    // plus). Safari < 16 ignore l'option : la photo reste alors telle
+    // que le navigateur la décode, jamais pire qu'avant.
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     const scale = Math.min(
       1,
       maxDimension / Math.max(bitmap.width, bitmap.height),
