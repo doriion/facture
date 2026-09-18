@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import { parseMoneyInput } from "@/lib/format";
+import { estFactureVentilee, paiementAutorise } from "@/lib/factures-transitions";
 import {
   montantRestant,
   statutApresEncaissement,
@@ -30,7 +31,7 @@ export async function getFacturePaiements(
   const [factureRes, paiementsRes] = await Promise.all([
     supabase
       .from("factures")
-      .select("total_ht")
+      .select("total_ht, statut, type_facture")
       .eq("id", factureId)
       .maybeSingle(),
     supabase
@@ -40,7 +41,12 @@ export async function getFacturePaiements(
       .order("date_paiement", { ascending: true }),
   ]);
 
-  const total_facture = Number(factureRes.data?.total_ht ?? 0);
+  // Une lecture en échec ne doit JAMAIS valoir « total 0 » : le reste dû
+  // serait nul et la facture passerait « payée » sans encaissement.
+  if (factureRes.error) throw new Error(factureRes.error.message);
+  if (!factureRes.data) throw new Error("Facture introuvable.");
+  if (paiementsRes.error) throw new Error(paiementsRes.error.message);
+  const total_facture = Number(factureRes.data.total_ht);
   const paiements = (paiementsRes.data ?? []).map((p) => ({
     id: p.id,
     facture_id: p.facture_id,
@@ -53,7 +59,14 @@ export async function getFacturePaiements(
   const total_encaisse = paiements.reduce((s, p) => s + p.montant, 0);
   const reste_du = montantRestant(total_facture, total_encaisse);
 
-  return { total_facture, total_encaisse, reste_du, paiements };
+  return {
+    total_facture,
+    total_encaisse,
+    reste_du,
+    paiements,
+    statut: factureRes.data.statut,
+    type_facture: factureRes.data.type_facture,
+  };
 }
 
 export async function addPaiementAction(
@@ -83,6 +96,25 @@ export async function addPaiementAction(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Non authentifié." };
 
+  // Gardes métier (lib/factures-transitions) : facture existante, ni
+  // annulée ni ventilée en acomptes/solde, montant ≤ reste dû.
+  let resume: FacturePaiementsSummary;
+  try {
+    resume = await getFacturePaiements(factureId);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Facture introuvable." };
+  }
+  const { data: enfants } = await supabase
+    .from("factures")
+    .select("statut")
+    .eq("facture_parent_id", factureId);
+  const garde = paiementAutorise(resume.statut, {
+    ventilee: estFactureVentilee({ type_facture: resume.type_facture }, enfants ?? []),
+    resteDu: resume.reste_du,
+    montant,
+  });
+  if (!garde.ok) return garde;
+
   const { data, error } = await supabase
     .from("paiements")
     .insert({
@@ -106,6 +138,8 @@ export async function addPaiementAction(
 
   revalidatePath(`/factures/${factureId}`);
   revalidatePath("/factures");
+  revalidatePath("/dashboard");
+  revalidatePath("/exports");
   return { ok: true, data: { id: data.id } };
 }
 
@@ -135,7 +169,13 @@ export async function deletePaiementAction(
     .eq("id", p.facture_id)
     .maybeSingle();
   if (facture) {
-    const summary = await getFacturePaiements(p.facture_id);
+    let summary: FacturePaiementsSummary;
+    try {
+      summary = await getFacturePaiements(p.facture_id);
+    } catch {
+      revalidatePath(`/factures/${p.facture_id}`);
+      return { ok: true, data: undefined };
+    }
     const nouveau = statutApresSuppressionPaiement(
       facture.statut,
       summary.reste_du,
@@ -150,6 +190,8 @@ export async function deletePaiementAction(
 
   revalidatePath(`/factures/${p.facture_id}`);
   revalidatePath("/factures");
+  revalidatePath("/dashboard");
+  revalidatePath("/exports");
   return { ok: true, data: undefined };
 }
 
@@ -199,11 +241,20 @@ export async function repasserEnvoyeeAction(
 
   revalidatePath(`/factures/${factureId}`);
   revalidatePath("/factures");
+  revalidatePath("/dashboard");
+  revalidatePath("/exports");
   return { ok: true, data: undefined };
 }
 
 async function maybeMarkFacturePaid(factureId: string) {
-  const summary = await getFacturePaiements(factureId);
+  let summary: FacturePaiementsSummary;
+  try {
+    summary = await getFacturePaiements(factureId);
+  } catch {
+    // Lecture impossible : on ne touche pas au statut (jamais « payée »
+    // sur une donnée manquante).
+    return;
+  }
   const supabase = createClient();
   const { data: facture } = await supabase
     .from("factures")

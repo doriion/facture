@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { TABLES_SAUVEGARDE } from "@/lib/sauvegarde-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,30 +29,9 @@ export const dynamic = "force-dynamic";
  * documents ET catalogue) — indispensable pour restaurer, à ne jamais
  * transmettre à un client.
  */
-const TABLES = [
-  "profil_entreprise",
-  "clients",
-  "produits_services",
-  "factures",
-  "factures_lignes",
-  "devis",
-  "devis_lignes",
-  "paiements",
-  "relances",
-  "declarations_urssaf",
-  "taux_cotisations",
-  "taches_journal",
-  "taches",
-  "taches_photos",
-  "contrats",
-  "interventions",
-  "intervention_photos",
-  "intervention_signatures",
-  "intervention_cerfa",
-  "contrats_maintenance",
-  "facture_external_events",
-  "numerotation",
-] as const;
+// Liste UNIQUE des tables (lib/sauvegarde-helpers), la même que la
+// sauvegarde automatique — un test la compare aux migrations.
+const TABLES = TABLES_SAUVEGARDE;
 
 export async function GET() {
   const supabase = createClient();

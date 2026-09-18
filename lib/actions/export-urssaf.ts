@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { idsParentsVentiles } from "@/lib/actions/factures";
 import { VENTILATION_VIDE } from "@/lib/fiscal";
 import {
   summarizeEncaissements,
@@ -47,7 +48,7 @@ export async function buildExportUrssaf(
   // infos facture/client jointes + les lignes (nature fiscale) pour
   // ventiler chaque encaissement dans les 3 cases URSSAF au prorata.
   // Les deux requêtes sont indépendantes : en parallèle.
-  const [{ data: paiements }, { data: facturesEmises }] = await Promise.all([
+  const [{ data: paiements }, { data: facturesEmises }, parentsVentiles] = await Promise.all([
     supabase
       .from("paiements")
       .select(
@@ -59,10 +60,13 @@ export async function buildExportUrssaf(
     // Factures émises sur la période (info complémentaire, hors annulées)
     supabase
       .from("factures")
-      .select("total_ht")
+      .select("id, total_ht")
       .gte("date_emission", start)
       .lt("date_emission", end)
       .neq("statut", "annulee"),
+    // Factures d'origine ventilées en acomptes/solde : leurs enfants
+    // portent déjà le montant.
+    idsParentsVentiles(),
   ]);
 
   const { rows, total_encaisse, ventilation, nb_factures } = summarizeEncaissements(
@@ -73,7 +77,9 @@ export async function buildExportUrssaf(
     periode: { label: "", start, end },
     total_encaisse,
     ventilation,
-    total_facture_emis: totalFacturesEmises(facturesEmises ?? []),
+    total_facture_emis: totalFacturesEmises(
+      (facturesEmises ?? []).filter((f) => !parentsVentiles.has(f.id)),
+    ),
     nb_factures,
     rows,
   };

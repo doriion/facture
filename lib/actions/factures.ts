@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { aujourdhuiParis } from "@/lib/dates";
+import {
+  estFactureVentilee,
+  statutAffichageFacture,
+  transitionFactureAutorisee,
+} from "@/lib/factures-transitions";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
 import {
@@ -52,15 +57,31 @@ export async function listFactures(params?: {
     query = query.eq("client_id", params.client_id);
   }
 
-  const { data } = await query;
-  // Statut dérivé "retard" (calculé pour l'affichage uniquement, pas persisté ici).
+  const [{ data }, parentsVentiles] = await Promise.all([query, idsParentsVentiles()]);
+  // Statut dérivé (« retard », « ventilée ») pour l'affichage uniquement —
+  // même règle que la fiche et l'historique client (lib/factures-transitions).
   const today = aujourdhuiParis();
-  const result = (data ?? []).map((f) => {
-    const isLate =
-      f.statut === "envoyee" && f.date_echeance && f.date_echeance < today;
-    return { ...f, statut_affichage: isLate ? "retard" : f.statut };
-  });
-  return result;
+  return (data ?? []).map((f) => ({
+    ...f,
+    statut_affichage: statutAffichageFacture(f, today, { ventilee: parentsVentiles.has(f.id) }),
+  }));
+}
+
+/**
+ * Identifiants des factures « ventilées » : factures d'origine dont au
+ * moins un acompte ou solde non annulé existe. Elles ne comptent ni dans
+ * le facturé ni dans l'impayé (ce sont leurs enfants qui comptent).
+ */
+export async function idsParentsVentiles(): Promise<Set<string>> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("factures")
+    .select("facture_parent_id")
+    .not("facture_parent_id", "is", null)
+    .neq("statut", "annulee");
+  const ids = new Set<string>();
+  for (const row of data ?? []) if (row.facture_parent_id) ids.add(row.facture_parent_id);
+  return ids;
 }
 
 /**
@@ -235,6 +256,8 @@ export async function createFactureAction(
   }
 
   revalidatePath("/factures");
+  revalidatePath("/dashboard");
+  revalidatePath("/agenda");
   return { ok: true, data: { id: facture.id, numero: facture.numero } };
 }
 
@@ -339,30 +362,52 @@ export async function setFactureStatutAction(
   motif?: string,
 ): Promise<ActionResult> {
   const supabase = createClient();
-  // Gestion spécifique annulation : on enregistre date + motif pour la
-  // traçabilité fiscale (justifie le « trou » dans la séquence des numéros).
-  // Si on sort du statut annulée (restauration), on nettoie les champs.
-  const today = aujourdhuiParis();
-  const update: {
-    statut: string;
-    date_annulation?: string | null;
-    motif_annulation?: string | null;
-  } = { statut };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  // Machine à états (lib/factures-transitions) : on lit l'état courant,
+  // les paiements et les acomptes/soldes avant d'autoriser le passage.
+  const [{ data: existing, error: lectureErr }, { count: nbPaiements }, { data: enfants }] =
+    await Promise.all([
+      supabase.from("factures").select("statut, type_facture").eq("id", id).maybeSingle(),
+      supabase.from("paiements").select("id", { count: "exact", head: true }).eq("facture_id", id),
+      supabase.from("factures").select("statut").eq("facture_parent_id", id),
+    ]);
+  if (lectureErr) return { ok: false, error: lectureErr.message };
+  if (!existing) return { ok: false, error: "Facture introuvable." };
+
+  const autorisee = transitionFactureAutorisee(existing.statut, statut, {
+    nbPaiements: nbPaiements ?? 0,
+    ventilee: estFactureVentilee(existing, enfants ?? []),
+  });
+  if (!autorisee.ok) return autorisee;
+
+  // Annulation : date + motif pour la traçabilité fiscale (justifie le
+  // « trou » dans la séquence des numéros). En restaurant une facture
+  // annulée, l'historique d'annulation est CONSERVÉ : c'est la trace
+  // qui justifie ce qui s'est passé, on ne l'efface pas.
+  const update: { statut: string; date_annulation?: string; motif_annulation?: string | null } = {
+    statut,
+  };
   if (statut === "annulee") {
-    update.date_annulation = today;
-    if (motif !== undefined) {
-      update.motif_annulation = motif.trim() || null;
-    }
-  } else {
-    update.date_annulation = null;
-    update.motif_annulation = null;
+    update.date_annulation = aujourdhuiParis();
+    if (motif !== undefined) update.motif_annulation = motif.trim() || null;
   }
 
-  const { error } = await supabase
+  // Verrou optimiste : si le statut a changé entre-temps (autre onglet),
+  // rien n'est écrit.
+  const { data: maj, error } = await supabase
     .from("factures")
     .update(update)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("statut", existing.statut)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!maj || maj.length === 0) {
+    return { ok: false, error: "La facture a changé entre-temps : rechargez la page." };
+  }
 
   // Le document quitte le brouillon : fige les mentions émetteur
   // (SIRET, adresse, assurance…) telles qu'elles sont aujourd'hui.
@@ -372,6 +417,9 @@ export async function setFactureStatutAction(
 
   revalidatePath("/factures");
   revalidatePath(`/factures/${id}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/agenda");
+  revalidatePath("/exports");
   return { ok: true, data: undefined };
 }
 

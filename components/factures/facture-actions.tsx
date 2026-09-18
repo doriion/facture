@@ -58,6 +58,7 @@ export function FactureActions({
   factureId,
   numero,
   statut,
+  ventilee = false,
   clientEmail,
   clientNom,
   pdfBloqueMotif = null,
@@ -65,6 +66,8 @@ export function FactureActions({
   factureId: string;
   numero: string;
   statut: StatutFacture | string;
+  /** Facture d'origine remplacée par ses acomptes/solde : ni envoi ni encaissement. */
+  ventilee?: boolean;
   clientEmail?: string | null;
   clientNom?: string;
   /**
@@ -89,11 +92,18 @@ export function FactureActions({
 
   useEffect(() => {
     if (!annulerPaiementOpen) return;
-    getFacturePaiements(factureId).then((summary) => {
-      setNbPaiements(summary.paiements.length);
-      setTotalEncaisse(summary.total_encaisse);
-      setSupprimerPaiements(summary.paiements.length > 0);
-    });
+    getFacturePaiements(factureId)
+      .then((summary) => {
+        setNbPaiements(summary.paiements.length);
+        setTotalEncaisse(summary.total_encaisse);
+        setSupprimerPaiements(summary.paiements.length > 0);
+      })
+      .catch((e: unknown) => {
+        toast.error("Paiements indisponibles", {
+          description: e instanceof Error ? e.message : "Réessayez.",
+        });
+        setAnnulerPaiementOpen(false);
+      });
   }, [annulerPaiementOpen, factureId]);
 
   async function confirmAnnulerPaiement() {
@@ -207,6 +217,7 @@ export function FactureActions({
 
       {statut === "brouillon" && (
         <>
+          {!ventilee && (
           <Button
             onClick={() => changeStatut("envoyee", "Facture marquée envoyée")}
             disabled={pending === "envoyee"}
@@ -218,6 +229,7 @@ export function FactureActions({
             )}
             Marquer envoyée
           </Button>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               {/* Sur mobile : ligne à part, éloignée des actions
@@ -263,7 +275,7 @@ export function FactureActions({
 
       {statut === "envoyee" && (
         <>
-          <MarquerPayeeButton factureId={factureId} />
+          {!ventilee && <MarquerPayeeButton factureId={factureId} />}
           <Button
             variant="outline"
             onClick={() => changeStatut("brouillon", "Repassée en brouillon")}

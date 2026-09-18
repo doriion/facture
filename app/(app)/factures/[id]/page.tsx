@@ -7,6 +7,8 @@ import { listProduits } from "@/lib/actions/produits";
 import { getFacture, listFactureEnfants } from "@/lib/actions/factures";
 import { getProfil } from "@/lib/actions/profil";
 import { getFacturePaiements } from "@/lib/actions/paiements";
+import { aujourdhuiParis } from "@/lib/dates";
+import { estFactureVentilee, statutAffichageFacture } from "@/lib/factures-transitions";
 import {
   getAvailableEventsForFacture,
   getFactureCoveredEvents,
@@ -60,6 +62,10 @@ export default async function EditFacturePage({
   ]);
 
   const isLocked = facture.statut === "annulee";
+  // Statut AFFICHÉ (« retard », « ventilée ») : même règle que la liste,
+  // la fiche contredisait la liste sur une facture échue.
+  const ventilee = estFactureVentilee(facture, enfants);
+  const statutAffiche = statutAffichageFacture(facture, aujourdhuiParis(), { ventilee });
   // Libellés « HT » figés avec le document (snapshot émetteur).
   const assujettiTva = assujettiTvaEffectif(profil, facture.emetteur);
   // Garde TVA : la route PDF répond 501, mais un `<a download>` avale le
@@ -83,7 +89,7 @@ export default async function EditFacturePage({
               <h1 className="font-mono text-2xl font-bold tracking-tight">
                 {facture.numero}
               </h1>
-              <StatutBadge statut={facture.statut} />
+              <StatutBadge statut={statutAffiche} />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Émise le {formatDateFr(facture.date_emission)} —{" "}
@@ -103,6 +109,7 @@ export default async function EditFacturePage({
               factureId={facture.id}
               numero={facture.numero}
               statut={facture.statut as StatutFacture}
+              ventilee={ventilee}
               clientEmail={client?.email ?? null}
               clientNom={client?.nom ?? "le client"}
               pdfBloqueMotif={pdfBloqueMotif}
@@ -110,6 +117,17 @@ export default async function EditFacturePage({
           </ActionsFiche>
         </div>
       </div>
+
+      {ventilee && !isLocked && (
+        <div className="rounded-md border-l-4 border-slate-400 bg-slate-50 px-4 py-3 text-sm dark:bg-slate-900/40">
+          <p className="font-medium">Facture d&apos;origine ventilée en acompte(s) et solde</p>
+          <p className="mt-1 text-muted-foreground">
+            Ce sont les factures d&apos;acompte et de solde ci-dessous qui
+            s&apos;envoient et s&apos;encaissent. Celle-ci ne compte ni dans le
+            facturé ni dans l&apos;impayé, pour ne pas compter le montant deux fois.
+          </p>
+        </div>
+      )}
 
       {/* Bandeau si acompte ou solde */}
       {(facture as { type_facture?: string }).type_facture === "acompte" && (
