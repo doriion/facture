@@ -98,18 +98,28 @@ export async function effectuerSauvegarde(opts: {
   );
 
   // 2) Rotation : ne garder que les 12 plus récentes
-  const { data: existants } = await client.storage
+  let echec = false;
+  const { data: existants, error: erreurListe } = await client.storage
     .from("sauvegardes")
     .list(userId, { limit: 100 });
+  if (erreurListe) {
+    echec = true;
+    morceaux.push(`rotation impossible : ${erreurListe.message}`);
+  }
   const aSupprimer = sauvegardesASupprimer(
     (existants ?? []).map((f) => f.name),
     12,
   );
   if (aSupprimer.length > 0) {
-    await client.storage
+    const { error: erreurRotation } = await client.storage
       .from("sauvegardes")
       .remove(aSupprimer.map((n) => `${userId}/${n}`));
-    morceaux.push(`rotation : ${aSupprimer.length} ancienne(s) supprimée(s)`);
+    if (erreurRotation) {
+      echec = true;
+      morceaux.push(`rotation échouée : ${erreurRotation.message}`);
+    } else {
+      morceaux.push(`rotation : ${aSupprimer.length} ancienne(s) supprimée(s)`);
+    }
   }
 
   // 3) Email (pièce jointe, ou lien signé si volumineux)
@@ -139,10 +149,13 @@ export async function effectuerSauvegarde(opts: {
       html: `${corps}<p>— Facture AE</p>`,
       attachments,
     });
+    if (!res.ok) echec = true;
     morceaux.push(
       res.ok ? `email envoyé à ${emailDestinataire}` : `échec email : ${res.error}`,
     );
   }
 
-  return { statut: "succes", details: morceaux.join(" · ") };
+  // Statut honnête : une pastille verte pour une sauvegarde jamais reçue
+  // ou une rotation en panne cachait le problème.
+  return { statut: echec ? "erreur" : "succes", details: morceaux.join(" · ") };
 }

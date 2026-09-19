@@ -275,6 +275,8 @@ export async function updateInterventionAction(
       date_fin: v.date_fin || null,
       heure_debut: v.heure_debut || null,
       heure_fin: v.heure_fin || null,
+      // Date ou heure modifiée : le rappel push est réarmé.
+      rappel_push_envoye_le: null,
       type: v.type,
       description: v.description || null,
       equipement_marque: v.equipement_marque || null,
@@ -509,6 +511,8 @@ export async function quickEditInterventionAction(
     type: partial.type,
     description: partial.description,
     a_facturer: partial.a_facturer,
+    // Date ou heure modifiée : le rappel push est réarmé.
+    rappel_push_envoye_le: null,
   };
 
   if (portee === "suivantes") {
@@ -620,6 +624,8 @@ export async function deplacerInterventionAction(
       date_fin: parsed.data.date_fin,
       heure_debut: parsed.data.heure_debut,
       heure_fin: parsed.data.heure_fin,
+      // Rendez-vous déplacé : le rappel push est réarmé.
+      rappel_push_envoye_le: null,
     })
     .eq("id", id)
     .is("facture_id", null)

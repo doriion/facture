@@ -13,6 +13,9 @@ export type ResultatTache = {
  * ne refait rien — un cron relancé deux fois le même jour est sans
  * effet. Une exécution en erreur ou en simulation n'empêche pas de
  * réessayer (la ligne est alors mise à jour).
+ *
+ * Une lecture IMPOSSIBLE du journal jette : on ne doit jamais conclure
+ * « pas encore exécutée » (et rejouer des envois) sur une panne.
  */
 export async function dejaExecuteeAujourdhui(
   service: ServiceClient,
@@ -20,17 +23,22 @@ export async function dejaExecuteeAujourdhui(
   tache: string,
   today: string,
 ): Promise<boolean> {
-  const { data } = await service
+  const { data, error } = await service
     .from("taches_journal")
     .select("statut, dry_run")
     .eq("user_id", userId)
     .eq("tache", tache)
     .eq("date_execution", today)
     .maybeSingle();
+  if (error) throw new Error(`journal illisible : ${error.message}`);
   return data?.statut === "succes" && data.dry_run === false;
 }
 
-/** Écrit (ou remplace) la ligne de journal du jour pour une tâche. */
+/**
+ * Écrit (ou remplace) la ligne de journal du jour pour une tâche.
+ * Jette si l'écriture échoue : sans journal, la tâche serait rejouée
+ * demain (double envoi) — mieux vaut que l'échec soit visible.
+ */
 export async function journaliser(
   service: ServiceClient,
   userId: string,
@@ -39,7 +47,7 @@ export async function journaliser(
   resultat: ResultatTache,
   dryRun: boolean,
 ): Promise<void> {
-  await service.from("taches_journal").upsert(
+  const { error } = await service.from("taches_journal").upsert(
     {
       user_id: userId,
       tache,
@@ -50,4 +58,5 @@ export async function journaliser(
     },
     { onConflict: "user_id,tache,date_execution" },
   );
+  if (error) throw new Error(`journal non écrit : ${error.message}`);
 }

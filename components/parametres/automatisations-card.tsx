@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CloudDownload, FlaskConical, Loader2, Save } from "lucide-react";
+import { AlertTriangle, CloudDownload, FlaskConical, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -231,6 +231,18 @@ export function AutomatisationsCard({
         {/* Journal */}
         <div className="space-y-1.5">
           <p className="text-sm font-medium">Journal des exécutions</p>
+          {joursSansExecution(journal) >= 2 && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              <p>
+                {journal.length === 0
+                  ? "Aucune exécution enregistrée : les tâches planifiées ne tournent pas."
+                  : `Aucune exécution depuis ${joursSansExecution(journal)} jours.`}{" "}
+                Vérifiez les secrets CRON_SECRET / PUSH_CRON_SECRET sur Vercel et
+                le déclencheur pg_cron (voir docs/rappels-push.md).
+              </p>
+            </div>
+          )}
           {journal.length === 0 ? (
             <p className="text-xs text-muted-foreground">
               Aucune exécution pour l'instant.
@@ -271,4 +283,12 @@ export function AutomatisationsCard({
       </CardContent>
     </Card>
   );
+}
+
+/** Jours écoulés depuis la dernière ligne de journal (999 si aucune). */
+function joursSansExecution(journal: LigneJournal[]): number {
+  if (journal.length === 0) return 999;
+  const derniere = journal.reduce((m, j) => (j.date_execution > m ? j.date_execution : m), "");
+  const ms = Date.now() - new Date(`${derniere}T00:00:00Z`).getTime();
+  return Math.floor(ms / (24 * 3600 * 1000));
 }

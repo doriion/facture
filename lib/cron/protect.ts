@@ -1,20 +1,17 @@
 import "server-only";
 
+import { autorisationCron } from "@/lib/cron/autorisation";
+
 /**
- * Protection des routes /api/cron/* : Vercel Cron ajoute
- * `Authorization: Bearer ${CRON_SECRET}` à ses appels quand la
- * variable d'environnement CRON_SECRET est définie sur le projet.
- * Toute requête sans ce secret exact est refusée — y compris quand la
- * variable n'est pas configurée (on refuse TOUT plutôt que d'exposer
- * la route).
- *
- * Variable Vercel requise : CRON_SECRET (une chaîne aléatoire longue,
- * ex. `openssl rand -hex 32`), en Production ET Preview, AVANT le
- * merge.
+ * Protection des routes /api/cron/*. Deux déclencheurs, deux secrets
+ * (voir lib/cron/autorisation) :
+ * - Vercel Cron : `Authorization: Bearer CRON_SECRET` ;
+ * - pg_cron Supabase (via pg_net) : `Bearer PUSH_CRON_SECRET`.
+ * Aucune variable configurée → tout est refusé.
  */
 export function estAppelCronAutorise(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const auth = request.headers.get("authorization");
-  return auth === `Bearer ${secret}`;
+  return autorisationCron(request.headers.get("authorization"), [
+    process.env.CRON_SECRET,
+    process.env.PUSH_CRON_SECRET,
+  ]);
 }

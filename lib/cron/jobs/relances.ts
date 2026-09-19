@@ -33,7 +33,10 @@ async function executerRelances({
   today,
   dryRun,
 }: ContexteJob): Promise<ResultatTache> {
-  const [{ data: factures }, { data: relances }] = await Promise.all([
+  const [
+    { data: factures, error: erreurFactures },
+    { data: relances, error: erreurRelances },
+  ] = await Promise.all([
     service
       .from("factures")
       .select(
@@ -46,6 +49,14 @@ async function executerRelances({
       .select("facture_id, envoyee_le, automatique")
       .eq("user_id", userId),
   ]);
+  // Sans l'historique des relances, le délai de 15 jours et le plafond de
+  // 2 relances par facture n'existent plus : on n'envoie RIEN.
+  if (erreurFactures || erreurRelances) {
+    return {
+      statut: "erreur",
+      details: `Lecture impossible, aucune relance envoyée : ${(erreurFactures ?? erreurRelances)!.message}`,
+    };
+  }
 
   const candidates = (factures ?? []).map((f) => ({
     id: f.id,
@@ -106,6 +117,24 @@ async function executerRelances({
       echeanceText: formatDateFr(f.date_echeance),
       joursRetard: f.joursRetard,
     });
+    // Trace AVANT l'envoi : c'est elle qui empêche une seconde relance
+    // demain. Si elle ne peut pas être écrite, on n'envoie pas ; si
+    // l'envoi échoue ensuite, on la retire.
+    const { data: trace, error: erreurTrace } = await service
+      .from("relances")
+      .insert({
+        user_id: userId,
+        facture_id: f.id,
+        destinataire: f.client_email!,
+        jours_retard: f.joursRetard,
+        automatique: true,
+      })
+      .select("id")
+      .single();
+    if (erreurTrace || !trace) {
+      echecs.push(`${f.numero} : trace non enregistrée (${erreurTrace?.message ?? "?"}), relance non envoyée`);
+      continue;
+    }
     const res = await sendEmail({
       to: f.client_email!,
       subject: email.subject,
@@ -114,16 +143,10 @@ async function executerRelances({
       replyTo: profil.email_pro ?? undefined,
     });
     if (!res.ok) {
+      await service.from("relances").delete().eq("id", trace.id);
       echecs.push(`${f.numero} : ${res.error}`);
       continue;
     }
-    await service.from("relances").insert({
-      user_id: userId,
-      facture_id: f.id,
-      destinataire: f.client_email!,
-      jours_retard: f.joursRetard,
-      automatique: true,
-    });
     envoyees.push(f.numero);
   }
 
