@@ -496,8 +496,13 @@ export function dansFenetre(vue: VueAgenda, date: string, fenetre: Fenetre): boo
     return jours[0]! >= fenetre.debut && jours[6]! <= fenetre.fin;
   }
   if (vue === "mois") {
+    // La grille affiche jusqu'à 6 jours des mois voisins : ils doivent
+    // être dans la fenêtre, sinon la première ligne apparaît vide.
     const { year, month } = moisDe(date);
-    return premierDuMois(year, month) >= fenetre.debut && dernierDuMois(year, month) <= fenetre.fin;
+    return (
+      ajouterJours(premierDuMois(year, month), -6) >= fenetre.debut &&
+      ajouterJours(dernierDuMois(year, month), 6) <= fenetre.fin
+    );
   }
   return true; // liste : part d'aujourd'hui, la page garantit la couverture
 }

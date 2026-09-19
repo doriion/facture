@@ -33,6 +33,44 @@ export async function getCouleursEvenements(): Promise<CouleursEvenements> {
 }
 
 /**
+ * Donne une couleur à PLUSIEURS évènements en un seul aller-retour (les
+ * occurrences d'une série : jusqu'à 100 — appelées une par une, c'était
+ * autant de requêtes séquentielles).
+ */
+export async function setCouleursEvenementsAction(
+  cles: string[],
+  couleur: string | null,
+): Promise<ActionResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+  const valides = cles.map((c) => c.trim()).filter((c) => /^[a-z_]+:.{1,280}$/.test(c));
+  if (valides.length === 0) return { ok: true, data: undefined };
+  if (couleur === null) {
+    const { error } = await supabase
+      .from("agenda_couleurs_evenements")
+      .delete()
+      .in("evenement_cle", valides);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const hex = normaliserCouleur(couleur);
+    if (!hex) return { ok: false, error: "Couleur invalide (attendu : #rrggbb)." };
+    const maj = new Date().toISOString();
+    const { error } = await supabase
+      .from("agenda_couleurs_evenements")
+      .upsert(
+        valides.map((evenement_cle) => ({ user_id: user.id, evenement_cle, couleur: hex, updated_at: maj })),
+        { onConflict: "user_id,evenement_cle" },
+      );
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath("/agenda");
+  return { ok: true, data: undefined };
+}
+
+/**
  * Donne une couleur à UN évènement (null = retirer, il reprend la
  * couleur de son type).
  */

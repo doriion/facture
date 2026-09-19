@@ -145,7 +145,7 @@ export function EvenementDetailSheet({
 
   return (
     <Sheet open={!!e} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="mx-auto max-w-lg p-0 sm:rounded-2xl">
+      <SheetContent side="bottom" className="mx-auto max-w-lg overflow-y-auto overscroll-contain p-0 sm:rounded-2xl">
         {e && contact && (
           <div className="space-y-4 p-4 pb-6">
             <div className="flex items-start gap-3 pr-8">

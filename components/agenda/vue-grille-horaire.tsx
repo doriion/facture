@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 
 import type { AgendaEvent } from "@/lib/actions/agenda";
@@ -124,8 +124,10 @@ export function VueGrilleHoraire({
       } catch {}
       return n;
     });
-  const jours =
-    mode === "jour" ? [date] : joursSemaine(date).slice(0, dimanche ? 7 : 6);
+  const jours = useMemo(
+    () => (mode === "jour" ? [date] : joursSemaine(date).slice(0, dimanche ? 7 : 6)),
+    [mode, date, dimanche],
+  );
   const hauteurHeure = mode === "jour" ? 64 : 48; // px
 
   // Heure actuelle (minutes) : connue seulement après le montage pour
@@ -143,16 +145,27 @@ export function VueGrilleHoraire({
   // Disposition : bornes élargies aux évènements, heures vides compactées
   // en vue jour (la semaine garde des lignes régulières pour lire les
   // créneaux libres d'un coup d'œil).
-  const bornes = bornesGrille(events, jours);
-  const lignes = dispositionGrille({
-    debut: bornes.debut,
-    fin: bornes.fin,
-    occupees: heuresOccupees(events, jours),
-    hauteurPleine: hauteurHeure,
-    hauteurCompacte: HAUTEUR_COMPACTE,
-    compacter: mode === "jour",
-    heureActuelle,
-  });
+  // Mémoïsé : ces calculs parcouraient tous les évènements à chaque
+  // rendu, donc à chaque mouvement du doigt pendant un glisser-déposer.
+  const bornes = useMemo(() => bornesGrille(events, jours), [events, jours]);
+  const occupees = useMemo(() => heuresOccupees(events, jours), [events, jours]);
+  const lignes = useMemo(
+    () =>
+      dispositionGrille({
+        debut: bornes.debut,
+        fin: bornes.fin,
+        occupees,
+        hauteurPleine: hauteurHeure,
+        hauteurCompacte: HAUTEUR_COMPACTE,
+        compacter: mode === "jour",
+        heureActuelle,
+      }),
+    [bornes, occupees, hauteurHeure, mode, heureActuelle],
+  );
+  const creneauxParJour = useMemo(
+    () => new Map(jours.map((jour) => [jour, creneauxDuJour(horodatesDuJour(events, jour), bornes)] as const)),
+    [events, jours, bornes],
+  );
   const hauteur = hauteurGrille(lignes);
 
   // À l'ouverture, on amène l'heure actuelle au milieu de l'écran (une
@@ -402,7 +415,7 @@ export function VueGrilleHoraire({
           ))}
         </div>
         {jours.map((jour) => {
-          const creneaux = creneauxDuJour(horodatesDuJour(events, jour), bornes);
+          const creneaux = creneauxParJour.get(jour) ?? [];
           const sel = selection?.jour === jour ? selection : null;
           const selDebut = sel ? Math.min(sel.debut, sel.fin) : 0;
           const selFin = sel ? Math.max(sel.debut, sel.fin) + 1 : 0;

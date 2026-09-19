@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { aujourdhuiParis, composantesYmd } from "@/lib/dates";
+import { ajouterJours } from "@/lib/agenda-vues";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
 import { idsParentsVentiles } from "@/lib/actions/factures";
@@ -147,6 +148,18 @@ export async function getDashboardData(): Promise<DashboardData> {
   const trimestre = trimestreCourant(today);
 
   // Récupération en parallèle
+  // Contrats signés sans PDF archivé : lancé en même temps que le reste
+  // (il était attendu en série après tout le tableau de bord).
+  const contratsSansPdfPromesse = supabase
+    .from("contrats")
+    .select("id, numero, signed_at, client:clients(nom)")
+    .in("statut", ["signe", "actif"])
+    .not("signed_at", "is", null)
+    .not("signature_path", "is", null)
+    .is("pdf_path", null)
+    .order("signed_at", { ascending: false })
+    .limit(8);
+
   const [
     facturesAnneeRes,
     exportUrssafAnnee,
@@ -187,10 +200,11 @@ export async function getDashboardData(): Promise<DashboardData> {
       .from("factures")
       .select("id,numero,date_echeance,total_ht,client_id,client:clients(id,nom)")
       .eq("statut", "envoyee"),
-    // Devis envoyés (en attente) — modèles exclus
+    // Devis envoyés (en attente) — modèles exclus ; les champs de la
+    // liste « expirent bientôt » sont pris ici (plus de 2e requête).
     supabase
       .from("devis")
-      .select("id,date_validite")
+      .select("id,numero,date_validite,total_ht,client:clients(nom)")
       .eq("statut", "envoye")
       .eq("est_modele", false),
     // Stats devis pour taux de conversion — modèles exclus
@@ -217,10 +231,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       .eq("statut", "actif")
       .not("prochaine_visite", "is", null)
       .gte("prochaine_visite", today)
-      .lte(
-        "prochaine_visite",
-        new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
-      )
+      .lte("prochaine_visite", ajouterJours(today, 30))
       .order("prochaine_visite", { ascending: true })
       .limit(8),
     // Échéances des attestations (décennale, capacité fluides)
@@ -350,46 +361,30 @@ export async function getDashboardData(): Promise<DashboardData> {
   // Devis en attente + expirant
   const devisEnvoyes = (devisEnvoyesRes.data ?? []) as Array<{
     id: string;
+    numero: string;
     date_validite: string;
+    total_ht: number;
+    client: { nom: string } | null;
   }>;
   const nbDevisEnAttente = devisEnvoyes.length;
 
-  // Devis qui expirent dans les 15 j
-  const dans15Jours = new Date(Date.now() + 15 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const devisExpirantBientotIds = devisEnvoyes
-    .filter(
-      (d) => d.date_validite >= today && d.date_validite <= dans15Jours,
-    )
-    .map((d) => d.id);
-
-  let devisExpirantBientot: DashboardData["devisExpirantBientot"] = [];
-  if (devisExpirantBientotIds.length > 0) {
-    const { data } = await supabase
-      .from("devis")
-      .select("id,numero,date_validite,total_ht,client:clients(nom)")
-      .in("id", devisExpirantBientotIds);
-    devisExpirantBientot = ((data ?? []) as Array<{
-      id: string;
-      numero: string;
-      date_validite: string;
-      total_ht: number;
-      client: { nom: string } | null;
-    }>)
-      .map((d) => ({
-        id: d.id,
-        numero: d.numero,
-        date_validite: d.date_validite,
-        total_ht: Number(d.total_ht),
-        client_nom: d.client?.nom ?? null,
-        joursAvantExpiration: Math.ceil(
-          (new Date(d.date_validite).getTime() - new Date(today).getTime()) /
-            (24 * 3600 * 1000),
-        ),
-      }))
-      .sort((a, b) => a.joursAvantExpiration - b.joursAvantExpiration);
-  }
+  // Devis qui expirent dans les 15 j — calculé en mémoire (bornes en
+  // heure de Paris, cohérentes avec `today`).
+  const dans15Jours = ajouterJours(today, 15);
+  const devisExpirantBientot: DashboardData["devisExpirantBientot"] = devisEnvoyes
+    .filter((d) => d.date_validite >= today && d.date_validite <= dans15Jours)
+    .map((d) => ({
+      id: d.id,
+      numero: d.numero,
+      date_validite: d.date_validite,
+      total_ht: Number(d.total_ht),
+      client_nom: d.client?.nom ?? null,
+      joursAvantExpiration: Math.ceil(
+        (new Date(d.date_validite).getTime() - new Date(today).getTime()) /
+          (24 * 3600 * 1000),
+      ),
+    }))
+    .sort((a, b) => a.joursAvantExpiration - b.joursAvantExpiration);
 
   // Taux de conversion devis — helper pur testé (null si aucun devis
   // décidable, affiché « — » par la carte KPI).
@@ -539,15 +534,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   // Contrats signés sans PDF archivé : la signature est acquise mais
   // le fichier n'a pas pu être déposé. Régénérable sans toucher à la
   // signature (cf. regenererPdfContratAction).
-  const { data: contratsSansPdf } = await supabase
-    .from("contrats")
-    .select("id, numero, signed_at, client:clients(nom)")
-    .in("statut", ["signe", "actif"])
-    .not("signed_at", "is", null)
-    .not("signature_path", "is", null)
-    .is("pdf_path", null)
-    .order("signed_at", { ascending: false })
-    .limit(8);
+  const { data: contratsSansPdf } = await contratsSansPdfPromesse;
 
   const contratsPdfManquant = ((contratsSansPdf ?? []) as Array<{
     id: string;
