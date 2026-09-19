@@ -3,6 +3,14 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+
+/** Un identifiant interpolé dans un filtre PostgREST doit être un UUID. */
+function uuidSur(id: string): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    throw new Error("Identifiant de facture invalide.");
+  }
+  return id;
+}
 import { aujourdhuiParis } from "@/lib/dates";
 import {
   computeExternalEventKey,
@@ -224,7 +232,7 @@ export async function getAvailableEventsForFacture(args: {
     .is("supprime_le", null)
     .gte("date_intervention", from)
     .lte("date_intervention", to)
-    .or(`facture_id.is.null,facture_id.eq.${args.factureId}`)
+    .or(`facture_id.is.null,facture_id.eq.${uuidSur(args.factureId)}`)
     .order("date_intervention", { ascending: false });
 
   type IntervRow = {

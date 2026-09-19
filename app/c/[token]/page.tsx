@@ -12,7 +12,11 @@ import { ContratSignatureForm } from "@/components/contrats/contrat-signature-fo
 import { formatDateFr } from "@/lib/format";
 import { dateParis } from "@/lib/dates";
 
-export const metadata = { title: "Signature du contrat d'entretien" };
+export const metadata = {
+  title: "Signature du contrat d'entretien",
+  // Page nominative accessible par lien : jamais indexée.
+  robots: { index: false, follow: false, nocache: true },
+};
 export const dynamic = "force-dynamic";
 
 /**

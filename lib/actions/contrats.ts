@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
 import {
   contratSchema,
@@ -31,7 +32,7 @@ export async function listContrats(params?: {
     .order("created_at", { ascending: false });
 
   if (params?.search) {
-    const s = `%${params.search}%`;
+    const s = motifIlike(params.search);
     query = query.or(
       `intitule.ilike.${s},equipement.ilike.${s},equipement_num_serie.ilike.${s}`,
     );

@@ -29,5 +29,9 @@ npm run dev
 
 ## Déploiement
 
-Auto-déployé sur Vercel à chaque push sur `main`. Variables d'env requises :
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+Auto-déployé sur Vercel à chaque push sur `main`. Les variables d'environnement
+sont listées et commentées dans `.env.example` (Supabase, Resend, URL publique,
+secrets des tâches planifiées, clé service role, clés VAPID des notifications,
+Sentry) — un test compare cette liste aux `process.env.*` réellement lus par le
+code. Le cron quotidien a deux déclencheurs (Vercel Cron et pg_cron), voir
+`docs/rappels-push.md`.

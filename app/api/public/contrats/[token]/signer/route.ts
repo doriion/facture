@@ -302,8 +302,12 @@ export async function POST(
         dateSignatureText,
         pourArtisan: false,
       });
+      // Destinataire : l'adresse figée à l'envoi du lien fait foi ; celle
+      // saisie sur la page publique ne sert que si aucune n'était connue
+      // (le lien seul ne doit pas permettre d'expédier le contrat signé,
+      // avec sa page de preuve, vers une adresse arbitraire).
       const envoiClient = await sendEmail({
-        to: saisie.email,
+        to: clientSnapshotExistant.email || saisie.email,
         subject: emailClient.subject,
         html: emailClient.html,
         text: emailClient.text,

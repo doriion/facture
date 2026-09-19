@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
 import {
   estFactureVentilee,
@@ -44,7 +45,7 @@ export async function listFactures(params?: {
     .order("numero", { ascending: false });
 
   if (params?.search) {
-    const s = `%${params.search}%`;
+    const s = motifIlike(params.search);
     query = query.or(`numero.ilike.${s},notes.ilike.${s}`);
   }
   if (params?.statut && params.statut !== "tous") {

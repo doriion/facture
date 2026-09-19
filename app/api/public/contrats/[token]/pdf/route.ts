@@ -31,12 +31,21 @@ export async function GET(
   }
   const { data: contrat } = await service
     .from("contrats")
-    .select("statut, numero, pdf_path")
+    .select("statut, numero, pdf_path, signed_at")
     .eq("access_token", token)
     .maybeSingle();
 
   if (!contrat || !contrat.pdf_path || contrat.statut === "envoye") {
     return new NextResponse("Document indisponible", { status: 404 });
+  }
+  // Le lien de téléchargement ne vaut que 30 jours après la signature :
+  // le PDF (avec la page de preuve) a été envoyé par email, un lien
+  // éternel n'a pas lieu d'être.
+  if (contrat.signed_at && Date.now() - new Date(contrat.signed_at).getTime() > 30 * 24 * 3600 * 1000) {
+    return new NextResponse("Lien expiré : le contrat signé vous a été envoyé par email.", {
+      status: 410,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
 
   const { data: blob } = await service.storage

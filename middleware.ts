@@ -89,6 +89,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Pages et routes publiques (lien de signature, PDF public) : jamais
+  // indexées par un moteur de recherche.
+  if (path.startsWith("/c/") || path.startsWith("/api/public/")) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  }
   // Toujours renvoyer `response` telle quelle : elle porte les cookies
   // de session éventuellement rafraîchis.
   return response;
