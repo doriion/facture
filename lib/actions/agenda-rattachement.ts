@@ -78,11 +78,13 @@ export async function rattacherRdvAFactureAction(
   });
 
   // Déjà rattaché à une autre facture ? On ne l'arrache pas en silence.
-  const { data: existant } = await supabase
+  const { data: existant, error: erreurExistant } = await supabase
     .from("facture_external_events")
     .select("facture_id, factures:factures(numero)")
     .eq("external_uid", key.external_uid)
     .maybeSingle();
+  // Une erreur (dont « plusieurs lignes ») ne doit pas valoir « libre ».
+  if (erreurExistant) return { ok: false, error: erreurExistant.message };
   if (existant && existant.facture_id !== factureId) {
     const rel = Array.isArray(existant.factures) ? existant.factures[0] : existant.factures;
     return {

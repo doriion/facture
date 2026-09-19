@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { motifIlike } from "@/lib/postgrest";
 import { clientSchema, type ClientFormValues } from "@/lib/validations/client";
 import { stripSpaces } from "@/lib/format";
 import type { Database } from "@/types/database";
@@ -34,7 +35,7 @@ export async function listClients(params?: { search?: string; type?: string }) {
     .order("nom", { ascending: true });
 
   if (params?.search) {
-    const s = `%${params.search}%`;
+    const s = motifIlike(params.search);
     query = query.or(
       `nom.ilike.${s},ville.ilike.${s},email.ilike.${s},raison_sociale.ilike.${s}`,
     );

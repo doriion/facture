@@ -332,11 +332,14 @@ export async function envoyerContratAction(
     .in("statut", ["brouillon", "envoye"]);
   if (updateErr) return { ok: false, error: updateErr.message };
 
-  // URL absolue du lien public, à partir de l'hôte de la requête
+  // URL absolue du lien public : NEXT_PUBLIC_APP_URL d'abord (jamais
+  // dépendante d'un en-tête de requête), l'hôte de la requête en repli.
   const h = headers();
   const proto = h.get("x-forwarded-proto") ?? "https";
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const lien = `${proto}://${host}/c/${token}`;
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "") || (host ? `${proto}://${host}` : "");
+  if (!base) return { ok: false, error: "Adresse du site inconnue : renseignez NEXT_PUBLIC_APP_URL." };
+  const lien = `${base}/c/${token}`;
 
   const expediteurNom =
     profil?.nom_commercial ||

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { motifIlike } from "@/lib/postgrest";
 import { normaliser } from "@/lib/catalogue-recherche";
 import { parseMoneyInput } from "@/lib/format";
 import {
@@ -29,7 +30,7 @@ export async function listProduits(params?: {
     .order("designation", { ascending: true });
 
   if (params?.search) {
-    const s = `%${params.search}%`;
+    const s = motifIlike(params.search);
     query = query.or(`designation.ilike.${s},description.ilike.${s}`);
   }
   if (params?.categorie && params.categorie !== "toutes") {

@@ -26,6 +26,10 @@ alter table public.interventions
 -- Mise à jour de la fonction iCal : on expose les heures pour permettre
 -- au flux d'émettre des VEVENT timed (DTSTART avec heure) plutôt que
 -- des all-day quand l'utilisateur a saisi une plage horaire.
+-- Le type de retour change (3 colonnes de plus) : PostgreSQL refuse un
+-- CREATE OR REPLACE dans ce cas, il faut supprimer d'abord (les droits
+-- sont ré-accordés juste après).
+drop function if exists public.calendar_events_for_token(text);
 create or replace function public.calendar_events_for_token(p_token text)
 returns table (
   kind text,
@@ -138,3 +142,5 @@ as $$
     and m.prochaine_visite is not null
     and m.statut = 'actif';
 $$;
+
+grant execute on function public.calendar_events_for_token(text) to anon, authenticated;

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
@@ -47,7 +48,7 @@ export async function listDevis(params?: {
     .order("numero", { ascending: false });
 
   if (params?.search) {
-    const s = `%${params.search}%`;
+    const s = motifIlike(params.search);
     query = query.or(`numero.ilike.${s},notes.ilike.${s}`);
   }
   // « expire » n'est jamais stocké : c'est un devis envoyé dont la
