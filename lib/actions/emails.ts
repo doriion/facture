@@ -51,6 +51,9 @@ export async function envoyerFactureParEmailAction(
 
   const { facture, lignes, client } = await getFacture(factureId);
   if (!facture) return { ok: false, error: "Facture introuvable." };
+  if (facture.statut === "annulee") {
+    return { ok: false, error: "Cette facture est annulée : elle ne s'envoie pas." };
+  }
   if (!client?.email) {
     return {
       ok: false,
@@ -86,6 +89,7 @@ export async function envoyerFactureParEmailAction(
       client,
       profil,
       logoData: logoUrl,
+      devisSource: await devisSourceDe(supabase, facture.devis_id),
     }),
   );
 
@@ -162,6 +166,15 @@ export async function envoyerDevisParEmailAction(
 
   const { devis, lignes, client } = await getDevis(devisId);
   if (!devis) return { ok: false, error: "Devis introuvable." };
+  if (devis.statut === "refuse") {
+    return { ok: false, error: "Ce devis est refusé : repassez-le en brouillon avant de le renvoyer." };
+  }
+  if (devis.date_validite && devis.date_validite < aujourdhuiParis() && devis.statut !== "brouillon") {
+    return {
+      ok: false,
+      error: "Ce devis est expiré : repassez-le en brouillon et prolongez sa validité avant de l'envoyer.",
+    };
+  }
   if (!client?.email) {
     return {
       ok: false,
@@ -261,6 +274,9 @@ export async function envoyerRelanceFactureAction(
 
   const { facture, lignes, client } = await getFacture(factureId);
   if (!facture) return { ok: false, error: "Facture introuvable." };
+  if (facture.statut === "annulee") {
+    return { ok: false, error: "Cette facture est annulée : elle ne s'envoie pas." };
+  }
   if (!client?.email) {
     return {
       ok: false,
@@ -298,6 +314,7 @@ export async function envoyerRelanceFactureAction(
       client,
       profil,
       logoData: logoUrl,
+      devisSource: await devisSourceDe(supabase, facture.devis_id),
     }),
   );
 
@@ -339,4 +356,18 @@ export async function envoyerRelanceFactureAction(
   revalidatePath("/factures");
   revalidatePath(`/factures/${factureId}`);
   return { ok: true, data: undefined };
+}
+
+/** Devis d'origine d'une facture convertie (numéro + date), pour le PDF. */
+async function devisSourceDe(
+  supabase: ReturnType<typeof createClient>,
+  devisId: string | null,
+): Promise<{ numero: string; date_emission: string | null } | null> {
+  if (!devisId) return null;
+  const { data } = await supabase
+    .from("devis")
+    .select("numero, date_emission")
+    .eq("id", devisId)
+    .maybeSingle();
+  return data ?? null;
 }

@@ -162,6 +162,15 @@ describe("computeTotalHt — arrondi ligne par ligne", () => {
     expect(computeTotalHt(lignes)).toBe(0.39);
   });
 
+  it("une ligne « titre » ne compte jamais dans le total", () => {
+    expect(
+      computeTotalHt([
+        { quantite: 1, prix_unitaire_ht: 500, type: "titre" },
+        { quantite: 2, prix_unitaire_ht: 10, type: "ligne" },
+      ]),
+    ).toBe(20);
+  });
+
   it("inchangé sur des montants ordinaires", () => {
     expect(computeTotalHt([{ quantite: 2, prix_unitaire_ht: 45.5 }, { quantite: 1.5, prix_unitaire_ht: 60 }])).toBe(181);
   });

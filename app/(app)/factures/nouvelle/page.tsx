@@ -58,6 +58,7 @@ export default async function NouvelleFacturePage({
           client_id: source.client_id,
           type_activite: source.type_activite,
           conditions_paiement: source.conditions_paiement,
+          adresse_chantier: source.adresse_chantier,
           notes: source.notes,
           equipement_info: source.equipement_info,
           aides_financieres: source.aides_financieres,

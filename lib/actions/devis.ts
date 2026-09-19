@@ -275,7 +275,10 @@ export async function createDevisAction(
       duree_estimee_jours: v.duree_estimee_jours,
       acompte_pct: v.acompte_pct,
       acompte_montant: v.acompte_montant,
-      signe_a_domicile: v.signe_a_domicile ?? false,
+      mode_conclusion: v.mode_conclusion ?? "etablissement",
+      // Colonne historique maintenue en cohérence avec le mode.
+      signe_a_domicile: (v.mode_conclusion ?? "etablissement") === "hors_etablissement",
+      adresse_chantier: v.adresse_chantier || null,
       type_activite: v.type_activite,
       statut: "brouillon",
       total_ht,
@@ -373,7 +376,9 @@ export async function updateDevisAction(
       duree_estimee_jours: v.duree_estimee_jours,
       acompte_pct: v.acompte_pct,
       acompte_montant: v.acompte_montant,
-      signe_a_domicile: v.signe_a_domicile ?? false,
+      mode_conclusion: v.mode_conclusion ?? "etablissement",
+      signe_a_domicile: (v.mode_conclusion ?? "etablissement") === "hors_etablissement",
+      adresse_chantier: v.adresse_chantier || null,
       type_activite: v.type_activite,
       total_ht,
       conditions: v.conditions || null,
@@ -585,6 +590,10 @@ export async function convertirDevisEnFactureAction(
       statut: "brouillon",
       total_ht: devis.total_ht,
       conditions_paiement: devis.conditions,
+      // Lien vers le devis d'origine (imprimé sur la facture) et lieu
+      // des travaux repris tels quels.
+      devis_id: devis.id,
+      adresse_chantier: devis.adresse_chantier ?? null,
       notes: `Convertie depuis le devis ${devis.numero}.`,
       equipement_info: devis.equipement_info,
       aides_financieres: devis.aides_financieres,

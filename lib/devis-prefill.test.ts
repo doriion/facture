@@ -19,6 +19,8 @@ const source: DevisRow = {
   acompte_pct: null,
   acompte_montant: null,
   signe_a_domicile: false,
+  mode_conclusion: "etablissement",
+  adresse_chantier: null,
   duree_estimee_jours: 3,
   est_modele: true,
   nom_modele: "Pose monosplit",

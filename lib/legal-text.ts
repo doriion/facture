@@ -88,6 +88,25 @@ export const MENTION_PENALITES_RETARD_DEFAULT =
 export const MENTION_ESCOMPTE_DEFAULT = "Pas d'escompte pour règlement anticipé.";
 
 /**
+ * Pénalités de retard pour un client PARTICULIER : l'indemnité
+ * forfaitaire de 40 € (D441-5) ne s'applique qu'entre professionnels ;
+ * on n'imprime que le taux légal.
+ */
+export const MENTION_PENALITES_RETARD_PARTICULIER =
+  "En cas de retard de paiement, des pénalités au taux de l'intérêt légal en vigueur seront appliquées (art. L441-10 du Code de commerce).";
+
+/** Texte des pénalités selon le type de client, sauf texte personnalisé. */
+export function mentionPenalitesRetard(
+  texteProfil: string | null | undefined,
+  typeClient: string | null | undefined,
+): string {
+  if (texteProfil && texteProfil.trim()) return texteProfil;
+  return typeClient === "particulier"
+    ? MENTION_PENALITES_RETARD_PARTICULIER
+    : MENTION_PENALITES_RETARD_DEFAULT;
+}
+
+/**
  * Droit de rétractation — contrat conclu HORS ÉTABLISSEMENT (devis
  * signé au domicile du client). Art. L221-18 du Code de la
  * consommation, vérifié le 02/09/2026 : 14 jours calendaires à compter
@@ -97,6 +116,39 @@ export const MENTION_ESCOMPTE_DEFAULT = "Pas d'escompte pour règlement anticip�
  */
 export const MENTION_RETRACTATION_L221_18 =
   "Contrat conclu hors établissement : conformément à l'article L221-18 du Code de la consommation, vous disposez d'un délai de quatorze jours pour exercer votre droit de rétractation, sans avoir à motiver votre décision. Ce délai court à compter du lendemain de la conclusion du contrat (signature du présent devis). Pour l'exercer, adressez-nous, avant l'expiration du délai, le formulaire ci-dessous ou toute autre déclaration dénuée d'ambiguïté, par courrier ou par email. Les travaux ne peuvent commencer avant la fin du délai de rétractation, sauf demande expresse de votre part.";
+
+/**
+ * Contrat conclu À DISTANCE (devis accepté par email ou via un lien,
+ * sans présence physique) : même délai de 14 jours (art. L221-18), le
+ * point de départ est identique pour une prestation de services.
+ */
+export const MENTION_RETRACTATION_DISTANCE =
+  "Contrat conclu à distance : conformément à l'article L221-18 du Code de la consommation, vous disposez d'un délai de quatorze jours pour exercer votre droit de rétractation, sans avoir à motiver votre décision. Ce délai court à compter du lendemain de la conclusion du contrat (acceptation du présent devis). Pour l'exercer, adressez-nous, avant l'expiration du délai, le formulaire ci-dessous ou toute autre déclaration dénuée d'ambiguïté, par courrier ou par email. Les travaux ne peuvent commencer avant la fin du délai de rétractation, sauf demande expresse de votre part.";
+
+/** Modes de conclusion d'un devis (colonne devis.mode_conclusion). */
+export const MODES_CONCLUSION_DEVIS = ["etablissement", "hors_etablissement", "distance"] as const;
+export type ModeConclusionDevis = (typeof MODES_CONCLUSION_DEVIS)[number];
+
+export const LABELS_MODE_CONCLUSION: Record<ModeConclusionDevis, string> = {
+  etablissement: "Signé dans mon local (pas de rétractation)",
+  hors_etablissement: "Signé chez le client (hors établissement)",
+  distance: "Accepté à distance (email, lien, téléphone)",
+};
+
+/** Mention de rétractation à imprimer selon le mode, null si aucune. */
+export function mentionRetractation(mode: string | null | undefined): string | null {
+  if (mode === "hors_etablissement") return MENTION_RETRACTATION_L221_18;
+  if (mode === "distance") return MENTION_RETRACTATION_DISTANCE;
+  return null;
+}
+
+/**
+ * Mention manuscrite exigée sur un devis de travaux du bâtiment
+ * (arrêté du 24 janvier 2017) : à recopier par le client au moment de
+ * l'acceptation.
+ */
+export const MENTION_DEVIS_RECU_AVANT_TRAVAUX =
+  "Mention manuscrite à porter par le client : « Devis reçu avant l'exécution des travaux »";
 
 /** Formulaire de rétractation type (annexe à l'art. R221-1 c. conso, simplifié). */
 export const FORMULAIRE_RETRACTATION_LIGNES = [
@@ -123,18 +175,39 @@ export function mentionDecennale(opts: {
   /** Coordonnées de l'assureur (adresse) — exigées par l'art. 22-2 de la loi 96-603 */
   assureurAdresse?: string | null;
   zone?: string | null;
+  /** Fin de validité de l'attestation (YYYY-MM-DD) : rien n'est imprimé au-delà. */
+  valideJusquau?: string | null;
+  /** Date du document (YYYY-MM-DD) à laquelle comparer la validité. */
+  dateDocument?: string | null;
 }): string | null {
   if (!opts.numero || !opts.assureur) return null;
-  const zone = opts.zone || "France métropolitaine";
+  if (estExpiree(opts.valideJusquau, opts.dateDocument)) return null;
   const coordonnees = opts.assureurAdresse ? ` (${opts.assureurAdresse})` : "";
-  return `Assurance décennale n° ${opts.numero} souscrite auprès de ${opts.assureur}${coordonnees}, couvrant le territoire : ${zone}.`;
+  // Zone de couverture : imprimée seulement si elle est renseignée — on
+  // n'affirme pas une étendue de garantie qui n'a jamais été saisie.
+  const zone = opts.zone?.trim() ? `, couvrant le territoire : ${opts.zone.trim()}` : "";
+  return `Assurance décennale n° ${opts.numero} souscrite auprès de ${opts.assureur}${coordonnees}${zone}.`;
+}
+
+/** Attestation expirée à la date du document ? (sans date de validité : non) */
+export function estExpiree(
+  valideJusquau: string | null | undefined,
+  dateDocument: string | null | undefined,
+): boolean {
+  if (!valideJusquau) return false;
+  const ref = dateDocument || aujourdhuiParis();
+  return valideJusquau < ref;
 }
 
 /**
  * Formate la mention attestation fluides frigorigènes (clim/PAC).
  */
-export function mentionFluidesFrigo(numero?: string | null): string | null {
+export function mentionFluidesFrigo(
+  numero?: string | null,
+  opts: { valideJusquau?: string | null; dateDocument?: string | null } = {},
+): string | null {
   if (!numero) return null;
+  if (estExpiree(opts.valideJusquau, opts.dateDocument)) return null;
   return `Attestation de capacité fluides frigorigènes catégorie I n° ${numero} (réglementation F-Gas).`;
 }
 

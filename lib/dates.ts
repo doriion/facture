@@ -19,3 +19,8 @@ export function composantesYmd(ymd: string): { annee: number; mois: number; jour
   const [a, m, j] = ymd.split("-").map(Number);
   return { annee: a ?? 1970, mois: m ?? 1, jour: j ?? 1 };
 }
+
+/** Date (YYYY-MM-DD) en heure de Paris d'un instant ISO (timestamptz). */
+export function dateParis(iso: string): string {
+  return aujourdhuiParis(new Date(iso));
+}

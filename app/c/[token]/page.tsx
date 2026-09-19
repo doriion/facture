@@ -10,6 +10,7 @@ import {
 import { ContratApercu } from "@/components/contrats/contrat-apercu";
 import { ContratSignatureForm } from "@/components/contrats/contrat-signature-form";
 import { formatDateFr } from "@/lib/format";
+import { dateParis } from "@/lib/dates";
 
 export const metadata = { title: "Signature du contrat d'entretien" };
 export const dynamic = "force-dynamic";
@@ -81,7 +82,7 @@ export default async function SignatureContratPage({
           titre="Contrat signé — merci !"
           message={`Votre contrat d'entretien n° ${contrat.numero ?? ""} a bien été signé${
             contrat.signed_at
-              ? ` le ${formatDateFr(contrat.signed_at.slice(0, 10))}`
+              ? ` le ${formatDateFr(dateParis(contrat.signed_at))}`
               : ""
           }. Vous allez recevoir (ou avez reçu) le PDF signé par e-mail${
             clientSnapshot.email ? ` à ${clientSnapshot.email}` : ""

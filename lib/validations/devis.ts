@@ -114,9 +114,17 @@ export const devisSchema = z.object({
     moneyInputOrNull,
     z.number().min(0).max(1_000_000).nullable(),
   ),
-  // Devis signé au domicile du client (hors établissement) : le PDF
-  // ajoute la mention L221-18 + le formulaire de rétractation.
+  // Mode de conclusion : hors établissement (chez le client) ou à
+  // distance (email, lien) → le PDF ajoute la mention L221-18 et le
+  // formulaire de rétractation. signe_a_domicile (historique) reste
+  // dérivé de ce champ côté serveur.
+  mode_conclusion: z
+    .enum(["etablissement", "hors_etablissement", "distance"])
+    .default("etablissement"),
   signe_a_domicile: z.boolean().default(false),
+  // Lieu d'exécution des travaux quand il diffère de l'adresse du client
+  // (mention obligatoire du devis de travaux).
+  adresse_chantier: z.string().trim().max(300).optional().or(z.literal("")),
   conditions: z.string().trim().max(2000).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   lignes: z

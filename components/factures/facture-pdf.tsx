@@ -17,7 +17,8 @@ import {
 import {
   LABELS_TYPE_ACTIVITE,
   MENTION_AUTO_ENTREPRENEUR,
-  MENTION_PENALITES_RETARD_DEFAULT,
+  MENTION_ESCOMPTE_DEFAULT,
+  mentionPenalitesRetard,
   mentionTvaFranchise,
   mentionDecennale,
   mentionFluidesFrigo,
@@ -268,12 +269,15 @@ export function FacturePdf({
   client,
   profil: profilCourant,
   logoData,
+  devisSource = null,
 }: {
   facture: Facture;
   lignes: Ligne[];
   client: Client | null;
   profil: Profil | null;
   logoData?: string | null;
+  /** Devis d'origine (facture convertie) : imprimé sous le numéro. */
+  devisSource?: { numero: string; date_emission: string | null } | null;
 }) {
   // Facture émise : mentions émetteur FIGÉES au moment de l'émission
   // (SIRET historisé) ; brouillon : profil courant.
@@ -300,9 +304,14 @@ export function FacturePdf({
       assureur: profil?.assureur_decennale,
       assureurAdresse: profil?.assureur_decennale_adresse,
       zone: profil?.zone_couverture_decennale,
+      valideJusquau: profil?.decennale_valide_jusquau,
+      dateDocument: facture.date_emission,
     }),
     fluides: isClimPac
-      ? mentionFluidesFrigo(profil?.num_attestation_fluides_frigo)
+      ? mentionFluidesFrigo(profil?.num_attestation_fluides_frigo, {
+          valideJusquau: profil?.fluides_valide_jusquau,
+          dateDocument: facture.date_emission,
+        })
       : null,
     rge: isClimPac ? mentionRgeQualipac(profil?.num_rge_qualipac) : null,
     rm: mentionRm(profil?.num_rm),
@@ -319,6 +328,22 @@ export function FacturePdf({
   // Raison + « EI » (obligatoire pour l'entrepreneur individuel, loi du
   // 14 février 2022), même règle que le devis simple.
   const entrepriseNom = enseigneEmetteur(profil);
+  // Pied de page : une mention par ligne, et une réserve de page
+  // calculée sur ce qui est réellement imprimé (le bloc fixe recouvrait
+  // le corps quand toutes les mentions étaient présentes).
+  const lignesPied = [
+    mentionPenalitesRetard(profil?.penalites_retard_text, client?.type),
+    profil?.escompte_text || MENTION_ESCOMPTE_DEFAULT,
+    mentions.rm,
+    mentions.decennale,
+    mentions.fluides,
+    mentions.rge,
+    mentions.mediateur,
+  ].filter((m): m is string => Boolean(m));
+  // ~11 pt par ligne courte ; les mentions longues (pénalités, décennale)
+  // occupent deux lignes : on compte large.
+  const reservePied = 40 + lignesPied.reduce((h, m) => h + (m.length > 110 ? 22 : 11), 0);
+  const datePrestation = facture.date_prestation || facture.date_emission;
   const typeFacture = (facture as { type_facture?: string | null }).type_facture ?? "normale";
   const pctAcompte = (facture as { pourcentage_acompte?: number | null }).pourcentage_acompte;
   const titreFacture =
@@ -334,7 +359,7 @@ export function FacturePdf({
       author={entrepriseNom}
       creator="Facture AE"
     >
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { paddingBottom: reservePied }]}>
         {/* Header : logo + entreprise / FACTURE + numéro */}
         <View style={styles.header}>
           <View style={styles.brand}>
@@ -369,6 +394,12 @@ export function FacturePdf({
           <View style={styles.factureBlock}>
             <Text style={styles.factureTitle}>{titreFacture}</Text>
             <Text style={styles.factureNumero}>{facture.numero}</Text>
+            {devisSource && (
+              <Text style={styles.factureDate}>
+                Suite au devis n° {devisSource.numero}
+                {devisSource.date_emission ? ` du ${formatDateFr(devisSource.date_emission)}` : ""}
+              </Text>
+            )}
             {typeFacture === "acompte" && (
               <Text style={styles.factureDate}>
                 Acompte{pctAcompte ? ` de ${pctAcompte} %` : ""} sur les travaux
@@ -383,15 +414,15 @@ export function FacturePdf({
             <Text style={styles.factureDate}>
               Émise le {formatDateFr(facture.date_emission)}
             </Text>
-            {facture.date_prestation && (
-              <Text style={styles.factureDate}>
-                Prestation :{" "}
-                {facture.date_prestation_fin &&
-                facture.date_prestation_fin !== facture.date_prestation
-                  ? `du ${formatDateFr(facture.date_prestation)} au ${formatDateFr(facture.date_prestation_fin)}`
-                  : `le ${formatDateFr(facture.date_prestation)}`}
-              </Text>
-            )}
+            {/* Date de la prestation : mention obligatoire ; à défaut de
+                saisie, la date d'émission. */}
+            <Text style={styles.factureDate}>
+              Prestation :{" "}
+              {facture.date_prestation_fin &&
+              facture.date_prestation_fin !== datePrestation
+                ? `du ${formatDateFr(datePrestation)} au ${formatDateFr(facture.date_prestation_fin)}`
+                : `le ${formatDateFr(datePrestation)}`}
+            </Text>
             <Text style={styles.factureDate}>
               Échéance : {formatDateFr(facture.date_echeance)}
             </Text>
@@ -428,6 +459,11 @@ export function FacturePdf({
             {client?.siret && (
               <Text style={{ marginTop: 4 }}>
                 SIRET : {formatSiret(client.siret)}
+              </Text>
+            )}
+            {facture.adresse_chantier && (
+              <Text style={{ marginTop: 4 }}>
+                Lieu des travaux : {facture.adresse_chantier}
               </Text>
             )}
           </View>
@@ -608,27 +644,11 @@ export function FacturePdf({
             pas renseigné. Le texte par défaut consolide les deux
             mentions (L441-10 + D441-5) pour éviter une double ligne. */}
         <View style={styles.footer} fixed>
-          <Text style={styles.footerLine}>
-            {profil?.penalites_retard_text || MENTION_PENALITES_RETARD_DEFAULT}
-          </Text>
-          {profil?.escompte_text && (
-            <Text style={styles.footerLine}>{profil.escompte_text}</Text>
-          )}
-          {mentions.rm && (
-            <Text style={styles.footerLine}>{mentions.rm}</Text>
-          )}
-          {mentions.decennale && (
-            <Text style={styles.footerLine}>{mentions.decennale}</Text>
-          )}
-          {mentions.fluides && (
-            <Text style={styles.footerLine}>{mentions.fluides}</Text>
-          )}
-          {mentions.rge && (
-            <Text style={styles.footerLine}>{mentions.rge}</Text>
-          )}
-          {mentions.mediateur && (
-            <Text style={styles.footerLine}>{mentions.mediateur}</Text>
-          )}
+          {lignesPied.map((m, i) => (
+            <Text key={i} style={styles.footerLine}>
+              {m}
+            </Text>
+          ))}
         </View>
 
         <Text

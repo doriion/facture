@@ -45,3 +45,40 @@ describe("mentionTvaFranchise (recodification CGI → CIBS, bascule au 01/09/202
     );
   });
 });
+
+describe("mentions ajoutées le 19/09/2026", () => {
+  it("pénalités : 40 € seulement entre professionnels, texte perso prioritaire", async () => {
+    const { mentionPenalitesRetard, MENTION_PENALITES_RETARD_DEFAULT, MENTION_PENALITES_RETARD_PARTICULIER } =
+      await import("./legal-text");
+    expect(mentionPenalitesRetard(null, "professionnel")).toBe(MENTION_PENALITES_RETARD_DEFAULT);
+    expect(mentionPenalitesRetard(null, "particulier")).toBe(MENTION_PENALITES_RETARD_PARTICULIER);
+    expect(mentionPenalitesRetard(null, "particulier")).not.toMatch(/40 €/);
+    expect(mentionPenalitesRetard("Mon texte", "particulier")).toBe("Mon texte");
+  });
+
+  it("rétractation : hors établissement et à distance, rien en établissement", async () => {
+    const { mentionRetractation } = await import("./legal-text");
+    expect(mentionRetractation("hors_etablissement")).toMatch(/hors établissement/);
+    expect(mentionRetractation("distance")).toMatch(/à distance/);
+    expect(mentionRetractation("etablissement")).toBeNull();
+    expect(mentionRetractation(null)).toBeNull();
+  });
+
+  it("décennale : pas de zone inventée, rien au-delà de la validité", async () => {
+    const { mentionDecennale, estExpiree } = await import("./legal-text");
+    const base = { numero: "D-1", assureur: "ERGO" };
+    expect(mentionDecennale(base)).toBe("Assurance décennale n° D-1 souscrite auprès de ERGO.");
+    expect(mentionDecennale({ ...base, zone: "Isère" })).toMatch(/couvrant le territoire : Isère\.$/);
+    expect(mentionDecennale({ ...base, valideJusquau: "2026-01-01", dateDocument: "2026-09-19" })).toBeNull();
+    expect(mentionDecennale({ ...base, valideJusquau: "2027-01-01", dateDocument: "2026-09-19" })).not.toBeNull();
+    expect(estExpiree(null, "2026-09-19")).toBe(false);
+    expect(estExpiree("2026-09-18", "2026-09-19")).toBe(true);
+    expect(estExpiree("2026-09-19", "2026-09-19")).toBe(false);
+  });
+
+  it("fluides : rien au-delà de la validité", async () => {
+    const { mentionFluidesFrigo } = await import("./legal-text");
+    expect(mentionFluidesFrigo("F-1", { valideJusquau: "2026-01-01", dateDocument: "2026-09-19" })).toBeNull();
+    expect(mentionFluidesFrigo("F-1", { valideJusquau: "2027-01-01", dateDocument: "2026-09-19" })).toMatch(/F-1/);
+  });
+});

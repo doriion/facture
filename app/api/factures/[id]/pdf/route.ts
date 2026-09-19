@@ -57,6 +57,15 @@ export async function GET(
   };
   const factureRaw = factureRes.data as FactureWithClient;
   const client = factureRaw.client ?? null;
+  const devisSource = factureRaw.devis_id
+    ? (
+        await supabase
+          .from("devis")
+          .select("numero, date_emission")
+          .eq("id", factureRaw.devis_id)
+          .maybeSingle()
+      ).data
+    : null;
 
   // Garde-fou : pas de rendu d'un document assujetti à la TVA tant que
   // l'app ne sait pas la calculer (snapshot émetteur prioritaire).
@@ -110,6 +119,7 @@ export async function GET(
       client,
       profil: profilRes.data,
       logoData,
+      devisSource,
     }),
   );
 

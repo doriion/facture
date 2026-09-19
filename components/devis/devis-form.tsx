@@ -161,6 +161,13 @@ export function DevisForm({
       acompte_pct: base?.acompte_pct ?? null,
       acompte_montant: base?.acompte_montant ?? null,
       signe_a_domicile: base?.signe_a_domicile ?? false,
+      mode_conclusion:
+        ((base as { mode_conclusion?: string } | undefined)?.mode_conclusion as
+          | "etablissement"
+          | "hors_etablissement"
+          | "distance"
+          | undefined) ?? (base?.signe_a_domicile ? "hors_etablissement" : "etablissement"),
+      adresse_chantier: (base as { adresse_chantier?: string | null } | undefined)?.adresse_chantier ?? "",
       conditions: base?.conditions ?? defaultConditions ?? "",
       notes: base?.notes ?? "",
       lignes: baseLignes,
@@ -436,21 +443,44 @@ export function DevisForm({
               </p>
             )}
           </div>
-          <label className="flex items-start gap-2 text-sm md:col-span-2">
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4 accent-primary"
-              {...register("signe_a_domicile")}
+          <fieldset className="space-y-2 md:col-span-2">
+            <legend className="text-sm font-medium">Comment ce devis sera-t-il accepté ?</legend>
+            <p className="text-xs text-muted-foreground">
+              Chez le client ou à distance (email, lien, téléphone), un
+              particulier dispose d&apos;un droit de rétractation de 14 jours
+              (art. L221-18) : le PDF ajoute alors la mention et le formulaire
+              — sans eux, le délai passe à 12 mois.
+            </p>
+            {(
+              [
+                ["etablissement", "Signé dans mon local (pas de rétractation)"],
+                ["hors_etablissement", "Signé chez le client (hors établissement)"],
+                ["distance", "Accepté à distance (email, lien, téléphone)"],
+              ] as const
+            ).map(([valeur, libelle]) => (
+              <label key={valeur} className="flex min-h-11 items-center gap-2 text-sm sm:min-h-0">
+                <input
+                  type="radio"
+                  value={valeur}
+                  className="size-4 accent-primary"
+                  {...register("mode_conclusion")}
+                />
+                {libelle}
+              </label>
+            ))}
+          </fieldset>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label htmlFor="adresse_chantier">Adresse du chantier (si différente du client)</Label>
+            <Input
+              id="adresse_chantier"
+              placeholder="Ex : 12 rue des Alpes, 38000 Grenoble"
+              autoComplete="off"
+              {...register("adresse_chantier")}
             />
-            <span>
-              Devis signé au domicile du client (hors établissement)
-              <span className="block text-xs text-muted-foreground">
-                Ajoute au PDF la mention du droit de rétractation de 14
-                jours (art. L221-18) et le formulaire de rétractation —
-                sans lui, le délai passe à 12 mois.
-              </span>
-            </span>
-          </label>
+          </div>
+          {/* Colonne historique, dérivée du mode côté serveur ; le champ
+              reste enregistré pour ne pas casser le schéma du formulaire. */}
+          <input type="hidden" {...register("signe_a_domicile")} />
         </CardContent>
       </Card>
 
