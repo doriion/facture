@@ -19,7 +19,8 @@ import {
   MENTION_AUTO_ENTREPRENEUR,
   MENTION_DEVIS_GRATUIT,
   mentionTvaFranchise,
-  MENTION_RETRACTATION_L221_18,
+  MENTION_DEVIS_RECU_AVANT_TRAVAUX,
+  mentionRetractation,
   FORMULAIRE_RETRACTATION_LIGNES,
   mentionDecennale,
   mentionFluidesFrigo,
@@ -33,6 +34,7 @@ import {
   versionModeleDevis,
 } from "@/lib/devis-modele";
 import { DevisPdfSimple } from "@/components/devis/devis-pdf-simple";
+import { enseigneEmetteur, joursDeValidite } from "@/lib/devis-modele";
 import { DUREE_VALIDITE_DEVIS_DEFAUT } from "@/lib/devis-validite";
 import { computeSections } from "@/lib/sections";
 import { mentionAcompte } from "@/lib/devis-mentions";
@@ -360,9 +362,14 @@ export function DevisPdfHistorique({
       assureur: profil?.assureur_decennale,
       assureurAdresse: profil?.assureur_decennale_adresse,
       zone: profil?.zone_couverture_decennale,
+      valideJusquau: profil?.decennale_valide_jusquau,
+      dateDocument: devis.date_emission,
     }),
     fluides: isClimPac
-      ? mentionFluidesFrigo(profil?.num_attestation_fluides_frigo)
+      ? mentionFluidesFrigo(profil?.num_attestation_fluides_frigo, {
+          valideJusquau: profil?.fluides_valide_jusquau,
+          dateDocument: devis.date_emission,
+        })
       : null,
     rge: isClimPac ? mentionRgeQualipac(profil?.num_rge_qualipac) : null,
     rm: mentionRm(profil?.num_rm),
@@ -376,20 +383,32 @@ export function DevisPdfHistorique({
         : null,
   };
 
-  const entrepriseNom =
-    profil?.nom_commercial ||
-    [profil?.prenom, profil?.nom].filter(Boolean).join(" ") ||
-    "Auto-entrepreneur";
+  // Raison + « EI » (obligatoire pour l'entrepreneur individuel), même
+  // règle que la facture et le devis simple.
+  const entrepriseNom = enseigneEmetteur(profil);
 
-  // Validité en jours (entre émission et validité)
+  // Validité en jours (entre émission et validité) — jamais négative
   const validiteJours =
-    devis.date_emission && devis.date_validite
-      ? Math.round(
-          (new Date(devis.date_validite).getTime() -
-            new Date(devis.date_emission).getTime()) /
-            (24 * 3600 * 1000),
-        )
-      : DUREE_VALIDITE_DEVIS_DEFAUT;
+    joursDeValidite(devis.date_emission, devis.date_validite) ?? DUREE_VALIDITE_DEVIS_DEFAUT;
+
+  // Rétractation selon le mode de conclusion (hors établissement ou à
+  // distance) ; les devis antérieurs à la colonne gardent signe_a_domicile.
+  const modeConclusion =
+    (devis as { mode_conclusion?: string | null }).mode_conclusion ??
+    (devis.signe_a_domicile ? "hors_etablissement" : "etablissement");
+  const texteRetractation = mentionRetractation(modeConclusion);
+  const adresseChantier = (devis as { adresse_chantier?: string | null }).adresse_chantier ?? null;
+
+  // Pied de page : une mention par ligne, réserve de page calculée sur
+  // ce qui est réellement imprimé.
+  const lignesPied = [
+    mentions.rm,
+    mentions.decennale,
+    mentions.fluides,
+    mentions.rge,
+    mentions.mediateur,
+  ].filter((m): m is string => Boolean(m));
+  const reservePied = 40 + lignesPied.reduce((h, m) => h + (m.length > 110 ? 22 : 11), 0);
 
   return (
     <Document
@@ -397,7 +416,7 @@ export function DevisPdfHistorique({
       author={entrepriseNom}
       creator="Facture AE"
     >
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { paddingBottom: reservePied }]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.brand}>
@@ -473,6 +492,9 @@ export function DevisPdfHistorique({
               <Text style={{ marginTop: 4 }}>
                 SIRET : {formatSiret(client.siret)}
               </Text>
+            )}
+            {adresseChantier && (
+              <Text style={{ marginTop: 4 }}>Lieu des travaux : {adresseChantier}</Text>
             )}
           </View>
         </View>
@@ -772,6 +794,7 @@ export function DevisPdfHistorique({
                 </Text>
               </>
             )}
+            <Text style={styles.signatureMention}>{MENTION_DEVIS_RECU_AVANT_TRAVAUX}</Text>
           </View>
           <View style={styles.signatureCell}>
             <Text style={styles.signatureTitle}>Émetteur</Text>
@@ -782,13 +805,13 @@ export function DevisPdfHistorique({
           </View>
         </View>
 
-        {/* Droit de rétractation (devis signé au domicile du client) */}
-        {devis.signe_a_domicile && (
+        {/* Droit de rétractation (hors établissement ou à distance) */}
+        {texteRetractation && (
           <View style={styles.encadreDashed} wrap={false}>
             <Text style={styles.encadreTitle}>
               Droit de rétractation (art. L221-18 du Code de la consommation)
             </Text>
-            <Text style={{ fontSize: 8.5 }}>{MENTION_RETRACTATION_L221_18}</Text>
+            <Text style={{ fontSize: 8.5 }}>{texteRetractation}</Text>
             <View
               style={{
                 marginTop: 8,
@@ -814,21 +837,11 @@ export function DevisPdfHistorique({
 
         {/* Pied de page */}
         <View style={styles.footer} fixed>
-          {mentions.rm && (
-            <Text style={styles.footerLine}>{mentions.rm}</Text>
-          )}
-          {mentions.decennale && (
-            <Text style={styles.footerLine}>{mentions.decennale}</Text>
-          )}
-          {mentions.fluides && (
-            <Text style={styles.footerLine}>{mentions.fluides}</Text>
-          )}
-          {mentions.rge && (
-            <Text style={styles.footerLine}>{mentions.rge}</Text>
-          )}
-          {mentions.mediateur && (
-            <Text style={styles.footerLine}>{mentions.mediateur}</Text>
-          )}
+          {lignesPied.map((m, i) => (
+            <Text key={i} style={styles.footerLine}>
+              {m}
+            </Text>
+          ))}
         </View>
 
         <Text

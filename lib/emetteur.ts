@@ -45,17 +45,38 @@ export const CHAMPS_EMETTEUR = [
   "assujetti_tva",
 ] as const;
 
+/**
+ * Champs ajoutés au snapshot le 19/09/2026 (version 2) : pied de page
+ * (pénalités, escompte, médiateur), RIB et validités d'attestations.
+ * Modifier ces réglages réécrivait le pied de page et le RIB de
+ * factures déjà envoyées.
+ */
+export const CHAMPS_EMETTEUR_V2 = [
+  "penalites_retard_text",
+  "escompte_text",
+  "mediateur_nom",
+  "mediateur_adresse",
+  "mediateur_site_web",
+  "iban",
+  "bic",
+  "banque_nom",
+  "decennale_valide_jusquau",
+  "fluides_valide_jusquau",
+] as const;
+
+export const VERSION_SNAPSHOT_EMETTEUR = 2;
+
 export type EmetteurSnapshot = Partial<
-  Pick<Profil, (typeof CHAMPS_EMETTEUR)[number]>
->;
+  Pick<Profil, (typeof CHAMPS_EMETTEUR)[number] | (typeof CHAMPS_EMETTEUR_V2)[number]>
+> & { _version?: number };
 
 /** Extrait le snapshot émetteur du profil courant (clés null omises). */
 export function buildEmetteurSnapshot(
   profil: Profil | null,
 ): EmetteurSnapshot | null {
   if (!profil) return null;
-  const snapshot: Record<string, unknown> = {};
-  for (const champ of CHAMPS_EMETTEUR) {
+  const snapshot: Record<string, unknown> = { _version: VERSION_SNAPSHOT_EMETTEUR };
+  for (const champ of [...CHAMPS_EMETTEUR, ...CHAMPS_EMETTEUR_V2]) {
     const v = profil[champ];
     if (v !== null && v !== undefined && v !== "") snapshot[champ] = v;
   }
@@ -80,6 +101,14 @@ export function profilEffectif(
   // champ rempli APRÈS l'émission fuiterait dans un document déjà émis.
   for (const champ of CHAMPS_EMETTEUR) {
     merged[champ] = (snapshot[champ] as unknown) ?? null;
+  }
+  // Champs de la version 2 : autorité du snapshot seulement s'il a été
+  // pris avec eux ; un snapshot plus ancien laisse le profil courant
+  // (sinon le RIB disparaîtrait des factures déjà émises).
+  if ((snapshot._version ?? 1) >= VERSION_SNAPSHOT_EMETTEUR) {
+    for (const champ of CHAMPS_EMETTEUR_V2) {
+      merged[champ] = (snapshot[champ] as unknown) ?? null;
+    }
   }
   return merged as Profil;
 }

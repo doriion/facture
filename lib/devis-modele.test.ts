@@ -124,27 +124,44 @@ describe("mentionsReglementairesDevis", () => {
 });
 
 describe("ligneePiedDePage", () => {
-  it("SIRET et assurance sur une seule ligne", () => {
+  it("SIRET, APE, qualité et décennale complète sur une ligne", () => {
     expect(
       ligneePiedDePage({
         siret: "12345678901234",
+        code_ape: "4322B",
         num_assurance_decennale: "DEC-7781",
         assureur_decennale: "ERGO France",
+        assureur_decennale_adresse: "Paris",
+        zone_couverture_decennale: "Isère",
       }),
     ).toBe(
-      "SIRET 123 456 789 01234 — Assurance décennale ERGO France n° DEC-7781",
+      "SIRET 123 456 789 01234 — APE 4322B — Auto-entrepreneur — Entreprise individuelle — Assurance décennale n° DEC-7781 souscrite auprès de ERGO France (Paris), couvrant le territoire : Isère",
     );
   });
 
-  it("se réduit quand une partie manque, sans rien inventer", () => {
+  it("se réduit quand une partie manque, sans rien inventer (ni zone)", () => {
     expect(ligneePiedDePage({ siret: "12345678901234" })).toBe(
-      "SIRET 123 456 789 01234",
+      "SIRET 123 456 789 01234 — Auto-entrepreneur — Entreprise individuelle",
     );
     expect(ligneePiedDePage({ num_assurance_decennale: "DEC-7781" })).toBe(
-      "Assurance décennale n° DEC-7781",
+      "Auto-entrepreneur — Entreprise individuelle — Assurance décennale n° DEC-7781",
     );
-    expect(ligneePiedDePage(null)).toBe("");
-    expect(ligneePiedDePage({})).toBe("");
+    expect(
+      ligneePiedDePage({ num_assurance_decennale: "DEC-7781", assureur_decennale: "ERGO" }),
+    ).not.toMatch(/territoire/);
+  });
+
+  it("décennale expirée à la date du document : non imprimée", () => {
+    expect(
+      ligneePiedDePage(
+        {
+          num_assurance_decennale: "DEC-7781",
+          assureur_decennale: "ERGO",
+          decennale_valide_jusquau: "2026-01-01",
+        },
+        "2026-09-19",
+      ),
+    ).toBe("Auto-entrepreneur — Entreprise individuelle");
   });
 
   it("tient sur une seule ligne (aucun retour chariot)", () => {

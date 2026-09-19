@@ -189,8 +189,11 @@ export async function createFactureAction(
       client_id: v.client_id,
       date_emission: v.date_emission,
       date_echeance: v.date_echeance,
-      date_prestation: v.date_prestation || null,
+      // Date de la prestation : mention obligatoire de la facture ; à
+      // défaut de saisie, la date d'émission.
+      date_prestation: v.date_prestation || v.date_emission,
       date_prestation_fin: v.date_prestation_fin || null,
+      adresse_chantier: v.adresse_chantier || null,
       type_activite: v.type_activite,
       statut: "brouillon",
       total_ht,
@@ -313,8 +316,9 @@ export async function updateFactureAction(
       client_id: v.client_id,
       date_emission: v.date_emission,
       date_echeance: v.date_echeance,
-      date_prestation: v.date_prestation || null,
+      date_prestation: v.date_prestation || v.date_emission,
       date_prestation_fin: v.date_prestation_fin || null,
+      adresse_chantier: v.adresse_chantier || null,
       type_activite: v.type_activite,
       total_ht,
       conditions_paiement: v.conditions_paiement || null,

@@ -157,6 +157,7 @@ export function FactureForm({
       date_prestation_fin: base?.date_prestation_fin ?? "",
       conditions_paiement:
         base?.conditions_paiement ?? defaultConditionsPaiement ?? "",
+      adresse_chantier: base?.adresse_chantier ?? "",
       notes: base?.notes ?? "",
       exclure_relances_auto: base?.exclure_relances_auto ?? false,
       lignes: baseLignes,
@@ -332,6 +333,15 @@ export function FactureForm({
                 {errors.date_echeance.message}
               </p>
             )}
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label htmlFor="adresse_chantier">Adresse du chantier (si différente du client)</Label>
+            <Input
+              id="adresse_chantier"
+              placeholder="Ex : 12 rue des Alpes, 38000 Grenoble"
+              autoComplete="off"
+              {...register("adresse_chantier")}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="date_prestation">

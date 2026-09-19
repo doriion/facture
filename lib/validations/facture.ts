@@ -135,6 +135,7 @@ export const factureSchema = z.object({
   date_prestation: z.string().optional().or(z.literal("")),
   date_prestation_fin: z.string().optional().or(z.literal("")),
   conditions_paiement: z.string().trim().max(500).optional().or(z.literal("")),
+  adresse_chantier: z.string().trim().max(300).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   // Opt-out des relances automatiques (client à relancer de vive voix)
   exclure_relances_auto: z.boolean().default(false),
@@ -177,12 +178,15 @@ export type FactureFormValues = z.output<typeof factureSchema>;
  * Arrondi au centime.
  */
 export function computeTotalHt(
-  lignes: Array<{ quantite: number; prix_unitaire_ht: number }>,
+  lignes: Array<{ quantite: number; prix_unitaire_ht: number; type?: string | null }>,
 ): number {
   // Somme des totaux de ligne ARRONDIS (ceux qui sont imprimés) : en
   // sommant les produits bruts, le total pouvait différer d'un centime
-  // de l'addition des lignes du PDF (ex. 3 × 1,005 €).
-  const total = lignes.reduce((sum, l) => sum + computeLigneTotalHt(l), 0);
+  // de l'addition des lignes du PDF (ex. 3 × 1,005 €). Les lignes
+  // « titre » (sections) ne portent jamais de montant.
+  const total = lignes
+    .filter((l) => l.type !== "titre")
+    .reduce((sum, l) => sum + computeLigneTotalHt(l), 0);
   return Math.round(total * 100) / 100;
 }
 

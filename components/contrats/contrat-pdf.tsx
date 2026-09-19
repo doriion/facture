@@ -8,6 +8,9 @@ import {
 } from "@react-pdf/renderer";
 
 import { formatDateFr, formatEuros, formatSiret } from "@/lib/format";
+import { dateParis } from "@/lib/dates";
+import { enseigneEmetteur } from "@/lib/devis-modele";
+import { mentionDecennale } from "@/lib/legal-text";
 import {
   blocsVisibles,
   blocVisible,
@@ -21,7 +24,6 @@ import {
   adresseAffichagePrestataire,
   equipementsDe,
   mentionTvaContrat,
-  nomAffichagePrestataire,
   valeursTemplate,
   type ClientSnapshot,
   type ContratRow,
@@ -233,9 +235,21 @@ export function ContratPdf({
   const equipements = equipementsDe(contrat);
   const net = netAPayer(Number(contrat.redevance), Number(contrat.remise));
 
-  const nomPresta = nomAffichagePrestataire(prestataire);
+  // Raison + « EI » : même règle que les factures et devis (le corps du
+  // template reste inchangé).
+  const nomPresta = enseigneEmetteur(prestataire);
   const adressePresta = adresseAffichagePrestataire(prestataire);
   const footerLigne1 = `${nomPresta} — Entreprise individuelle — ${adressePresta || "……"}`;
+  // Décennale complète (assureur, coordonnées, zone si renseignée), déjà
+  // figée dans le snapshot mais jamais imprimée jusqu'ici.
+  const footerLigne3 = mentionDecennale({
+    numero: prestataire.num_assurance_decennale,
+    assureur: prestataire.assureur_decennale,
+    assureurAdresse: prestataire.assureur_decennale_adresse,
+    zone: prestataire.zone_couverture_decennale,
+    valideJusquau: prestataire.decennale_valide_jusquau,
+    dateDocument: contrat.signed_at ? dateParis(contrat.signed_at) : null,
+  });
   // Mention de franchise : décidée par mentionTvaContrat (version du
   // contrat, puis date) — jamais écrite en dur ici, et toujours
   // identique à celle du corps du texte.
@@ -536,7 +550,7 @@ export function ContratPdf({
                 <Text style={styles.petit}>
                   Signé électroniquement
                   {contrat.signed_at
-                    ? ` le ${formatDateFr(contrat.signed_at.slice(0, 10))}`
+                    ? ` le ${formatDateFr(dateParis(contrat.signed_at))}`
                     : ""}
                   {" "}— « Lu et approuvé, bon pour accord »
                 </Text>
@@ -650,6 +664,7 @@ export function ContratPdf({
         <View style={styles.footer} fixed>
           <Text>{footerLigne1}</Text>
           <Text>{footerLigne2}</Text>
+          {footerLigne3 && <Text>{footerLigne3}</Text>}
         </View>
         <Text
           style={styles.pageNumber}

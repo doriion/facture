@@ -692,6 +692,8 @@ export type Database = {
           acompte_pct: number | null;
           acompte_montant: number | null;
           signe_a_domicile: boolean;
+          mode_conclusion: string;
+          adresse_chantier: string | null;
           created_at: string;
           date_debut_travaux: string | null;
           date_emission: string;
@@ -724,6 +726,8 @@ export type Database = {
           acompte_pct?: number | null;
           acompte_montant?: number | null;
           signe_a_domicile?: boolean;
+          mode_conclusion?: string;
+          adresse_chantier?: string | null;
           created_at?: string;
           date_debut_travaux?: string | null;
           date_emission?: string;
@@ -756,6 +760,8 @@ export type Database = {
           acompte_pct?: number | null;
           acompte_montant?: number | null;
           signe_a_domicile?: boolean;
+          mode_conclusion?: string;
+          adresse_chantier?: string | null;
           created_at?: string;
           date_debut_travaux?: string | null;
           date_emission?: string;
@@ -865,6 +871,8 @@ export type Database = {
           date_emission: string;
           date_prestation: string | null;
           date_prestation_fin: string | null;
+          adresse_chantier: string | null;
+          devis_id: string | null;
           date_annulation: string | null;
           motif_annulation: string | null;
           type_facture: string;
@@ -893,6 +901,8 @@ export type Database = {
           date_emission?: string;
           date_prestation?: string | null;
           date_prestation_fin?: string | null;
+          adresse_chantier?: string | null;
+          devis_id?: string | null;
           date_annulation?: string | null;
           motif_annulation?: string | null;
           type_facture?: string;
@@ -921,6 +931,8 @@ export type Database = {
           date_emission?: string;
           date_prestation?: string | null;
           date_prestation_fin?: string | null;
+          adresse_chantier?: string | null;
+          devis_id?: string | null;
           date_annulation?: string | null;
           motif_annulation?: string | null;
           type_facture?: string;

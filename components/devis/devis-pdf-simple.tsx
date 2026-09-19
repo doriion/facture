@@ -17,7 +17,8 @@ import {
   LABELS_TYPE_ACTIVITE,
   MENTION_DEVIS_GRATUIT,
   mentionTvaFranchise,
-  MENTION_RETRACTATION_L221_18,
+  MENTION_DEVIS_RECU_AVANT_TRAVAUX,
+  mentionRetractation,
   FORMULAIRE_RETRACTATION_LIGNES,
 } from "@/lib/legal-text";
 import { profilEffectif } from "@/lib/emetteur";
@@ -28,7 +29,7 @@ import {
   joursDeValidite,
   ligneAcompte,
   ligneePiedDePage,
-  mentionsReglementairesDevis,
+  lignesReglementairesDevis,
 } from "@/lib/devis-modele";
 import type { Database } from "@/types/database";
 import type { LignePdf } from "@/lib/pdf-payload";
@@ -275,13 +276,24 @@ export function DevisPdfSimple({
 
   const enseigne = enseigneEmetteur(profil);
   const coordonnees = coordonneesEmetteur(profil);
-  const pied = ligneePiedDePage(profil);
+  const pied = ligneePiedDePage(profil, devis.date_emission);
   // Mentions imposées par la loi selon l'activité et le client
-  // (fluides, RGE, RM, médiateur) : deuxième ligne du pied de page.
-  const piedReglementaire = mentionsReglementairesDevis(profil, {
-    typeActivite: devis.type_activite,
-    typeClient: client?.type,
-  });
+  // (fluides, RGE, RM, médiateur) : une par ligne sous le pied, et une
+  // réserve de page calculée sur ce qui est imprimé.
+  const lignesPied = [
+    pied || null,
+    ...lignesReglementairesDevis(profil, {
+      typeActivite: devis.type_activite,
+      typeClient: client?.type,
+      dateDocument: devis.date_emission,
+    }),
+  ].filter((m): m is string => Boolean(m));
+  const reservePied = 30 + lignesPied.reduce((h, m) => h + (m.length > 120 ? 20 : 10), 0);
+  const modeConclusion =
+    (devis as { mode_conclusion?: string | null }).mode_conclusion ??
+    (devis.signe_a_domicile ? "hors_etablissement" : "etablissement");
+  const texteRetractation = mentionRetractation(modeConclusion);
+  const adresseChantier = (devis as { adresse_chantier?: string | null }).adresse_chantier ?? null;
   const validiteJours = joursDeValidite(devis.date_emission, devis.date_validite);
   const totalHt = Number(devis.total_ht);
   // null quand aucun acompte n'est renseigné : rien n'est imprimé,
@@ -299,7 +311,7 @@ export function DevisPdfSimple({
       author={enseigne}
       creator="Facture AE"
     >
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { paddingBottom: reservePied }]}>
         {/* En-tête : identité + coordonnées, puis le devis à droite */}
         <View style={styles.header}>
           <View style={styles.brand}>
@@ -355,6 +367,11 @@ export function DevisPdfSimple({
           {client?.siret && (
             <Text style={[styles.clientLigne, { marginTop: 3 }]}>
               SIRET : {formatSiret(client.siret)}
+            </Text>
+          )}
+          {adresseChantier && (
+            <Text style={[styles.clientLigne, { marginTop: 3 }]}>
+              Lieu des travaux : {adresseChantier}
             </Text>
           )}
         </View>
@@ -464,6 +481,7 @@ export function DevisPdfSimple({
               Date et signature du client, précédées de la mention
               « Bon pour accord ».
             </Text>
+            <Text style={styles.accordMention}>{MENTION_DEVIS_RECU_AVANT_TRAVAUX}</Text>
             {signatureData ? (
               <>
                 <Text style={styles.accordDate}>
@@ -490,12 +508,12 @@ export function DevisPdfSimple({
 
         {/* Rétractation : obligation légale quand le devis est signé au
             domicile du client, pas une condition commerciale. */}
-        {devis.signe_a_domicile && (
+        {texteRetractation && (
           <View style={styles.encadreDashed} wrap={false}>
             <Text style={styles.ribTitre}>
               Droit de rétractation (art. L221-18 du Code de la consommation)
             </Text>
-            <Text style={{ fontSize: 8 }}>{MENTION_RETRACTATION_L221_18}</Text>
+            <Text style={{ fontSize: 8 }}>{texteRetractation}</Text>
             <View
               style={{
                 marginTop: 6,
@@ -522,12 +540,13 @@ export function DevisPdfSimple({
         {/* Pied de page discret : SIRET + assurance sur une ligne,
             mentions réglementaires (fluides, RGE, RM, médiateur) sur
             une seconde, seulement quand elles s'appliquent */}
-        {(pied || piedReglementaire) && (
+        {lignesPied.length > 0 && (
           <View style={styles.footer} fixed>
-            {pied ? <Text>{pied}</Text> : null}
-            {piedReglementaire ? (
-              <Text style={{ marginTop: 2 }}>{piedReglementaire}</Text>
-            ) : null}
+            {lignesPied.map((m, i) => (
+              <Text key={i} style={i > 0 ? { marginTop: 2 } : undefined}>
+                {m}
+              </Text>
+            ))}
           </View>
         )}
 

@@ -10,6 +10,8 @@
 
 import { formatEuros, formatSiret } from "@/lib/format";
 import {
+  MENTION_AUTO_ENTREPRENEUR,
+  mentionDecennale,
   mentionFluidesFrigo,
   mentionMediateur,
   mentionRgeQualipac,
@@ -40,6 +42,11 @@ type ProfilEntete = {
   siret?: string | null;
   num_assurance_decennale?: string | null;
   assureur_decennale?: string | null;
+  assureur_decennale_adresse?: string | null;
+  zone_couverture_decennale?: string | null;
+  decennale_valide_jusquau?: string | null;
+  fluides_valide_jusquau?: string | null;
+  code_ape?: string | null;
   num_attestation_fluides_frigo?: string | null;
   num_rge_qualipac?: string | null;
   num_rm?: string | null;
@@ -85,17 +92,29 @@ export function coordonneesEmetteur(profil: ProfilEntete | null): string[] {
  * parties sont facultatives — rien d'inventé si le profil est
  * incomplet, la ligne se réduit ou disparaît.
  */
-export function ligneePiedDePage(profil: ProfilEntete | null): string {
+export function ligneePiedDePage(
+  profil: ProfilEntete | null,
+  dateDocument?: string | null,
+): string {
   const morceaux: string[] = [];
   if (profil?.siret) morceaux.push(`SIRET ${formatSiret(profil.siret)}`);
+  if (profil?.code_ape) morceaux.push(`APE ${profil.code_ape}`);
+  morceaux.push(MENTION_AUTO_ENTREPRENEUR);
 
-  if (profil?.num_assurance_decennale) {
-    const assureur = (profil.assureur_decennale || "").trim();
-    morceaux.push(
-      assureur
-        ? `Assurance décennale ${assureur} n° ${profil.num_assurance_decennale}`
-        : `Assurance décennale n° ${profil.num_assurance_decennale}`,
-    );
+  // Même mention décennale que la facture (assureur, coordonnées, zone
+  // si renseignée, rien au-delà de la validité).
+  const decennale = mentionDecennale({
+    numero: profil?.num_assurance_decennale,
+    assureur: profil?.assureur_decennale,
+    assureurAdresse: profil?.assureur_decennale_adresse,
+    zone: profil?.zone_couverture_decennale,
+    valideJusquau: profil?.decennale_valide_jusquau,
+    dateDocument,
+  });
+  if (decennale) {
+    morceaux.push(decennale.replace(/\.$/, ""));
+  } else if (profil?.num_assurance_decennale && !profil?.assureur_decennale) {
+    morceaux.push(`Assurance décennale n° ${profil.num_assurance_decennale}`);
   }
   return morceaux.join(" — ");
 }
@@ -115,13 +134,26 @@ export function ligneePiedDePage(profil: ProfilEntete | null): string {
  */
 export function mentionsReglementairesDevis(
   profil: ProfilEntete | null,
-  contexte: { typeActivite?: string | null; typeClient?: string | null },
+  contexte: { typeActivite?: string | null; typeClient?: string | null; dateDocument?: string | null },
 ): string {
+  return lignesReglementairesDevis(profil, contexte).join(" — ");
+}
+
+/** Les mêmes mentions, une par ligne (pied de page qui ne déborde plus). */
+export function lignesReglementairesDevis(
+  profil: ProfilEntete | null,
+  contexte: { typeActivite?: string | null; typeClient?: string | null; dateDocument?: string | null },
+): string[] {
   const climPac =
     contexte.typeActivite === "installation_clim" ||
     contexte.typeActivite === "installation_pac";
-  const morceaux = [
-    climPac ? mentionFluidesFrigo(profil?.num_attestation_fluides_frigo) : null,
+  return [
+    climPac
+      ? mentionFluidesFrigo(profil?.num_attestation_fluides_frigo, {
+          valideJusquau: profil?.fluides_valide_jusquau,
+          dateDocument: contexte.dateDocument,
+        })
+      : null,
     climPac ? mentionRgeQualipac(profil?.num_rge_qualipac) : null,
     mentionRm(profil?.num_rm),
     contexte.typeClient === "particulier"
@@ -132,7 +164,6 @@ export function mentionsReglementairesDevis(
         })
       : null,
   ].filter((m): m is string => Boolean(m));
-  return morceaux.join(" — ");
 }
 
 /**
