@@ -93,7 +93,66 @@ export function ProduitsTable({ produits }: { produits: Produit[] }) {
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      {/* Téléphone : cartes (le tableau à 6-9 colonnes débordait). */}
+      <div className="space-y-2 md:hidden">
+        {produits.map((p) => {
+          const marge = afficherCouts ? margeLigne({ prix_unitaire_ht: Number(p.prix_ht), quantite: 1, prix_achat_ttc_unitaire: p.prix_achat_ttc ?? null }) : null;
+          return (
+            <div key={p.id} className="rounded-lg border bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold">{p.designation}</p>
+                  {p.description && (
+                    <p className="line-clamp-2 text-xs text-muted-foreground">{p.description}</p>
+                  )}
+                </div>
+                <span className="shrink-0 text-right font-semibold tabular-nums">
+                  {formatEuros(Number(p.prix_ht))}
+                  <span className="block text-xs font-normal text-muted-foreground">/ {p.unite}</span>
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Badge variant={categorieVariant[p.categorie] ?? "default"}>
+                  {CATEGORIES_PRESTATIONS[p.categorie as keyof typeof CATEGORIES_PRESTATIONS] ?? p.categorie}
+                </Badge>
+                {p.actif ? <Badge variant="success">Actif</Badge> : <Badge variant="outline">Inactif</Badge>}
+                {afficherCouts && p.prix_achat_ttc !== null && (
+                  <span className="text-xs text-muted-foreground">
+                    Achat {formatEuros(Number(p.prix_achat_ttc))}
+                    {marge && marge.margeEuros !== null ? ` · marge ${formatEuros(marge.margeEuros)}` : ""}
+                  </span>
+                )}
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t pt-2">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDuplicate(p.id)}
+                    disabled={duplicatingId === p.id}
+                    aria-label={`Dupliquer ${p.designation}`}
+                  >
+                    <Copy className="size-4" />
+                    Dupliquer
+                  </Button>
+                  <ProduitFormDialog
+                    produit={p}
+                    trigger={
+                      <Button variant="ghost" size="sm" aria-label={`Modifier ${p.designation}`}>
+                        <Pencil className="size-4" />
+                        Modifier
+                      </Button>
+                    }
+                  />
+                </div>
+                <DeleteProduitDialog produitId={p.id} designation={p.designation} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-lg border bg-card md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -152,13 +211,14 @@ export function ProduitsTable({ produits }: { produits: Produit[] }) {
                     onClick={() => onDuplicate(p.id)}
                     disabled={duplicatingId === p.id}
                     title="Dupliquer"
+                    aria-label={`Dupliquer ${p.designation}`}
                   >
                     <Copy className="size-4" />
                   </Button>
                   <ProduitFormDialog
                     produit={p}
                     trigger={
-                      <Button variant="ghost" size="icon" title="Modifier">
+                      <Button variant="ghost" size="icon" title="Modifier" aria-label={`Modifier ${p.designation}`}>
                         <Pencil className="size-4" />
                       </Button>
                     }

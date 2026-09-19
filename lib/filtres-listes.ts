@@ -124,3 +124,22 @@ export function parametresFiltres(f: Record<string, string | undefined>): string
   const s = p.toString();
   return s ? `?${s}` : "";
 }
+
+export type FiltresProduits = { search?: string; categorie?: string };
+type ProduitFiltrable = {
+  designation: string;
+  description?: string | null;
+  categorie: string;
+};
+
+/** Catalogue : recherche instantanée (désignation, description) + catégorie. */
+export function filtrerProduits<T extends ProduitFiltrable>(
+  produits: T[],
+  f: FiltresProduits,
+): T[] {
+  return produits.filter((p) => {
+    if (f.categorie && f.categorie !== "toutes" && p.categorie !== f.categorie) return false;
+    if (f.search && !contient([p.designation, p.description], f.search)) return false;
+    return true;
+  });
+}

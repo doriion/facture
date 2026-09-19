@@ -117,10 +117,27 @@ export function LignesEditor<T extends FieldValues>({
   /** Barème d'entretien : affiche « Calculer un entretien » (devis). */
   baremeEntretien?: BaremeEntretien | null;
 }) {
-  const { fields, append, remove } = useFieldArray<T>({
+  const { fields, append, remove, insert } = useFieldArray<T>({
     control,
     name: fieldName as ArrayPath<T>,
   });
+
+  // Suppression d'une ligne : immédiate, mais annulable (sur mobile la
+  // corbeille est à côté du prix, un tap glissé effaçait une ligne).
+  function supprimerLigne(index: number, libelle: string) {
+    const valeurs = watch(fieldName as Path<T>) as unknown as unknown[];
+    const copie = valeurs?.[index];
+    remove(index);
+    toast(libelle, {
+      duration: 6000,
+      action: {
+        label: "Annuler",
+        onClick: () => {
+          if (copie !== undefined) insert(index, copie as never);
+        },
+      },
+    });
+  }
 
   // Catalogue enrichi en cours de saisie : une prestation ajoutée
   // depuis une ligne devient immédiatement proposable sur les lignes
@@ -387,7 +404,7 @@ export function LignesEditor<T extends FieldValues>({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      onClick={() => remove(index)}
+                      onClick={() => supprimerLigne(index, "Titre supprimé")}
                       title="Supprimer le titre"
                       className="shrink-0"
                     >
@@ -448,7 +465,7 @@ export function LignesEditor<T extends FieldValues>({
                         Défaut « Prestation » : ne changer que pour une
                         revente de matériel SANS pose. */}
                     <select
-                      className="h-8 w-full max-w-44 rounded-md border border-input bg-transparent px-2 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="h-11 w-full max-w-44 rounded-md border border-input bg-transparent px-2 text-base text-muted-foreground sm:h-8 sm:text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       aria-label="Nature URSSAF de la ligne"
                       {...register(
                         `${fieldName}.${index}.nature_fiscale` as Path<T>,
@@ -518,7 +535,7 @@ export function LignesEditor<T extends FieldValues>({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => remove(index)}
+                        onClick={() => supprimerLigne(index, "Ligne supprimée")}
                         title="Supprimer la ligne"
                         className="sm:w-9 sm:shrink-0"
                       >
@@ -712,7 +729,7 @@ export function LignesEditor<T extends FieldValues>({
               Ou depuis le catalogue
             </Label>
             <Select onValueChange={addFromCatalog} value="">
-              <SelectTrigger className="w-[320px]">
+              <SelectTrigger className="w-full sm:w-[320px]">
                 <SelectValue placeholder="Choisir une prestation…" />
               </SelectTrigger>
               <SelectContent>

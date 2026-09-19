@@ -346,17 +346,38 @@ export function DevisActions({
       )}
 
       {statut === "accepte" && !factureId && (
-        <Button
-          onClick={onConvertir}
-          disabled={pending === "convertir"}
-        >
-          {pending === "convertir" ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <FileText className="size-4" />
-          )}
-          Convertir en facture
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button disabled={pending === "convertir"}>
+              {pending === "convertir" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FileText className="size-4" />
+              )}
+              Convertir en facture
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Créer la facture depuis ce devis ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Une facture en brouillon sera créée avec le contenu du devis et
+                un numéro lui sera attribué. Le devis restera lié à cette facture.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Retour</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  void onConvertir();
+                }}
+              >
+                Créer la facture
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
       {(statut === "refuse" || statut === "expire") && (

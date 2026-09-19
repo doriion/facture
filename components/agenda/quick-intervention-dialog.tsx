@@ -8,6 +8,8 @@ import { Loader2, Plus, Repeat, Save, Trash2, ExternalLink } from "lucide-react"
 import Link from "next/link";
 import { toast } from "sonner";
 
+import { appelerAction } from "@/lib/appel-action";
+
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { SelecteurCouleur } from "@/components/agenda/selecteur-couleur";
 import { setCouleurEvenementAction } from "@/lib/actions/agenda-couleurs";
@@ -276,7 +278,7 @@ export function QuickInterventionDialog({
     onOpenChange(false);
 
     const result = editIntervention
-      ? await quickEditInterventionAction(
+      ? await appelerAction(() => quickEditInterventionAction(
           editIntervention.id,
           {
             client_id: values.client_id || null,
@@ -289,10 +291,10 @@ export function QuickInterventionDialog({
             a_facturer: values.a_facturer ?? true,
           },
           surLesSuivantes ? "suivantes" : "seule",
-        )
+        ))
       : recurrence
-        ? await createInterventionSerieAction(values, recurrence)
-        : await createInterventionAction(values);
+        ? await appelerAction(() => createInterventionSerieAction(values, recurrence))
+        : await appelerAction(() => createInterventionAction(values));
     setSubmitting(false);
 
     if (result.ok) {
@@ -310,7 +312,7 @@ export function QuickInterventionDialog({
           : [];
       for (const cible of ids) {
         onCouleurOptimiste?.(`intervention:${cible}`, couleur);
-        await setCouleurEvenementAction(`intervention:${cible}`, couleur);
+        await appelerAction(() => setCouleurEvenementAction(`intervention:${cible}`, couleur));
       }
       toast.success(
         isEdit
@@ -344,10 +346,10 @@ export function QuickInterventionDialog({
         : { type: "suppression", id: editIntervention.id },
     );
     onOpenChange(false);
-    const result = await deleteInterventionAction(
+    const result = await appelerAction(() => deleteInterventionAction(
       editIntervention.id,
       surLesSuivantes ? "suivantes" : "seule",
-    );
+    ));
     setSubmitting(false);
     if (result.ok) {
       const { supprimees, ids } = result.data;
@@ -378,7 +380,7 @@ export function QuickInterventionDialog({
                 },
                 clientNom,
               });
-              const r = await restaurerInterventionAction(ids);
+              const r = await appelerAction(() => restaurerInterventionAction(ids));
               if (!r.ok) {
                 retour?.();
                 toast.error("Restauration refusée", { description: r.error });

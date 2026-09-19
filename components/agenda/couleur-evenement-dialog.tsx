@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
+import { appelerAction } from "@/lib/appel-action";
+
 import { setCouleurEvenementAction } from "@/lib/actions/agenda-couleurs";
 import { SelecteurCouleur } from "@/components/agenda/selecteur-couleur";
 import { Button } from "@/components/ui/button";
@@ -52,7 +54,7 @@ export function CouleurEvenementDialog({
     setPending(true);
     const annuler = onOptimiste?.(cible.cle, hex);
     onClose();
-    const res = await setCouleurEvenementAction(cible.cle, hex);
+    const res = await appelerAction(() => setCouleurEvenementAction(cible.cle, hex));
     setPending(false);
     if (!res.ok) {
       annuler?.();

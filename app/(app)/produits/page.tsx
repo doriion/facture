@@ -1,27 +1,24 @@
+import { Plus } from "lucide-react";
+
 import { listProduits } from "@/lib/actions/produits";
 import { ProduitFormDialog } from "@/components/produits/produit-form-dialog";
-import { ProduitsTable } from "@/components/produits/produits-table";
-import { ProduitsToolbar } from "@/components/produits/produits-toolbar";
+import { ProduitsListe } from "@/components/produits/produits-liste";
+import { MobileActionBar } from "@/components/mobile-action-bar";
+import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Catalogue — NG Gestion" };
 
 /**
  * Catalogue de prestations réutilisables (plomberie, clim, PAC, entretien, dépannage).
+ * Tout est chargé une fois ; recherche et catégorie filtrent sur place.
  */
 export default async function ProduitsPage({
   searchParams,
 }: {
   searchParams: { search?: string; categorie?: string };
 }) {
-  const search = searchParams.search ?? "";
-  const categorie = searchParams.categorie ?? "";
-
   // En Phase 2 on n'expose pas le filtre actif/inactif ; on inclut tout.
-  const produits = await listProduits({
-    search,
-    categorie,
-    inclureInactifs: true,
-  });
+  const produits = await listProduits({ inclureInactifs: true });
 
   return (
     <div className="space-y-6">
@@ -32,15 +29,26 @@ export default async function ProduitsPage({
             Prestations et tarifs réutilisables sur vos factures et devis.
           </p>
         </div>
-        <ProduitFormDialog />
+        <div className="max-md:hidden">
+          <ProduitFormDialog />
+        </div>
       </div>
 
-      <ProduitsToolbar
-        initialSearch={search}
-        initialCategorie={categorie}
+      <ProduitsListe
+        produits={produits}
+        initial={{ search: searchParams.search ?? "", categorie: searchParams.categorie ?? "" }}
       />
 
-      <ProduitsTable produits={produits} />
+      <MobileActionBar>
+        <ProduitFormDialog
+          trigger={
+            <Button size="lg">
+              <Plus className="size-4" />
+              Nouvelle prestation
+            </Button>
+          }
+        />
+      </MobileActionBar>
     </div>
   );
 }

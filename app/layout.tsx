@@ -45,7 +45,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: PRINCIPAL,
+  // Couleur de la barre du navigateur / de la PWA selon le thème du
+  // système : un bandeau bleu vif au-dessus d'une app sombre jurait.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: PRINCIPAL },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1115" },
+  ],
   // Nécessaire pour que env(safe-area-inset-*) soit renseigné en PWA
   // iPhone (encoche / barre home) — les paddings correspondants sont
   // appliqués dans le layout (app) et les barres fixes.

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, ChevronDown, ChevronRight, Link2, Loader2, Receipt, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
+import { appelerAction } from "@/lib/appel-action";
+
 import type { AFacturerItem } from "@/lib/actions/agenda";
 import { setInterventionAFacturerAction } from "@/lib/actions/interventions";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
@@ -47,7 +49,7 @@ export function AFacturerPanel({
   async function rienAFacturer(it: AFacturerItem) {
     setPending(it.id);
     setRetirees((s) => new Set(s).add(it.id));
-    const res = await setInterventionAFacturerAction(it.id, false);
+    const res = await appelerAction(() => setInterventionAFacturerAction(it.id, false));
     setPending(null);
     if (!res.ok) {
       setRetirees((s) => {

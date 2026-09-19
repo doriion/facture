@@ -122,7 +122,7 @@ export function MarquerPayeeButton({
             e.stopPropagation();
             setOpen(true);
           }}
-          className="h-7 gap-1 border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+          className="h-11 gap-1 border-emerald-300 sm:h-7 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
           title="Enregistrer l'encaissement et marquer la facture payée"
         >
           <Check className="size-3.5" />

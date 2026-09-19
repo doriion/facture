@@ -149,9 +149,18 @@ export function FactureActions({
       });
       return;
     }
-    await changeStatut("annulee", "Facture annulée", motif.trim());
+    setPending("annulee");
+    const result = await setFactureStatutAction(factureId, "annulee", motif.trim());
+    setPending(null);
+    if (!result.ok) {
+      // Le dialogue reste ouvert et le motif saisi est conservé.
+      toast.error("Annulation refusée", { description: result.error });
+      return;
+    }
+    toast.success("Facture annulée");
     setAnnulerOpen(false);
     setMotif("");
+    router.refresh();
   }
 
   async function onDelete() {

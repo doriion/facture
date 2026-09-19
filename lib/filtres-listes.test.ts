@@ -79,3 +79,21 @@ describe("parametresFiltres", () => {
     expect(parametresFiltres({ search: "", statut: "" })).toBe("");
   });
 });
+
+describe("filtrerProduits", () => {
+  const produits = [
+    { designation: "Entretien chaudière gaz", description: null, categorie: "entretien" },
+    { designation: "Pose clim réversible", description: "Split mural", categorie: "installation_clim" },
+  ];
+  it("recherche sans accents ni casse, sur la description aussi", async () => {
+    const { filtrerProduits } = await import("./filtres-listes");
+    expect(filtrerProduits(produits, { search: "CHAUDIERE" })).toHaveLength(1);
+    expect(filtrerProduits(produits, { search: "split" })).toHaveLength(1);
+    expect(filtrerProduits(produits, { search: "zzz" })).toHaveLength(0);
+  });
+  it("catégorie « toutes » = pas de filtre", async () => {
+    const { filtrerProduits } = await import("./filtres-listes");
+    expect(filtrerProduits(produits, { categorie: "toutes" })).toHaveLength(2);
+    expect(filtrerProduits(produits, { categorie: "entretien" })).toHaveLength(1);
+  });
+});
