@@ -144,7 +144,7 @@ export function DevisForm({
     control,
     watch,
     setValue,
-    formState: { errors, dirtyFields },
+    formState: { errors, dirtyFields, isDirty },
   } = useForm<DevisFormInput, unknown, DevisFormValues>({
     resolver: zodResolver(devisSchema),
     defaultValues: {
@@ -710,7 +710,10 @@ export function DevisForm({
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push("/devis")}
+          onClick={() => {
+            if (isDirty && !window.confirm("Quitter sans enregistrer ? Les modifications seront perdues.")) return;
+            router.push("/devis");
+          }}
         >
           Annuler
         </Button>

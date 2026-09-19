@@ -14,9 +14,15 @@
  * jour du rendez-vous.
  *
  * Changer VERSION invalide les anciens caches à l'activation.
+ *
+ * Mise à jour : le nouveau SW ATTEND (pas de skipWaiting automatique) ;
+ * la page propose « Nouvelle version — recharger » et lui envoie
+ * SKIP_WAITING. Sans ça, un onglet ouvert gardait ses anciens scripts
+ * avec le nouveau SW : les chunks de l'ancien build n'existaient plus
+ * et « Planifier » ne s'ouvrait plus.
  */
 
-const VERSION = "v3";
+const VERSION = "v4";
 const CACHE_STATIQUE = `ng-statique-${VERSION}`;
 const CACHE_PAGES = `ng-pages-${VERSION}`;
 const PAGE_HORS_LIGNE = "/hors-ligne";
@@ -26,9 +32,12 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_PAGES)
       .then((cache) => cache.add(PAGE_HORS_LIGNE))
-      .catch(() => {})
-      .then(() => self.skipWaiting()),
+      .catch(() => {}),
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -42,6 +51,9 @@ self.addEventListener("activate", (event) => {
             .map((c) => caches.delete(c)),
         ),
       )
+      // La page hors-ligne est re-mise en cache à chaque activation :
+      // celle du build précédent référençait des scripts disparus.
+      .then(() => caches.open(CACHE_PAGES).then((cache) => cache.add(PAGE_HORS_LIGNE)).catch(() => {}))
       .then(() => self.clients.claim()),
   );
 });

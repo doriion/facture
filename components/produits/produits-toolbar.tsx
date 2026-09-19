@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -15,58 +13,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { CATEGORIES_PRESTATIONS } from "@/lib/format";
 
+export type FiltresProduitsUi = { search: string; categorie: string };
+
 export function ProduitsToolbar({
-  initialSearch,
-  initialCategorie,
+  filtres,
+  onChange,
 }: {
-  initialSearch: string;
-  initialCategorie: string;
+  filtres: FiltresProduitsUi;
+  onChange: (f: FiltresProduitsUi) => void;
 }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [search, setSearch] = useState(initialSearch);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const next = new URLSearchParams(params.toString());
-      if (search) next.set("search", search);
-      else next.delete("search");
-      router.replace(`/produits?${next.toString()}`);
-    }, 250);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
-
-  function setCategorie(c: string) {
-    const next = new URLSearchParams(params.toString());
-    if (c === "toutes") next.delete("categorie");
-    else next.set("categorie", c);
-    router.replace(`/produits?${next.toString()}`);
-  }
-
-  function clearAll() {
-    setSearch("");
-    router.replace("/produits");
-  }
-
-  const hasFilters = search || (initialCategorie && initialCategorie !== "toutes");
+  const hasFilters = Boolean(filtres.search) || (filtres.categorie && filtres.categorie !== "toutes");
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="relative flex-1 min-w-[220px]">
+      <div className="relative min-w-[220px] flex-1">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          type="search"
+          value={filtres.search}
+          onChange={(e) => onChange({ ...filtres, search: e.target.value })}
           placeholder="Rechercher (désignation, description)"
           className="pl-9"
+          aria-label="Rechercher dans le catalogue"
         />
       </div>
       <Select
-        value={initialCategorie || "toutes"}
-        onValueChange={setCategorie}
+        value={filtres.categorie || "toutes"}
+        onValueChange={(c) => onChange({ ...filtres, categorie: c === "toutes" ? "" : c })}
       >
-        <SelectTrigger className="w-[260px]">
+        <SelectTrigger className="w-full sm:w-[260px]" aria-label="Catégorie">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -79,7 +54,7 @@ export function ProduitsToolbar({
         </SelectContent>
       </Select>
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearAll}>
+        <Button variant="ghost" size="sm" onClick={() => onChange({ search: "", categorie: "" })}>
           <X className="size-4" />
           Effacer
         </Button>

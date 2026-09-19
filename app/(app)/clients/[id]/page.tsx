@@ -12,6 +12,7 @@ import { DeleteClientDialog } from "@/components/clients/delete-client-dialog";
 import { StatutBadge } from "@/components/factures/statut-badge";
 import { StatutBadgeDevis } from "@/components/devis/statut-badge";
 import { Button } from "@/components/ui/button";
+import { ActionsFiche } from "@/components/actions-fiche";
 import { adresseClient, lienAppel, lienItineraire } from "@/lib/agenda-contact";
 import {
   Card,
@@ -76,7 +77,7 @@ export default async function ClientDetailPage({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <ActionsFiche>
             <Button variant="outline" asChild>
               <Link href={`/contrats/nouveau?client=${client.id}`}>
                 <ScrollText className="size-4" />
@@ -96,7 +97,7 @@ export default async function ClientDetailPage({
               clientNom={client.nom}
               trigger={<Button variant="outline">Supprimer</Button>}
             />
-          </div>
+          </ActionsFiche>
         </div>
       </div>
 
@@ -209,7 +210,25 @@ export default async function ClientDetailPage({
               Aucune facture pour ce client.
             </p>
           ) : (
-            <Table>
+            <>
+            {/* Téléphone : cartes (le tableau débordait) */}
+            <ul className="divide-y md:hidden">
+              {factures.map((f) => (
+                <li key={f.id}>
+                  <Link href={`/factures/${f.id}`} className="flex items-center justify-between gap-3 py-3">
+                    <span className="min-w-0">
+                      <span className="block font-mono text-sm font-medium">{f.numero}</span>
+                      <span className="block text-xs text-muted-foreground">{formatDateFr(f.date_emission)}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <StatutBadge statut={statutAffichageFacture(f, aujourdhuiParis())} />
+                      <span className="tabular-nums">{formatEuros(Number(f.total_ht))}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Table className="max-md:hidden">
               <TableHeader>
                 <TableRow>
                   <TableHead>Numéro</TableHead>
@@ -243,6 +262,7 @@ export default async function ClientDetailPage({
                 })}
               </TableBody>
             </Table>
+            </>
           )}
         </CardContent>
       </Card>
@@ -263,7 +283,26 @@ export default async function ClientDetailPage({
               Aucun devis pour ce client.
             </p>
           ) : (
-            <Table>
+            <>
+            <ul className="divide-y md:hidden">
+              {devis.map((d) => (
+                <li key={d.id}>
+                  <Link href={`/devis/${d.id}`} className="flex items-center justify-between gap-3 py-3">
+                    <span className="min-w-0">
+                      <span className="block font-mono text-sm font-medium">{d.numero}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {formatDateFr(d.date_emission)} · valable jusqu&apos;au {formatDateFr(d.date_validite)}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <StatutBadgeDevis statut={statutAffichageDevis(d.statut, d.date_validite)} />
+                      <span className="tabular-nums">{formatEuros(Number(d.total_ht))}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Table className="max-md:hidden">
               <TableHeader>
                 <TableRow>
                   <TableHead>Numéro</TableHead>
@@ -301,6 +340,7 @@ export default async function ClientDetailPage({
                 ))}
               </TableBody>
             </Table>
+            </>
           )}
         </CardContent>
       </Card>

@@ -21,6 +21,24 @@ export default function ErreurPage({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Chunk introuvable après un déploiement (ancienne page, nouveaux
+    // fichiers) : un rechargement suffit, une seule fois.
+    const chunkPerdu = /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module/i.test(
+      `${error.name} ${error.message}`,
+    );
+    if (chunkPerdu) {
+      let deja = false;
+      try {
+        deja = sessionStorage.getItem("recharge-chunk") === "1";
+        if (!deja) sessionStorage.setItem("recharge-chunk", "1");
+      } catch {
+        /* stockage indisponible */
+      }
+      if (!deja) {
+        window.location.reload();
+        return;
+      }
+    }
     Sentry.captureException(error);
   }, [error]);
 

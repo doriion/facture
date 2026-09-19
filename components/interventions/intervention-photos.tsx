@@ -273,7 +273,8 @@ export function InterventionPhotos({
                       <button
                         type="button"
                         title="Supprimer la photo"
-                        className="rounded-full bg-black/40 p-1.5 transition-opacity hover:bg-red-600 md:p-1 md:opacity-0 md:group-hover:opacity-100"
+                        aria-label={`Supprimer la photo ${photo.legende ?? MOMENT_LABELS[photo.moment ?? "autre"]}`}
+                        className="rounded-full bg-black/40 p-3 transition-opacity hover:bg-red-600 md:p-1 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
                         disabled={pending}
                       >
                         <Trash2 className="size-4 md:size-3" />

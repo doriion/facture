@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
+import { aujourdhuiParis } from "@/lib/dates";
+
 import {
   interventionSchema,
   LABELS_TYPE_INTERVENTION,
@@ -66,7 +68,8 @@ export function InterventionForm({
   const [submitting, setSubmitting] = useState(false);
   const isEdit = !!intervention;
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Heure de Paris : à 0 h 30, la date UTC du téléphone était la veille.
+  const today = aujourdhuiParis();
 
   const {
     register,
@@ -111,6 +114,24 @@ export function InterventionForm({
     },
   });
 
+  // Validation refusée : sur le téléphone, l'erreur sous un champ hors
+  // écran est invisible — on prévient et on y amène.
+  function onInvalid(errs: Record<string, unknown>) {
+    const premier = Object.keys(errs)[0];
+    const labels: Record<string, string> = {
+      date_intervention: "la date",
+      type: "le type d'intervention",
+      client_id: "le client",
+      heure_fin: "l'heure de fin",
+    };
+    toast.error("Intervention incomplète", {
+      description: premier ? `Vérifiez ${labels[premier] ?? `le champ « ${premier} »`}.` : "Vérifiez les champs signalés.",
+    });
+    document
+      .querySelector<HTMLElement>("[aria-invalid='true'], .text-destructive")
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
   async function onSubmit(values: InterventionFormValues) {
     setSubmitting(true);
     if (intervention) {
@@ -135,7 +156,7 @@ export function InterventionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Informations générales</CardTitle>
@@ -533,7 +554,7 @@ export function InterventionForm({
           <CardTitle>Notes (interne)</CardTitle>
         </CardHeader>
         <CardContent>
-          <Textarea rows={3} {...register("notes")} />
+          <Textarea id="notes" aria-label="Notes internes" rows={3} {...register("notes")} />
         </CardContent>
       </Card>
 

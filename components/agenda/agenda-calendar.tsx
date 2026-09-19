@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { CalendarSearch, ChevronLeft, ChevronRight, AlertCircle, Check, Move, Plus } from "lucide-react";
 import { toast } from "sonner";
 
+import { appelerAction } from "@/lib/appel-action";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -312,7 +314,7 @@ export function AgendaCalendar({
     intitule: string = "Déplacé",
   ) => {
     const annuler = appliquerOptimiste({ type: "deplacement", id, valeurs });
-    const res = await deplacerInterventionAction(id, valeurs);
+    const res = await appelerAction(() => deplacerInterventionAction(id, valeurs));
     if (!res.ok) {
       annuler();
       toast.error("Déplacement refusé", { description: res.error });
@@ -356,7 +358,7 @@ export function AgendaCalendar({
         clientNom: null,
       }),
     );
-    const res = await reprendreRdvIphoneAction(e);
+    const res = await appelerAction(() => reprendreRdvIphoneAction(e));
     if (!res.ok) {
       setEvenementsLocaux(locauxAvant);
       setExternes(externesAvant);

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Copy, Download, ExternalLink, Link2, Loader2, MapPin, Move, Navigation, Palette, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
+import { appelerAction } from "@/lib/appel-action";
+
 import type { AgendaEvent } from "@/lib/actions/agenda";
 import { deleteInterventionAction, restaurerInterventionAction, setInterventionAFacturerAction } from "@/lib/actions/interventions";
 import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
@@ -82,7 +84,7 @@ export function EvenementDetailSheet({
     // Le tiroir se ferme et la pastille change tout de suite.
     const annuler = onOptimiste?.({ type: "facturation", id: ev.id, a_facturer: cible });
     onClose();
-    const res = await setInterventionAFacturerAction(ev.id, cible);
+    const res = await appelerAction(() => setInterventionAFacturerAction(ev.id, cible));
     setBasculeEnCours(false);
     if (!res.ok) {
       annuler?.();
@@ -101,7 +103,7 @@ export function EvenementDetailSheet({
   async function supprimer(ev: AgendaEvent) {
     const annuler = onOptimiste?.({ type: "suppression", id: ev.id });
     onClose();
-    const res = await deleteInterventionAction(ev.id);
+    const res = await appelerAction(() => deleteInterventionAction(ev.id));
     if (!res.ok) {
       annuler?.();
       toast.error("Suppression refusée", { description: res.error });
@@ -127,7 +129,7 @@ export function EvenementDetailSheet({
             },
             clientNom: ev.client_nom,
           });
-          const r = await restaurerInterventionAction(ev.id);
+          const r = await appelerAction(() => restaurerInterventionAction(ev.id));
           if (!r.ok) {
             retour?.();
             toast.error("Restauration refusée", { description: r.error });

@@ -141,7 +141,7 @@ export function FactureForm({
     control,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FactureFormInput, unknown, FactureFormValues>({
     resolver: zodResolver(factureSchema),
     defaultValues: {
@@ -558,7 +558,10 @@ export function FactureForm({
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push("/factures")}
+          onClick={() => {
+            if (isDirty && !window.confirm("Quitter sans enregistrer ? Les modifications seront perdues.")) return;
+            router.push("/factures");
+          }}
         >
           Annuler
         </Button>
