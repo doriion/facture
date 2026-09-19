@@ -133,11 +133,12 @@ export async function getAgendaEvents(
         .select(
           `id, date_intervention, date_fin, heure_debut, heure_fin, type, description, facture_id, a_facturer, client_id, serie_id, serie:interventions_series(frequence, intervalle, date_fin), ${SELECT_CLIENT}`,
         )
-        // Pour les interventions multi-jours, on doit inclure celles qui
-        // *intersectent* la fenêtre, pas seulement celles qui commencent dedans.
+        // Interventions qui *intersectent* la fenêtre : commencées avant
+        // sa fin et terminées (date_fin, sinon date_intervention) après
+        // son début — un chantier long n'est plus perdu.
         .is("supprime_le", null)
-        .gte("date_intervention", new Date(new Date(ws).getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10))
         .lte("date_intervention", we)
+        .or(`date_fin.gte.${ws},and(date_fin.is.null,date_intervention.gte.${ws})`)
         .order("date_intervention", { ascending: true })
         .order("heure_debut", { ascending: true, nullsFirst: true }),
       supabase

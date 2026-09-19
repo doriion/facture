@@ -622,14 +622,40 @@ export function AgendaCalendar({
 
   const styleDe = (e: AgendaEvent) => eventStyle(e, couleurs, couleursEvenements, todayYmd);
 
+  // Évènements par jour (Map), calculés une fois par changement de
+  // données — la grille du mois filtrait 42 fois la liste complète à
+  // CHAQUE rendu, y compris pendant un glisser-déposer.
+  const evenementsParJour = useMemo(() => {
+    const map = new Map<string, AgendaEvent[]>();
+    for (const e of events) {
+      let d = e.date_start;
+      let garde = 0;
+      while (d <= e.date_end && garde < 400) {
+        const liste = map.get(d);
+        if (liste) liste.push(e);
+        else map.set(d, [e]);
+        d = ajouterJours(d, 1);
+        garde += 1;
+      }
+    }
+    return map;
+  }, [events]);
+
   const inMonth = (e: AgendaEvent) => {
     const debutMois = `${year}-${String(month).padStart(2, "0")}-01`;
     const finMois = toYmd(new Date(year, month, 0));
     return e.date_end >= debutMois && e.date_start <= finMois;
   };
   // RDV iPhone passés, non rattachés (un RDV futur n'est pas encore à facturer).
-  const rdvARattacher = events.filter(
-    (e) => e.kind === "external" && !e.facture_emise && inMonth(e) && e.date_start <= todayYmd,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const rdvARattacher = useMemo(
+    () =>
+      events.filter(
+        (e) => e.kind === "external" && !e.facture_emise && inMonth(e) && e.date_start <= todayYmd,
+      ),
+    // inMonth ne dépend que de dateCourante, incluse ci-dessous.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [events, todayYmd, dateCourante],
   );
   const nbAFacturer = data.aFacturer.length + stats.nbExternalAFacturer;
 
@@ -869,7 +895,7 @@ export function AgendaCalendar({
               const isWeekend = day.getDay() === 0 || day.getDay() === 6;
               const holidayName = holidays[ymd] ?? null;
               const isHoliday = Boolean(holidayName);
-              const dayEvents = events.filter((e) => eventCoversDate(e, ymd));
+              const dayEvents = evenementsParJour.get(ymd) ?? [];
 
               return (
                 <div

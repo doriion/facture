@@ -12,7 +12,7 @@ import { appelerAction } from "@/lib/appel-action";
 
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { SelecteurCouleur } from "@/components/agenda/selecteur-couleur";
-import { setCouleurEvenementAction } from "@/lib/actions/agenda-couleurs";
+import { setCouleursEvenementsAction } from "@/lib/actions/agenda-couleurs";
 import { normaliserCouleur } from "@/lib/agenda-colors";
 import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
 
@@ -310,9 +310,12 @@ export function QuickInterventionDialog({
             ? result.data.ids
             : [result.data.id]
           : [];
-      for (const cible of ids) {
-        onCouleurOptimiste?.(`intervention:${cible}`, couleur);
-        await appelerAction(() => setCouleurEvenementAction(`intervention:${cible}`, couleur));
+      if (ids.length > 0) {
+        for (const cible of ids) onCouleurOptimiste?.(`intervention:${cible}`, couleur);
+        const rc = await appelerAction(() =>
+          setCouleursEvenementsAction(ids.map((cible) => `intervention:${cible}`), couleur),
+        );
+        if (!rc.ok) toast.error("Couleur non enregistrée", { description: rc.error });
       }
       toast.success(
         isEdit

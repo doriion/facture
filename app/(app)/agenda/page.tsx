@@ -66,10 +66,14 @@ export default async function AgendaPage({
   const moisPrecedent = month === 1 ? premierDuMois(year - 1, 12) : premierDuMois(year, month - 1);
   const moisSuivant = month === 12 ? dernierDuMois(year + 1, 1) : dernierDuMois(year, month + 1);
   const finListe = ajouterJours(aujourdhui, JOURS_LISTE);
+  // ±7 jours autour des mois voisins : la grille du mois affiche jusqu'à
+  // 6 jours des mois adjacents, qui restaient vides au swipe.
+  const debutFenetre = ajouterJours(moisPrecedent, -7);
+  const finFenetre = ajouterJours(moisSuivant, 7);
   const [data, clients, profil, couleursEvenements] = await Promise.all([
     getAgendaEvents(year, month, {
-      depuis: moisPrecedent < aujourdhui ? moisPrecedent : aujourdhui,
-      jusquau: moisSuivant > finListe ? moisSuivant : finListe,
+      depuis: debutFenetre < aujourdhui ? debutFenetre : aujourdhui,
+      jusquau: finFenetre > finListe ? finFenetre : finListe,
     }),
     listClientsLegers(),
     getProfil(),
@@ -107,7 +111,7 @@ export default async function AgendaPage({
         couleursEvenements={couleursEvenements}
         date={date}
         vueUrl={vue}
-        externesCle={Date.now()}
+        externesCle={0}
         aujourdhui={aujourdhui}
       />
     </div>

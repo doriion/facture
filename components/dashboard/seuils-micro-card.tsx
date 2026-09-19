@@ -10,6 +10,7 @@ import {
 import { formatEuros } from "@/lib/format";
 import {
   PLAFOND_MICRO_SERVICES,
+  ANNEE_SEUILS,
   SEUIL_FRANCHISE_TVA,
   SEUIL_FRANCHISE_TVA_MAJORE,
   niveauAlerte,
@@ -105,7 +106,10 @@ export function SeuilsMicroCard({
   caEncaisseAnnee: number;
   annee: number;
 }) {
-  const pctTva = pourcentageSeuil(caEncaisseAnnee, SEUIL_FRANCHISE_TVA);
+  // En cours d'année, seul le seuil MAJORÉ fait sortir immédiatement de
+  // la franchise ; le seuil de base s'apprécie sur l'année précédente.
+  const pctTva = pourcentageSeuil(caEncaisseAnnee, SEUIL_FRANCHISE_TVA_MAJORE);
+  const seuilsAJour = annee === ANNEE_SEUILS;
   const pctMicro = pourcentageSeuil(caEncaisseAnnee, PLAFOND_MICRO_SERVICES);
   const pire = niveauAlerte(Math.max(pctTva, pctMicro));
 
@@ -120,7 +124,8 @@ export function SeuilsMicroCard({
     critical: "border-destructive/40 bg-destructive/10",
   };
 
-  const resteTva = Math.max(0, SEUIL_FRANCHISE_TVA - caEncaisseAnnee);
+  const resteTva = Math.max(0, SEUIL_FRANCHISE_TVA_MAJORE - caEncaisseAnnee);
+  const resteTvaBase = Math.max(0, SEUIL_FRANCHISE_TVA - caEncaisseAnnee);
   const resteMicro = Math.max(0, PLAFOND_MICRO_SERVICES - caEncaisseAnnee);
 
   return (
@@ -143,17 +148,23 @@ export function SeuilsMicroCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {!seuilsAJour && (
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            Les seuils configurés sont ceux de {ANNEE_SEUILS} : ils sont à
+            vérifier pour {annee} (loi de finances) avant de s&apos;y fier.
+          </p>
+        )}
         <Jauge
-          titre="Franchise en base de TVA"
-          sousTitre={`Art. L.223-3 CIBS · prestations de services · seuil majoré ${formatEuros(SEUIL_FRANCHISE_TVA_MAJORE)}`}
+          titre="Franchise en base de TVA — sortie immédiate"
+          sousTitre={`Art. L.223-3 CIBS · seuil majoré ${formatEuros(SEUIL_FRANCHISE_TVA_MAJORE)} (dépassé en cours d'année = TVA dès le jour même) · seuil de base ${formatEuros(SEUIL_FRANCHISE_TVA)} apprécié sur l'année précédente`}
           ca={caEncaisseAnnee}
-          seuil={SEUIL_FRANCHISE_TVA}
+          seuil={SEUIL_FRANCHISE_TVA_MAJORE}
           messages={{
-            ok: `Il reste ${formatEuros(resteTva)} avant le seuil de franchise TVA.`,
-            warn: `⚠ 80 % du seuil de franchise TVA atteint — il reste ${formatEuros(resteTva)}. Anticipez la sortie de franchise.`,
-            danger: `⚠ 90 % du seuil de franchise TVA atteint. Limitez les encaissements jusqu'à fin ${annee} ou préparez le passage au régime TVA.`,
+            ok: `Il reste ${formatEuros(resteTva)} avant le seuil majoré (et ${formatEuros(resteTvaBase)} avant le seuil de base, qui compte pour l'an prochain).`,
+            warn: `⚠ 80 % du seuil majoré atteint — il reste ${formatEuros(resteTva)}. Au-delà, la TVA s'applique immédiatement.`,
+            danger: `⚠ 90 % du seuil majoré atteint. Limitez les encaissements jusqu'à fin ${annee} ou préparez le passage au régime TVA.`,
             critical:
-              "Seuil de franchise TVA dépassé — rapprochez-vous du SIE : au-delà du seuil majoré, la TVA s'applique immédiatement et les mentions de vos factures doivent changer.",
+              "Seuil majoré dépassé — la TVA s'applique dès maintenant et les mentions de vos factures doivent changer : rapprochez-vous du SIE.",
           }}
         />
 
@@ -172,8 +183,9 @@ export function SeuilsMicroCard({
         />
 
         <p className="text-xs text-muted-foreground">
-          Seuils {annee} configurés dans l&apos;application (lib/seuils-micro.ts)
-          — à vérifier chaque année en loi de finances.
+          Seuils {ANNEE_SEUILS} configurés dans l&apos;application (lib/seuils-micro.ts)
+          — à vérifier chaque année en loi de finances. Dépasser le seuil de
+          base une année fait perdre la franchise l&apos;année suivante.
         </p>
       </CardContent>
     </Card>

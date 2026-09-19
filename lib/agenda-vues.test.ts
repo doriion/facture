@@ -258,14 +258,17 @@ describe("fenêtre de chargement (navigation sans recharger)", () => {
     // bornes plus étroites que la fenêtre : ignorées
     expect(fenetreAgenda(2026, 9, { depuis: "2026-09-10", jusquau: "2026-09-20" })).toEqual({ debut: "2026-08-25", fin: "2026-10-07" });
 
-    const f = { debut: "2026-08-01", fin: "2026-10-31" };
-    expect(dansFenetre("jour", "2026-10-31", f)).toBe(true);
-    expect(dansFenetre("jour", "2026-11-01", f)).toBe(false);
-    // semaine du 26 oct. → 1er nov. : déborde
-    expect(dansFenetre("semaine", "2026-10-28", f)).toBe(false);
-    expect(dansFenetre("semaine", "2026-10-14", f)).toBe(true);
+    const f = { debut: "2026-07-25", fin: "2026-11-07" };
+    expect(dansFenetre("jour", "2026-11-07", f)).toBe(true);
+    expect(dansFenetre("jour", "2026-11-08", f)).toBe(false);
+    // semaine du 2 → 8 nov. : déborde
+    expect(dansFenetre("semaine", "2026-11-05", f)).toBe(false);
+    expect(dansFenetre("semaine", "2026-10-28", f)).toBe(true);
+    // mois : la grille affiche jusqu'à 6 jours des mois voisins, ils
+    // doivent être dans la fenêtre (octobre : 25 sept. → 6 nov.)
     expect(dansFenetre("mois", "2026-10-15", f)).toBe(true);
     expect(dansFenetre("mois", "2026-11-15", f)).toBe(false);
+    expect(dansFenetre("mois", "2026-07-15", f)).toBe(false);
     expect(dansFenetre("liste", "2027-01-01", f)).toBe(true);
   });
 });
