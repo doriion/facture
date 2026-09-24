@@ -104,9 +104,11 @@ export const config = {
     /*
      * Tout sauf :
      * - _next/static, _next/image (assets Next.js)
-     * - favicon.ico, sw.js, manifest.json (PWA)
+     * - favicon.ico, sw.js, manifest.json (PWA), robots.txt (sinon les
+     *   robots étaient redirigés vers la page de connexion et le
+     *   « Disallow » n'était jamais lu)
      * - fichiers statiques de /public (images, icônes)
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|sw\\.js|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|sw\\.js|manifest\\.json|robots\\.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
