@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BoutonRetour } from "@/components/bouton-retour";
 import { LogoMarque } from "@/components/logo-marque";
+import { RechercheGlobale } from "@/components/recherche-globale";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NOM_APPLICATION } from "@/lib/marque";
 
@@ -48,6 +49,8 @@ export function Topbar({ email }: { email: string }) {
           <span className="text-sm font-semibold">{NOM_APPLICATION}</span>
         </Link>
       </div>
+      <div className="flex items-center gap-1 sm:gap-2">
+      <RechercheGlobale />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="gap-2">
@@ -68,6 +71,7 @@ export function Topbar({ email }: { email: string }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }
