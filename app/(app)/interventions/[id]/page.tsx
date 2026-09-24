@@ -7,12 +7,14 @@ import { getIntervention } from "@/lib/actions/interventions";
 import { listInterventionPhotos } from "@/lib/actions/intervention-photos";
 import { listInterventionSignatures } from "@/lib/actions/signatures";
 import { listCerfaDocuments } from "@/lib/actions/cerfa";
+import { listBonsIntervention } from "@/lib/actions/bons-intervention";
 import { getProfil } from "@/lib/actions/profil";
 import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { InterventionForm } from "@/components/interventions/intervention-form";
 import { InterventionPhotos } from "@/components/interventions/intervention-photos";
 import { InterventionSignatures } from "@/components/interventions/intervention-signatures";
 import { InterventionCerfa } from "@/components/interventions/intervention-cerfa";
+import { InterventionBon } from "@/components/interventions/intervention-bon";
 import { InterventionDeleteButton } from "@/components/interventions/intervention-delete-button";
 import { InterventionCorbeilleBanner } from "@/components/interventions/intervention-corbeille-banner";
 import { Badge } from "@/components/ui/badge";
@@ -30,12 +32,13 @@ export default async function EditInterventionPage({
   const { intervention, client, facture } = await getIntervention(params.id);
   if (!intervention) notFound();
 
-  const [clients, photos, signatures, cerfaDocs, profil] = await Promise.all([
+  const [clients, photos, signatures, cerfaDocs, profil, bons] = await Promise.all([
     listClients(),
     listInterventionPhotos(params.id),
     listInterventionSignatures(params.id),
     listCerfaDocuments(params.id),
     getProfil(),
+    listBonsIntervention(params.id),
   ]);
 
   const operateurNom =
@@ -167,6 +170,20 @@ export default async function EditInterventionPage({
             operateurNom={operateurNom}
           />
         </div>
+
+        {/* Bon d'intervention : juste après les signatures, c'est la
+            dernière étape sur place (remise ou envoi au client). */}
+        {!intervention.supprime_le && (
+          <div className="max-md:order-2">
+            <InterventionBon
+              interventionId={intervention.id}
+              bons={bons}
+              clientEmail={client?.email ?? null}
+              clientNom={client?.nom ?? null}
+              signatureClientPresente={Boolean(signatures.detenteur)}
+            />
+          </div>
+        )}
 
         <div className="max-md:order-1">
           <InterventionPhotos interventionId={intervention.id} photos={photos} />
