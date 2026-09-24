@@ -38,6 +38,11 @@
   ],
   "shortcuts": [
     {
+      "name": "Nouvelle tâche",
+      "url": "/taches?ajouter=1",
+      "short_name": "Tâche"
+    },
+    {
       "name": "Nouvelle facture",
       "url": "/factures/nouvelle",
       "short_name": "Facture"

@@ -60,9 +60,12 @@ const SANS_CLIENT = "__sans_client__";
 export function InterventionForm({
   clients,
   intervention,
+  clientIdParDefaut,
 }: {
   clients: Client[];
   intervention?: Intervention;
+  /** Création depuis une fiche client : client déjà choisi. */
+  clientIdParDefaut?: string;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -80,7 +83,7 @@ export function InterventionForm({
   } = useForm<InterventionFormInput, unknown, InterventionFormValues>({
     resolver: zodResolver(interventionSchema),
     defaultValues: {
-      client_id: intervention?.client_id ?? "",
+      client_id: intervention?.client_id ?? clientIdParDefaut ?? "",
       date_intervention: intervention?.date_intervention ?? today,
       date_fin: intervention?.date_fin ?? "",
       heure_debut: intervention?.heure_debut

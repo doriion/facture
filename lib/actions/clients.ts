@@ -52,13 +52,54 @@ export async function listClients(params?: { search?: string; type?: string }) {
  * Récupère un client par id, ainsi que les compteurs de factures et devis
  * pour la page de détail.
  */
+export type InterventionClient = {
+  id: string;
+  date_intervention: string;
+  date_fin: string | null;
+  type: string;
+  description: string | null;
+  equipement_marque: string | null;
+  equipement_modele: string | null;
+  equipement_num_serie: string | null;
+  fluide_frigo_type: string | null;
+  facture: { id: string; numero: string } | null;
+};
+
+export type EntretienClient = {
+  id: string;
+  intitule: string | null;
+  equipement: string | null;
+  prochaine_visite: string | null;
+  statut: string;
+};
+
+export type ContratClient = {
+  id: string;
+  numero: string | null;
+  statut: string;
+  signed_at: string | null;
+};
+
 export async function getClient(id: string): Promise<{
   client: Client | null;
   factures: Database["public"]["Tables"]["factures"]["Row"][];
   devis: Database["public"]["Tables"]["devis"]["Row"][];
+  /** Interventions chez ce client (corbeille exclue), les plus récentes d'abord. */
+  interventions: InterventionClient[];
+  /** Échéancier d'entretien (contrats_maintenance). */
+  entretiens: EntretienClient[];
+  /** Contrats d'entretien signés en ligne. */
+  contrats: ContratClient[];
 }> {
   const supabase = createClient();
-  const [{ data: client }, { data: factures }, { data: devis }] = await Promise.all([
+  const [
+    { data: client },
+    { data: factures },
+    { data: devis },
+    { data: interventions },
+    { data: entretiens },
+    { data: contrats },
+  ] = await Promise.all([
     supabase.from("clients").select("*").eq("id", id).maybeSingle(),
     supabase
       .from("factures")
@@ -73,12 +114,34 @@ export async function getClient(id: string): Promise<{
       // apparaître dans l'historique du client.
       .eq("est_modele", false)
       .order("date_emission", { ascending: false }),
+    supabase
+      .from("interventions")
+      .select(
+        "id, date_intervention, date_fin, type, description, equipement_marque, equipement_modele, equipement_num_serie, fluide_frigo_type, facture:factures(id, numero)",
+      )
+      .eq("client_id", id)
+      .is("supprime_le", null)
+      .order("date_intervention", { ascending: false })
+      .limit(50),
+    supabase
+      .from("contrats_maintenance")
+      .select("id, intitule, equipement, prochaine_visite, statut")
+      .eq("client_id", id)
+      .order("prochaine_visite", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("contrats")
+      .select("id, numero, statut, signed_at")
+      .eq("client_id", id)
+      .order("created_at", { ascending: false }),
   ]);
 
   return {
     client,
     factures: factures ?? [],
     devis: devis ?? [],
+    interventions: ((interventions ?? []) as unknown as InterventionClient[]),
+    entretiens: (entretiens ?? []) as EntretienClient[],
+    contrats: (contrats ?? []) as ContratClient[],
   };
 }
 
