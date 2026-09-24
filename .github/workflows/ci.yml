@@ -38,3 +38,15 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ci_placeholder
+
+      # Bout en bout « public » : l'application construite est démarrée
+      # (mêmes variables factices) et pilotée dans Chromium — connexion,
+      # redirections, pages publiques, PWA, robots. Aucune base requise.
+      - name: Navigateur Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Tests de bout en bout
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ci_placeholder
