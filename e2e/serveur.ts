@@ -10,6 +10,8 @@ import { chromium, type Browser } from "playwright";
  */
 export const PORT = Number(process.env.E2E_PORT ?? 3461);
 export const BASE = `http://localhost:${PORT}`;
+/** Même serveur par adresse IP : le service worker ne s'enregistre pas sur « localhost ». */
+export const BASE_IP = `http://127.0.0.1:${PORT}`;
 
 let serveur: ChildProcess | null = null;
 let navigateur: Browser | null = null;

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Browser } from "playwright";
 
-import { arreter, BASE, demarrer } from "./serveur";
+import { arreter, BASE, BASE_IP, demarrer } from "./serveur";
 
 /**
  * Parcours d'un visiteur NON connecté : ce que l'application montre et
@@ -124,5 +124,27 @@ describe("PWA et robots", () => {
     const res = await reponse("/robots.txt");
     expect(res.status).toBe(200);
     expect(await res.text()).toMatch(/Disallow:\s*\//);
+  });
+});
+
+describe("hors ligne (service worker)", () => {
+  it("une page déjà ouverte reste lisible sans réseau, une inconnue affiche la page hors-ligne", async () => {
+    const contexte = await navigateur.newContext();
+    const page = await contexte.newPage();
+    // 1er passage : enregistrement du service worker.
+    await page.goto(`${BASE_IP}/login`);
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    // 2e passage : la page est désormais contrôlée par le SW (la page de
+    // connexion n'est volontairement pas mise en cache : on vérifie donc
+    // avec la page hors-ligne elle-même, mise en cache à l'installation).
+    await page.goto(`${BASE_IP}/login`);
+    await page.locator("input#email").waitFor({ state: "visible" });
+
+    await contexte.setOffline(true);
+    await page.goto(`${BASE_IP}/factures`);
+    await page.locator("h1").first().waitFor({ state: "visible" });
+    expect((await page.locator("h1").first().textContent()) ?? "").toMatch(/pas de connexion/i);
+    await contexte.setOffline(false);
+    await contexte.close();
   });
 });
