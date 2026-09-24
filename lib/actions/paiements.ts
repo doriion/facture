@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import { parseMoneyInput } from "@/lib/format";
-import { estFactureVentilee, paiementAutorise } from "@/lib/factures-transitions";
+import {
+  estFactureVentilee,
+  paiementAutorise,
+  TYPE_AVOIR,
+} from "@/lib/factures-transitions";
 import {
   montantRestant,
   statutApresEncaissement,
@@ -28,10 +32,10 @@ export async function getFacturePaiements(
   factureId: string,
 ): Promise<FacturePaiementsSummary> {
   const supabase = createClient();
-  const [factureRes, paiementsRes] = await Promise.all([
+  const [factureRes, paiementsRes, avoirsRes] = await Promise.all([
     supabase
       .from("factures")
-      .select("total_ht, statut, type_facture")
+      .select("total_ht, statut, type_facture, mode_avoir")
       .eq("id", factureId)
       .maybeSingle(),
     supabase
@@ -39,6 +43,14 @@ export async function getFacturePaiements(
       .select("*")
       .eq("facture_id", factureId)
       .order("date_paiement", { ascending: true }),
+    // Avoirs émis sur cette facture (brouillons et annulés exclus) : un
+    // avoir d'imputation vient en déduction du reste dû.
+    supabase
+      .from("factures")
+      .select("total_ht, mode_avoir")
+      .eq("facture_parent_id", factureId)
+      .eq("type_facture", TYPE_AVOIR)
+      .in("statut", ["envoyee", "payee"]),
   ]);
 
   // Une lecture en échec ne doit JAMAIS valoir « total 0 » : le reste dû
@@ -46,7 +58,16 @@ export async function getFacturePaiements(
   if (factureRes.error) throw new Error(factureRes.error.message);
   if (!factureRes.data) throw new Error("Facture introuvable.");
   if (paiementsRes.error) throw new Error(paiementsRes.error.message);
+  if (avoirsRes.error) throw new Error(avoirsRes.error.message);
   const total_facture = Number(factureRes.data.total_ht);
+  let total_avoirs_imputes = 0;
+  let total_avoirs_rembourses = 0;
+  for (const a of avoirsRes.data ?? []) {
+    if (a.mode_avoir === "remboursement") total_avoirs_rembourses += Number(a.total_ht);
+    else total_avoirs_imputes += Number(a.total_ht);
+  }
+  total_avoirs_imputes = Math.round(total_avoirs_imputes * 100) / 100;
+  total_avoirs_rembourses = Math.round(total_avoirs_rembourses * 100) / 100;
   const paiements = (paiementsRes.data ?? []).map((p) => ({
     id: p.id,
     facture_id: p.facture_id,
@@ -57,7 +78,9 @@ export async function getFacturePaiements(
     notes: p.notes,
   }));
   const total_encaisse = paiements.reduce((s, p) => s + p.montant, 0);
-  const reste_du = montantRestant(total_facture, total_encaisse);
+  // Reste dû : total − encaissé − avoirs imputés (sur un avoir de
+  // remboursement, les « paiements » sont les remboursements effectués).
+  const reste_du = montantRestant(total_facture, total_encaisse + total_avoirs_imputes);
 
   return {
     total_facture,
@@ -66,7 +89,41 @@ export async function getFacturePaiements(
     paiements,
     statut: factureRes.data.statut,
     type_facture: factureRes.data.type_facture,
+    mode_avoir: factureRes.data.mode_avoir ?? null,
+    total_avoirs_imputes,
+    total_avoirs_rembourses,
   };
+}
+
+/**
+ * Recalcule le statut d'une facture après émission/annulation d'un avoir
+ * d'imputation : soldée par l'avoir → « payée » (plus rien à encaisser) ;
+ * avoir annulé et reste dû redevenu positif → « envoyée ». Même logique
+ * pure que pour les paiements (lib/paiements-helpers).
+ */
+export async function synchroniserStatutApresAvoir(factureId: string): Promise<void> {
+  let summary: FacturePaiementsSummary;
+  try {
+    summary = await getFacturePaiements(factureId);
+  } catch {
+    return;
+  }
+  const supabase = createClient();
+  const { data: facture } = await supabase
+    .from("factures")
+    .select("statut")
+    .eq("id", factureId)
+    .maybeSingle();
+  if (!facture) return;
+  let nouveau = statutApresEncaissement(facture.statut, summary.reste_du);
+  if (nouveau === facture.statut) {
+    nouveau = statutApresSuppressionPaiement(facture.statut, summary.reste_du);
+  }
+  // Un brouillon ne devient pas « payé » par un avoir (un avoir ne se
+  // crée que sur une facture émise, mais on reste défensif).
+  if (nouveau !== facture.statut && facture.statut !== "brouillon") {
+    await supabase.from("factures").update({ statut: nouveau }).eq("id", factureId);
+  }
 }
 
 export async function addPaiementAction(
@@ -106,12 +163,14 @@ export async function addPaiementAction(
   }
   const { data: enfants } = await supabase
     .from("factures")
-    .select("statut")
+    .select("statut, type_facture")
     .eq("facture_parent_id", factureId);
   const garde = paiementAutorise(resume.statut, {
     ventilee: estFactureVentilee({ type_facture: resume.type_facture }, enfants ?? []),
     resteDu: resume.reste_du,
     montant,
+    typeFacture: resume.type_facture,
+    modeAvoir: resume.mode_avoir,
   });
   if (!garde.ok) return garde;
 

@@ -80,7 +80,7 @@ export async function sendEmail(params: SendEmailParams): Promise<{
  * d'une facture ou d'un devis au client.
  */
 export function buildDocumentEmail(args: {
-  type: "facture" | "devis";
+  type: "facture" | "devis" | "avoir";
   numero: string;
   clientNom: string;
   expediteurNom: string;
@@ -89,11 +89,14 @@ export function buildDocumentEmail(args: {
   messagePerso?: string;
 }): { subject: string; html: string; text: string } {
   const titre =
-    args.type === "facture" ? "Votre facture" : "Votre devis";
+    args.type === "facture" ? "Votre facture" : args.type === "avoir" ? "Votre avoir" : "Votre devis";
   const subject = `${titre} ${args.numero}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
 
   const intro =
-    args.type === "facture"
+    args.type === "avoir"
+      ? `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
+         <p>Veuillez trouver ci-joint l'avoir <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>${args.echeanceText ? ` ${escapeHtml(args.echeanceText)}` : ""}.</p>`
+      : args.type === "facture"
       ? `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
          <p>Veuillez trouver ci-joint la facture <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>${args.echeanceText ? `, à régler avant le <strong>${escapeHtml(args.echeanceText)}</strong>` : ""}.</p>`
       : `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
@@ -119,7 +122,9 @@ ${signature}
 </body></html>`;
 
   const textIntro =
-    args.type === "facture"
+    args.type === "avoir"
+      ? `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint l'avoir ${args.numero} d'un montant de ${args.totalText}${args.echeanceText ? ` ${args.echeanceText}` : ""}.\n\n`
+      : args.type === "facture"
       ? `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint la facture ${args.numero} d'un montant de ${args.totalText}${args.echeanceText ? `, à régler avant le ${args.echeanceText}` : ""}.\n\n`
       : `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint le devis ${args.numero} d'un montant de ${args.totalText}.\nMerci de me retourner ce devis signé pour validation.\n\n`;
 

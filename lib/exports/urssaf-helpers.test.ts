@@ -191,7 +191,48 @@ describe("bout en bout : facture mixte encaissée sur deux trimestres", () => {
   });
 });
 
+describe("remboursements (avoirs)", () => {
+  it("un paiement enregistré sur un avoir vient en MOINS, ventilé comme l'avoir", () => {
+    const res = summarizeEncaissements([
+      paiement({
+        montant: 1000,
+        facture: {
+          id: "f1",
+          total_ht: 1000,
+          lignes: [
+            { total_ht: 800, nature_fiscale: "bic_prestations" },
+            { total_ht: 200, nature_fiscale: "bic_ventes" },
+          ],
+        },
+      }),
+      paiement({
+        montant: 100,
+        facture: {
+          id: "a1",
+          numero: "A-2026-0001",
+          total_ht: 100,
+          type_facture: "avoir",
+          lignes: [{ total_ht: 100, nature_fiscale: "bic_ventes" }],
+        },
+      }),
+    ]);
+    expect(res.total_encaisse).toBe(900);
+    expect(res.rows[1]!.montant_encaisse).toBe(-100);
+    expect(res.ventilation).toEqual({ bic_prestations: 800, bic_ventes: 100, bnc: 0 });
+  });
+});
+
 describe("totalFacturesEmises", () => {
+  it("déduit les avoirs émis", () => {
+    expect(
+      totalFacturesEmises([
+        { total_ht: 1000 },
+        { total_ht: 250, type_facture: "avoir" },
+        { total_ht: 300, type_facture: "normale" },
+      ]),
+    ).toBe(1050);
+  });
+
   it("somme les total_ht avec arrondi", () => {
     expect(totalFacturesEmises([{ total_ht: 0.1 }, { total_ht: 0.2 }])).toBe(0.3);
     expect(totalFacturesEmises([])).toBe(0);

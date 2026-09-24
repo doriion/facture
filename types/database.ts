@@ -878,6 +878,8 @@ export type Database = {
           type_facture: string;
           facture_parent_id: string | null;
           pourcentage_acompte: number | null;
+          mode_avoir: string | null;
+          motif_avoir: string | null;
           email_envoye_le: string | null;
           equipement_info: Json;
           id: string;
@@ -908,6 +910,8 @@ export type Database = {
           type_facture?: string;
           facture_parent_id?: string | null;
           pourcentage_acompte?: number | null;
+          mode_avoir?: string | null;
+          motif_avoir?: string | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
           id?: string;
@@ -938,6 +942,8 @@ export type Database = {
           type_facture?: string;
           facture_parent_id?: string | null;
           pourcentage_acompte?: number | null;
+          mode_avoir?: string | null;
+          motif_avoir?: string | null;
           email_envoye_le?: string | null;
           equipement_info?: Json;
           id?: string;
@@ -1672,6 +1678,8 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       next_document_number: { Args: { p_type: string }; Returns: string };
+      /** Séquence dédiée aux avoirs : « A-AAAA-NNNN ». */
+      next_avoir_number: { Args: Record<string, never>; Returns: string };
       remplacer_lignes_document: {
         Args: {
           p_type: string;

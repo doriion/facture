@@ -7,10 +7,15 @@ import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
 import {
   estFactureVentilee,
+  estModeAvoir,
+  montantAvoirAutorise,
+  montantAvoirMax,
   statutAffichageFacture,
   transitionFactureAutorisee,
+  TYPE_AVOIR,
 } from "@/lib/factures-transitions";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
+import { getFacturePaiements, synchroniserStatutApresAvoir } from "@/lib/actions/paiements";
 import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
 import {
   computeTotalHt,
@@ -79,7 +84,9 @@ export async function idsParentsVentiles(): Promise<Set<string>> {
     .from("factures")
     .select("facture_parent_id")
     .not("facture_parent_id", "is", null)
-    .neq("statut", "annulee");
+    .neq("statut", "annulee")
+    // Un avoir référence aussi sa facture d'origine, mais ne la ventile pas.
+    .neq("type_facture", TYPE_AVOIR);
   const ids = new Set<string>();
   for (const row of data ?? []) if (row.facture_parent_id) ids.add(row.facture_parent_id);
   return ids;
@@ -290,7 +297,7 @@ export async function updateFactureAction(
 
   const { data: existing } = await supabase
     .from("factures")
-    .select("statut")
+    .select("statut, type_facture, mode_avoir, facture_parent_id")
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Facture introuvable." };
@@ -310,6 +317,13 @@ export async function updateFactureAction(
   }
 
   const total_ht = computeTotalHt(v.lignes);
+
+  // Avoir en brouillon : le montant recalculé depuis les lignes doit
+  // rester dans le plafond de son mode (reste dû ou encaissé du parent).
+  if (existing.type_facture === TYPE_AVOIR) {
+    const garde = await gardeMontantAvoir(existing, total_ht, id);
+    if (!garde.ok) return garde;
+  }
 
   const { error: updateErr } = await supabase
     .from("factures")
@@ -376,9 +390,13 @@ export async function setFactureStatutAction(
   // les paiements et les acomptes/soldes avant d'autoriser le passage.
   const [{ data: existing, error: lectureErr }, { count: nbPaiements }, { data: enfants }] =
     await Promise.all([
-      supabase.from("factures").select("statut, type_facture").eq("id", id).maybeSingle(),
+      supabase
+        .from("factures")
+        .select("statut, type_facture, mode_avoir, facture_parent_id, total_ht")
+        .eq("id", id)
+        .maybeSingle(),
       supabase.from("paiements").select("id", { count: "exact", head: true }).eq("facture_id", id),
-      supabase.from("factures").select("statut").eq("facture_parent_id", id),
+      supabase.from("factures").select("statut, type_facture").eq("facture_parent_id", id),
     ]);
   if (lectureErr) return { ok: false, error: lectureErr.message };
   if (!existing) return { ok: false, error: "Facture introuvable." };
@@ -386,8 +404,16 @@ export async function setFactureStatutAction(
   const autorisee = transitionFactureAutorisee(existing.statut, statut, {
     nbPaiements: nbPaiements ?? 0,
     ventilee: estFactureVentilee(existing, enfants ?? []),
+    typeFacture: existing.type_facture,
   });
   if (!autorisee.ok) return autorisee;
+
+  // Émission d'un avoir : le plafond se revérifie au moment où il prend
+  // effet (un autre avoir ou un paiement a pu arriver depuis le brouillon).
+  if (existing.type_facture === TYPE_AVOIR && statut === "envoyee") {
+    const garde = await gardeMontantAvoir(existing, Number(existing.total_ht), id);
+    if (!garde.ok) return garde;
+  }
 
   // Annulation : date + motif pour la traçabilité fiscale (justifie le
   // « trou » dans la séquence des numéros). En restaurant une facture
@@ -420,12 +446,205 @@ export async function setFactureStatutAction(
     await figerEmetteurDocument(supabase, "factures", id);
   }
 
+  // Avoir d'imputation émis ou annulé : le reste dû de la facture
+  // d'origine change, son statut suit (soldée par l'avoir → payée ;
+  // avoir annulé → redevient envoyée).
+  if (existing.type_facture === TYPE_AVOIR && existing.facture_parent_id) {
+    if (existing.mode_avoir === "imputation") {
+      await synchroniserStatutApresAvoir(existing.facture_parent_id);
+    }
+    revalidatePath(`/factures/${existing.facture_parent_id}`);
+  }
+
   revalidatePath("/factures");
   revalidatePath(`/factures/${id}`);
   revalidatePath("/dashboard");
   revalidatePath("/agenda");
   revalidatePath("/exports");
   return { ok: true, data: undefined };
+}
+
+/**
+ * Vérifie qu'un avoir (mode, facture d'origine) peut porter ce montant,
+ * en excluant l'avoir lui-même des avoirs déjà comptés (il est peut-être
+ * déjà émis, lors d'une re-vérification).
+ */
+async function gardeMontantAvoir(
+  avoir: { mode_avoir: string | null; facture_parent_id: string | null; statut?: string },
+  montant: number,
+  avoirId?: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!avoir.facture_parent_id || !estModeAvoir(avoir.mode_avoir)) {
+    return { ok: false, error: "Avoir incomplet : facture d'origine ou mode manquant." };
+  }
+  const supabase = createClient();
+  let resume;
+  try {
+    resume = await getFacturePaiements(avoir.facture_parent_id);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Facture d'origine introuvable." };
+  }
+  const { data: enfants } = await supabase
+    .from("factures")
+    .select("id, statut, type_facture, mode_avoir, total_ht")
+    .eq("facture_parent_id", avoir.facture_parent_id);
+  // Si l'avoir vérifié est déjà émis, il est dans les totaux : on le retire.
+  const moi = (enfants ?? []).find((e) => e.id === avoirId);
+  const dejaCompte =
+    moi && (moi.statut === "envoyee" || moi.statut === "payee") ? Number(moi.total_ht) : 0;
+  return montantAvoirAutorise(avoir.mode_avoir, montant, {
+    statutFacture: resume.statut,
+    typeFacture: resume.type_facture,
+    ventilee: estFactureVentilee({ type_facture: resume.type_facture }, enfants ?? []),
+    totalFacture: resume.total_facture,
+    totalEncaisse: resume.total_encaisse,
+    avoirsImputes:
+      resume.total_avoirs_imputes - (avoir.mode_avoir === "imputation" ? dejaCompte : 0),
+    avoirsRembourses:
+      resume.total_avoirs_rembourses - (avoir.mode_avoir === "remboursement" ? dejaCompte : 0),
+  });
+}
+
+/**
+ * Crée un AVOIR (brouillon, numéro A-AAAA-NNNN) sur une facture émise.
+ * `montant` absent = avoir du plafond du mode (reste dû ou encaissé) ;
+ * si l'avoir couvre tout le montant de la facture, ses lignes sont
+ * recopiées, sinon une ligne unique porte le montant et le motif.
+ */
+export async function createAvoirAction(
+  parentId: string,
+  options: { mode: string; montant?: number | null; motif: string },
+): Promise<ActionResult<{ factureId: string; numero: string }>> {
+  const motif = options.motif.trim();
+  if (!motif) return { ok: false, error: "Le motif de l'avoir est obligatoire." };
+  if (motif.length > 500) return { ok: false, error: "Motif trop long (500 caractères)." };
+  if (!estModeAvoir(options.mode)) return { ok: false, error: "Mode d'avoir invalide." };
+  const mode = options.mode;
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+
+  const [{ data: parent }, { data: lignesParent }] = await Promise.all([
+    supabase.from("factures").select("*").eq("id", parentId).maybeSingle(),
+    supabase.from("factures_lignes").select("*").eq("facture_id", parentId).order("ordre"),
+  ]);
+  if (!parent) return { ok: false, error: "Facture d'origine introuvable." };
+
+  let resume;
+  try {
+    resume = await getFacturePaiements(parentId);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Facture introuvable." };
+  }
+  const { data: enfants } = await supabase
+    .from("factures")
+    .select("statut, type_facture")
+    .eq("facture_parent_id", parentId);
+  const ctx = {
+    statutFacture: resume.statut,
+    typeFacture: resume.type_facture,
+    ventilee: estFactureVentilee({ type_facture: resume.type_facture }, enfants ?? []),
+    totalFacture: resume.total_facture,
+    totalEncaisse: resume.total_encaisse,
+    avoirsImputes: resume.total_avoirs_imputes,
+    avoirsRembourses: resume.total_avoirs_rembourses,
+  };
+  const montant =
+    options.montant === null || options.montant === undefined
+      ? montantAvoirMax(mode, ctx)
+      : Math.round(Number(options.montant) * 100) / 100;
+  const garde = montantAvoirAutorise(mode, montant, ctx);
+  if (!garde.ok) return garde;
+
+  const { data: numero, error: numeroErr } = await supabase.rpc("next_avoir_number");
+  if (numeroErr || !numero) {
+    return { ok: false, error: numeroErr?.message ?? "Échec de la numérotation de l'avoir." };
+  }
+
+  const today = aujourdhuiParis();
+  const { data: avoir, error: insertErr } = await supabase
+    .from("factures")
+    .insert({
+      user_id: user.id,
+      numero,
+      client_id: parent.client_id,
+      date_emission: today,
+      date_echeance: today,
+      date_prestation: parent.date_prestation ?? parent.date_emission,
+      date_prestation_fin: parent.date_prestation_fin,
+      adresse_chantier: parent.adresse_chantier,
+      type_activite: parent.type_activite,
+      statut: "brouillon",
+      total_ht: montant,
+      type_facture: TYPE_AVOIR,
+      facture_parent_id: parent.id,
+      mode_avoir: mode,
+      motif_avoir: motif,
+      exclure_relances_auto: true,
+    })
+    .select("id, numero")
+    .single();
+  if (insertErr || !avoir) {
+    return { ok: false, error: insertErr?.message ?? "Échec de création de l'avoir." };
+  }
+
+  // Avoir total → mêmes lignes que la facture (le client retrouve le
+  // détail crédité) ; partiel → une ligne au montant, avec le motif.
+  const avoirTotal = Math.abs(montant - Number(parent.total_ht)) < 0.005;
+  const lignes =
+    avoirTotal && (lignesParent ?? []).length > 0
+      ? (lignesParent ?? []).map((l, idx) => ({
+          ordre: idx,
+          designation: l.designation,
+          nature_fiscale: l.nature_fiscale ?? "bic_prestations",
+          type: l.type ?? "ligne",
+          quantite: Number(l.quantite),
+          prix_unitaire_ht: Number(l.prix_unitaire_ht),
+          prix_achat_ttc_unitaire: null,
+          fournisseur: null,
+          total_ht: Number(l.total_ht),
+        }))
+      : [
+          {
+            ordre: 0,
+            designation: `Avoir sur facture ${parent.numero} — ${motif}`,
+            nature_fiscale: natureMajoritaire(lignesParent ?? []),
+            type: "ligne",
+            quantite: 1,
+            prix_unitaire_ht: montant,
+            prix_achat_ttc_unitaire: null,
+            fournisseur: null,
+            total_ht: montant,
+          },
+        ];
+  const remplacement = await remplacerLignesDocument(supabase, "facture", avoir.id, user.id, lignes);
+  if (!remplacement.ok) return { ok: false, error: remplacement.error };
+
+  revalidatePath("/factures");
+  revalidatePath(`/factures/${parentId}`);
+  revalidatePath(`/factures/${avoir.id}`);
+  return { ok: true, data: { factureId: avoir.id, numero: avoir.numero } };
+}
+
+/** Nature fiscale qui pèse le plus dans les lignes (défaut : prestations). */
+function natureMajoritaire(lignes: Array<{ total_ht: number | string; nature_fiscale?: string | null }>): string {
+  const totaux = new Map<string, number>();
+  for (const l of lignes) {
+    const n = l.nature_fiscale ?? "bic_prestations";
+    totaux.set(n, (totaux.get(n) ?? 0) + Number(l.total_ht));
+  }
+  let meilleure = "bic_prestations";
+  let max = -1;
+  totaux.forEach((t, n) => {
+    if (t > max) {
+      max = t;
+      meilleure = n;
+    }
+  });
+  return meilleure;
 }
 
 /**
@@ -742,7 +961,7 @@ export async function listFactureEnfants(parentId: string) {
   const supabase = createClient();
   const { data } = await supabase
     .from("factures")
-    .select("id, numero, type_facture, statut, total_ht, date_emission, pourcentage_acompte")
+    .select("id, numero, type_facture, statut, total_ht, date_emission, pourcentage_acompte, mode_avoir")
     .eq("facture_parent_id", parentId)
     .order("date_emission", { ascending: true });
   return data ?? [];

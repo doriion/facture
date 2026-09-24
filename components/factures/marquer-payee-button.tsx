@@ -45,9 +45,12 @@ import {
 export function MarquerPayeeButton({
   factureId,
   compact = false,
+  remboursement = false,
 }: {
   factureId: string;
   compact?: boolean;
+  /** Avoir de remboursement : le « paiement » enregistré est l'argent rendu au client. */
+  remboursement?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -100,10 +103,16 @@ export function MarquerPayeeButton({
         ? montantRestant(totalFacture, dejaEncaisse + montantNum)
         : 0;
     if (estSoldee(resteApres)) {
-      toast.success("Paiement enregistré — facture marquée payée");
+      toast.success(
+        remboursement
+          ? "Remboursement enregistré — avoir marqué remboursé"
+          : "Paiement enregistré — facture marquée payée",
+      );
     } else {
-      toast.success("Paiement partiel enregistré", {
-        description: `Il reste ${formatEuros(resteApres)} à encaisser — la facture reste « envoyée ».`,
+      toast.success(remboursement ? "Remboursement partiel enregistré" : "Paiement partiel enregistré", {
+        description: remboursement
+          ? `Il reste ${formatEuros(resteApres)} à rembourser.`
+          : `Il reste ${formatEuros(resteApres)} à encaisser — la facture reste « envoyée ».`,
       });
     }
     setOpen(false);
@@ -131,7 +140,7 @@ export function MarquerPayeeButton({
       ) : (
         <Button type="button" onClick={() => setOpen(true)}>
           <Check className="size-4" />
-          Marquer payée
+          {remboursement ? "Marquer remboursé" : "Marquer payée"}
         </Button>
       )}
 
@@ -141,11 +150,13 @@ export function MarquerPayeeButton({
           className="sm:max-w-md"
         >
           <DialogHeader>
-            <DialogTitle>Enregistrer l&apos;encaissement</DialogTitle>
+            <DialogTitle>
+              {remboursement ? "Enregistrer le remboursement" : "Enregistrer l'encaissement"}
+            </DialogTitle>
             <DialogDescription>
-              Marquer la facture payée enregistre un paiement — c&apos;est lui
-              qui alimente le CA encaissé (jauges du tableau de bord, export
-              URSSAF).
+              {remboursement
+                ? "Le remboursement vient en moins des recettes encaissées (jauges du tableau de bord, export URSSAF), à sa date."
+                : "Marquer la facture payée enregistre un paiement — c'est lui qui alimente le CA encaissé (jauges du tableau de bord, export URSSAF)."}
               {totalFacture !== null && dejaEncaisse > 0 && (
                 <>
                   {" "}
@@ -163,7 +174,9 @@ export function MarquerPayeeButton({
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="paiement-date">Date d&apos;encaissement</Label>
+                <Label htmlFor="paiement-date">
+                  {remboursement ? "Date du remboursement" : "Date d'encaissement"}
+                </Label>
                 <Input
                   id="paiement-date"
                   type="date"
@@ -216,7 +229,7 @@ export function MarquerPayeeButton({
               ) : (
                 <Check className="size-4" />
               )}
-              Encaisser et marquer payée
+              {remboursement ? "Enregistrer le remboursement" : "Encaisser et marquer payée"}
             </Button>
           </DialogFooter>
         </DialogContent>

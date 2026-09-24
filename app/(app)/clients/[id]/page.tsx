@@ -222,7 +222,10 @@ export default async function ClientDetailPage({
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <StatutBadge statut={statutAffichageFacture(f, aujourdhuiParis())} />
-                      <span className="tabular-nums">{formatEuros(Number(f.total_ht))}</span>
+                      <span className="tabular-nums">
+                        {f.type_facture === "avoir" ? "− " : ""}
+                        {formatEuros(Number(f.total_ht))}
+                      </span>
                     </span>
                   </Link>
                 </li>
@@ -255,6 +258,7 @@ export default async function ClientDetailPage({
                         <StatutBadge statut={statutAffiche} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
+                        {f.type_facture === "avoir" ? "− " : ""}
                         {formatEuros(Number(f.total_ht))}
                       </TableCell>
                     </TableRow>

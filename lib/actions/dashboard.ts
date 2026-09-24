@@ -180,7 +180,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     // « facturé » des cartes ni des graphes)
     supabase
       .from("factures")
-      .select("id,numero,date_emission,date_echeance,total_ht,statut,type_activite,client_id,client:clients(id,nom)")
+      .select("id,numero,date_emission,date_echeance,total_ht,statut,type_activite,type_facture,client_id,client:clients(id,nom)")
       .gte("date_emission", start12moisAgo)
       .lt("date_emission", startOfNextYear)
       .neq("statut", "annulee")
@@ -199,7 +199,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     supabase
       .from("factures")
       .select("id,numero,date_echeance,total_ht,client_id,client:clients(id,nom)")
-      .eq("statut", "envoyee"),
+      .eq("statut", "envoyee")
+      // Un avoir « envoyé » n'est pas un impayé.
+      .neq("type_facture", "avoir"),
     // Devis envoyés (en attente) — modèles exclus ; les champs de la
     // liste « expirent bientôt » sont pris ici (plus de 2e requête).
     supabase
@@ -252,9 +254,15 @@ export async function getDashboardData(): Promise<DashboardData> {
     total_ht: number;
     statut: string;
     type_activite: string;
+    type_facture?: string | null;
     client_id: string;
     client: { id: string; nom: string } | null;
-  }>).filter((f) => !parentsVentiles.has(f.id));
+  }>)
+    .filter((f) => !parentsVentiles.has(f.id))
+    // Un avoir émis vient en MOINS du facturé (cartes, graphes, top clients).
+    .map((f) =>
+      f.type_facture === "avoir" ? { ...f, total_ht: -Number(f.total_ht) } : f,
+    );
 
   // Facturé du mois courant (factures émises : envoyées + payées)
   const caMois = facturesAnnee
@@ -318,17 +326,29 @@ export async function getDashboardData(): Promise<DashboardData> {
   // partie (acompte enregistré) ne compte que pour ce qui reste.
   const encaisseParFacture = new Map<string, number>();
   if (facturesEnvoyees.length > 0) {
-    const { data: paiementsEnvoyees } = await supabase
-      .from("paiements")
-      .select("facture_id, montant")
-      .in(
-        "facture_id",
-        facturesEnvoyees.map((f) => f.id),
-      );
+    const ids = facturesEnvoyees.map((f) => f.id);
+    const [{ data: paiementsEnvoyees }, { data: avoirsImputes }] = await Promise.all([
+      supabase.from("paiements").select("facture_id, montant").in("facture_id", ids),
+      // Avoirs d'imputation émis : déduits du reste dû comme un paiement.
+      supabase
+        .from("factures")
+        .select("facture_parent_id, total_ht")
+        .in("facture_parent_id", ids)
+        .eq("type_facture", "avoir")
+        .eq("mode_avoir", "imputation")
+        .in("statut", ["envoyee", "payee"]),
+    ]);
     for (const p of paiementsEnvoyees ?? []) {
       encaisseParFacture.set(
         p.facture_id,
         (encaisseParFacture.get(p.facture_id) ?? 0) + Number(p.montant),
+      );
+    }
+    for (const a of avoirsImputes ?? []) {
+      if (!a.facture_parent_id) continue;
+      encaisseParFacture.set(
+        a.facture_parent_id,
+        (encaisseParFacture.get(a.facture_parent_id) ?? 0) + Number(a.total_ht),
       );
     }
   }

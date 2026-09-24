@@ -270,6 +270,7 @@ export function FacturePdf({
   profil: profilCourant,
   logoData,
   devisSource = null,
+  factureParent = null,
 }: {
   facture: Facture;
   lignes: Ligne[];
@@ -278,6 +279,8 @@ export function FacturePdf({
   logoData?: string | null;
   /** Devis d'origine (facture convertie) : imprimé sous le numéro. */
   devisSource?: { numero: string; date_emission: string | null } | null;
+  /** Avoir : facture d'origine corrigée (mention obligatoire). */
+  factureParent?: { numero: string; date_emission: string | null } | null;
 }) {
   // Facture émise : mentions émetteur FIGÉES au moment de l'émission
   // (SIRET historisé) ; brouillon : profil courant.
@@ -331,9 +334,14 @@ export function FacturePdf({
   // Pied de page : une mention par ligne, et une réserve de page
   // calculée sur ce qui est réellement imprimé (le bloc fixe recouvrait
   // le corps quand toutes les mentions étaient présentes).
+  const typeFacture = (facture as { type_facture?: string | null }).type_facture ?? "normale";
+  const estAvoir = typeFacture === "avoir";
+  const modeAvoir = (facture as { mode_avoir?: string | null }).mode_avoir ?? null;
+  const motifAvoir = (facture as { motif_avoir?: string | null }).motif_avoir ?? null;
   const lignesPied = [
-    mentionPenalitesRetard(profil?.penalites_retard_text, client?.type),
-    profil?.escompte_text || MENTION_ESCOMPTE_DEFAULT,
+    // Un avoir n'a ni échéance ni pénalités ni escompte.
+    estAvoir ? null : mentionPenalitesRetard(profil?.penalites_retard_text, client?.type),
+    estAvoir ? null : profil?.escompte_text || MENTION_ESCOMPTE_DEFAULT,
     mentions.rm,
     mentions.decennale,
     mentions.fluides,
@@ -344,10 +352,10 @@ export function FacturePdf({
   // occupent deux lignes : on compte large.
   const reservePied = 40 + lignesPied.reduce((h, m) => h + (m.length > 110 ? 22 : 11), 0);
   const datePrestation = facture.date_prestation || facture.date_emission;
-  const typeFacture = (facture as { type_facture?: string | null }).type_facture ?? "normale";
   const pctAcompte = (facture as { pourcentage_acompte?: number | null }).pourcentage_acompte;
-  const titreFacture =
-    typeFacture === "acompte"
+  const titreFacture = estAvoir
+    ? "AVOIR"
+    : typeFacture === "acompte"
       ? "FACTURE D'ACOMPTE"
       : typeFacture === "solde"
         ? "FACTURE DE SOLDE"
@@ -355,7 +363,7 @@ export function FacturePdf({
 
   return (
     <Document
-      title={`Facture ${facture.numero}`}
+      title={`${estAvoir ? "Avoir" : "Facture"} ${facture.numero}`}
       author={entrepriseNom}
       creator="Facture AE"
     >
@@ -411,8 +419,16 @@ export function FacturePdf({
                 Déduction faite des acomptes déjà facturés
               </Text>
             )}
+            {estAvoir && factureParent && (
+              <Text style={styles.factureDate}>
+                Avoir sur la facture n° {factureParent.numero}
+                {factureParent.date_emission
+                  ? ` du ${formatDateFr(factureParent.date_emission)}`
+                  : ""}
+              </Text>
+            )}
             <Text style={styles.factureDate}>
-              Émise le {formatDateFr(facture.date_emission)}
+              {estAvoir ? "Émis" : "Émise"} le {formatDateFr(facture.date_emission)}
             </Text>
             {/* Date de la prestation : mention obligatoire ; à défaut de
                 saisie, la date d'émission. */}
@@ -423,11 +439,20 @@ export function FacturePdf({
                 ? `du ${formatDateFr(datePrestation)} au ${formatDateFr(facture.date_prestation_fin)}`
                 : `le ${formatDateFr(datePrestation)}`}
             </Text>
-            <Text style={styles.factureDate}>
-              Échéance : {formatDateFr(facture.date_echeance)}
-            </Text>
+            {estAvoir ? (
+              <Text style={styles.factureDate}>
+                {modeAvoir === "remboursement"
+                  ? "Montant à rembourser au client"
+                  : `Montant imputé sur la facture n° ${factureParent?.numero ?? ""}`}
+              </Text>
+            ) : (
+              <Text style={styles.factureDate}>
+                Échéance : {formatDateFr(facture.date_echeance)}
+              </Text>
+            )}
           </View>
         </View>
+
 
         {/* Bandeau identité légale + client */}
         <View style={styles.rowBetween}>
@@ -468,6 +493,13 @@ export function FacturePdf({
             )}
           </View>
         </View>
+
+        {estAvoir && motifAvoir && (
+          <View style={{ marginBottom: 6 }}>
+            <Text style={styles.blockTitle}>Motif de l&apos;avoir</Text>
+            <Text>{motifAvoir}</Text>
+          </View>
+        )}
 
         {/* Type d'activité */}
         <View style={{ marginBottom: 6 }}>
@@ -548,7 +580,9 @@ export function FacturePdf({
               </>
             )}
             <View style={styles.totalFinal}>
-              <Text style={styles.totalFinalLabel}>NET À PAYER</Text>
+              <Text style={styles.totalFinalLabel}>
+                {estAvoir ? "TOTAL AVOIR" : "NET À PAYER"}
+              </Text>
               <Text style={styles.totalFinalValue}>{formatEuros(totalHt)}</Text>
             </View>
           </View>
@@ -618,16 +652,16 @@ export function FacturePdf({
           </View>
         )}
 
-        {/* Conditions de paiement */}
-        {facture.conditions_paiement && (
+        {/* Conditions de paiement (sans objet sur un avoir) */}
+        {!estAvoir && facture.conditions_paiement && (
           <View style={styles.conditions}>
             <Text style={styles.conditionsTitle}>Conditions de paiement</Text>
             <Text>{facture.conditions_paiement}</Text>
           </View>
         )}
 
-        {/* Coordonnées bancaires */}
-        {(profil?.iban || profil?.bic) && (
+        {/* Coordonnées bancaires (sans objet sur un avoir) */}
+        {!estAvoir && (profil?.iban || profil?.bic) && (
           <View style={styles.banqueBlock}>
             <Text style={[styles.equipementTitle, { marginBottom: 4 }]}>
               Règlement par virement
