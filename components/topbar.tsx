@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BoutonRetour } from "@/components/bouton-retour";
 import { LogoMarque } from "@/components/logo-marque";
+import { viderCachePages } from "@/components/sw-register";
 import { RechercheGlobale } from "@/components/recherche-globale";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NOM_APPLICATION } from "@/lib/marque";
@@ -27,6 +28,9 @@ import { NOM_APPLICATION } from "@/lib/marque";
  */
 export function Topbar({ email }: { email: string }) {
   async function handleSignOut() {
+    // Les pages gardées pour le hors ligne contiennent vos données :
+    // elles partent avec la session.
+    viderCachePages();
     try {
       await signOutAction();
       // signOutAction redirige côté serveur ; ce code n'est pas atteint

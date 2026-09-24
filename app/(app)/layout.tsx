@@ -7,6 +7,7 @@ import { BarreOnglets } from "@/components/barre-onglets";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
 import { RestaurationDefilement } from "@/components/restauration-defilement";
+import { IndicateurHorsLigne } from "@/components/indicateur-hors-ligne";
 
 /**
  * Layout pour toutes les routes authentifiées (sous le groupe `(app)`).
@@ -43,6 +44,7 @@ export default async function AppLayout({
       <Sidebar badgeTaches={badgeTaches} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar email={user.email ?? ""} />
+        <IndicateurHorsLigne />
         <main className="flex-1 overflow-y-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6">
           <Suspense fallback={null}>
             <RestaurationDefilement />
