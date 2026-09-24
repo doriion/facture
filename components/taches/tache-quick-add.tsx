@@ -13,6 +13,8 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image-compress";
+import { appelerOuMettreEnAttente, MESSAGE_HORS_LIGNE } from "@/lib/appel-action";
+import { genererId } from "@/lib/file-attente-helpers";
 import { formatDateFr } from "@/lib/format";
 import {
   aujourdhuiParis,
@@ -117,7 +119,11 @@ export function TacheQuickAdd({
     if (!titre.trim() || pending) return;
 
     startTransition(async () => {
-      const res = await createTacheAction({
+      // Identifiant choisi ici : sans réseau, la tâche (et ses photos)
+      // partent en file d'attente et seront créées telles quelles.
+      const tacheId = genererId();
+      const input = {
+        id: tacheId,
         titre,
         notes,
         date_echeance: date,
@@ -127,22 +133,46 @@ export function TacheQuickAdd({
         intervention_id: lienActif ? (prefill?.intervention_id ?? "") : "",
         devis_id: lienActif ? (prefill?.devis_id ?? "") : "",
         facture_id: lienActif ? (prefill?.facture_id ?? "") : "",
-      });
+      } as const;
+      const res = await appelerOuMettreEnAttente(
+        { id: tacheId, type: "tache_creer", payload: { input, titre: titre.trim() } },
+        () => createTacheAction(input),
+      );
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
+      const enAttente = "enAttente" in res;
 
       let echecsPhotos = 0;
+      let photosEnAttente = 0;
       for (const photo of photos) {
         const compressed = await compressImage(photo.file);
+        const photoId = genererId();
         const fd = new FormData();
+        fd.append("id", photoId);
         fd.append("file", compressed);
-        const up = await uploadTachePhotoAction(res.data.id, fd);
+        // La tâche est en attente : ses photos aussi, sans tenter l'envoi.
+        const up = enAttente
+          ? await appelerOuMettreEnAttente(
+              { id: photoId, type: "photo_tache", payload: { tacheId, file: compressed } },
+              async () => ({ ok: false as const, error: MESSAGE_HORS_LIGNE }),
+            )
+          : await appelerOuMettreEnAttente(
+              { id: photoId, type: "photo_tache", payload: { tacheId, file: compressed } },
+              () => uploadTachePhotoAction(tacheId, fd),
+            );
         if (!up.ok) echecsPhotos += 1;
+        else if ("enAttente" in up) photosEnAttente += 1;
       }
 
-      if (echecsPhotos > 0) {
+      if (enAttente || photosEnAttente > 0) {
+        toast.info("Tâche enregistrée hors ligne", {
+          description: `${titre.trim()} — partira au retour du réseau${
+            photosEnAttente > 0 ? ` avec ${photosEnAttente} photo(s)` : ""
+          }.`,
+        });
+      } else if (echecsPhotos > 0) {
         toast.warning(
           `Tâche ajoutée, mais ${echecsPhotos} photo(s) n'ont pas pu être envoyées.`,
         );

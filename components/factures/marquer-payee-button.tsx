@@ -6,6 +6,8 @@ import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { addPaiementAction, getFacturePaiements } from "@/lib/actions/paiements";
+import { appelerOuMettreEnAttente } from "@/lib/appel-action";
+import { genererId } from "@/lib/file-attente-helpers";
 import {
   LABELS_MODE_PAIEMENT,
   MODES_PAIEMENT,
@@ -87,14 +89,33 @@ export function MarquerPayeeButton({
 
   async function onConfirm() {
     setSaving(true);
-    const result = await addPaiementAction(factureId, {
-      date_paiement: date,
-      montant,
-      mode,
-    });
+    // Sans réseau : le paiement part en file d'attente avec cet
+    // identifiant (aucun doublon au rejeu) et sera enregistré au retour.
+    const paiementId = genererId();
+    const result = await appelerOuMettreEnAttente(
+      {
+        id: paiementId,
+        type: "paiement_ajouter",
+        payload: {
+          factureId,
+          date_paiement: date,
+          montant,
+          mode,
+          montantTexte: formatEuros(parseMoneyInput(montant)),
+        },
+      },
+      () => addPaiementAction(factureId, { id: paiementId, date_paiement: date, montant, mode }),
+    );
     setSaving(false);
     if (!result.ok) {
       toast.error("Erreur", { description: result.error });
+      return;
+    }
+    if ("enAttente" in result) {
+      toast.info(remboursement ? "Remboursement enregistré hors ligne" : "Paiement enregistré hors ligne", {
+        description: "Il sera comptabilisé au retour du réseau.",
+      });
+      setOpen(false);
       return;
     }
     const montantNum = parseMoneyInput(montant);

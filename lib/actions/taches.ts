@@ -236,6 +236,7 @@ export async function createTacheAction(
   const { data, error } = await supabase
     .from("taches")
     .insert({
+      ...(v.id ? { id: v.id } : {}),
       user_id: user.id,
       titre: v.titre,
       notes: v.notes || null,
@@ -251,6 +252,11 @@ export async function createTacheAction(
     .select("id")
     .single();
 
+  // Déjà créée par un premier envoi (réseau coupé pendant la réponse) :
+  // c'est un succès, pas un doublon.
+  if (error?.code === "23505" && v.id) {
+    return { ok: true, data: { id: v.id } };
+  }
   if (error || !data) {
     return { ok: false, error: error?.message ?? "Erreur d'enregistrement." };
   }
@@ -359,6 +365,7 @@ export async function uploadTachePhotoAction(
   formData: FormData,
 ): Promise<ActionResult<{ id: string }>> {
   const file = formData.get("file");
+  const idClient = idPhotoClient(formData.get("id"));
   if (!(file instanceof File)) {
     return { ok: false, error: "Aucun fichier fourni." };
   }
@@ -375,6 +382,16 @@ export async function uploadTachePhotoAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Non authentifié." };
+
+  // Rejeu d'une photo déjà reçue (file d'attente hors ligne) : succès.
+  if (idClient) {
+    const { data: deja } = await supabase
+      .from("taches_photos")
+      .select("id")
+      .eq("id", idClient)
+      .maybeSingle();
+    if (deja) return { ok: true, data: { id: deja.id } };
+  }
 
   const { data: tache } = await supabase
     .from("taches")
@@ -404,6 +421,7 @@ export async function uploadTachePhotoAction(
   const { data, error: dbErr } = await supabase
     .from("taches_photos")
     .insert({
+      ...(idClient ? { id: idClient } : {}),
       user_id: user.id,
       tache_id: tacheId,
       storage_path: path,
@@ -419,6 +437,11 @@ export async function uploadTachePhotoAction(
 
   revalidatePath("/taches");
   return { ok: true, data: { id: data.id } };
+}
+
+/** UUID fourni par la file d'attente hors ligne, sinon null. */
+function idPhotoClient(v: FormDataEntryValue | null): string | null {
+  return typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v) ? v : null;
 }
 
 export async function deleteTachePhotoAction(

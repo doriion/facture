@@ -33,6 +33,9 @@
 const VERSION = "v5";
 const CACHE_STATIQUE = `ng-statique-${VERSION}`;
 const CACHE_PAGES = `ng-pages-${VERSION}`;
+const CACHE_PHOTOS = `ng-photos-${VERSION}`;
+/** Photos conservées pour le hors ligne (les plus anciennes sont évincées). */
+const MAX_PHOTOS = 300;
 const PAGE_HORS_LIGNE = "/hors-ligne";
 
 /** Au-delà, on sert la copie en cache (réseau mobile qui rame). */
@@ -95,6 +98,18 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+
+  // Photos et signatures (URL signées du Storage Supabase) : cache
+  // d'abord, clé SANS le jeton (il change à chaque affichage) — les
+  // photos d'intervention et de tâches restent visibles sans réseau.
+  if (
+    url.origin !== self.location.origin &&
+    url.hostname.endsWith(".supabase.co") &&
+    url.pathname.includes("/storage/v1/object/sign/")
+  ) {
+    event.respondWith(photoCacheDAbord(req, url));
+    return;
+  }
   if (url.origin !== self.location.origin) return;
 
   // Fichiers hachés : cache d'abord.
@@ -228,6 +243,25 @@ async function precacherRessources(html) {
       }
     }),
   );
+}
+
+async function photoCacheDAbord(req, url) {
+  const cache = await caches.open(CACHE_PHOTOS);
+  const cle = url.origin + url.pathname;
+  const enCache = await cache.match(cle);
+  if (enCache) return enCache;
+  const reponse = await fetch(req);
+  // Réponse opaque (no-cors) ou normale : on la garde telle quelle.
+  if (reponse.ok || reponse.type === "opaque") {
+    cache.put(cle, reponse.clone()).then(() => limiterCache(cache, MAX_PHOTOS)).catch(() => {});
+  }
+  return reponse;
+}
+
+async function limiterCache(cache, max) {
+  const cles = await cache.keys();
+  if (cles.length <= max) return;
+  await Promise.all(cles.slice(0, cles.length - max).map((r) => cache.delete(r)));
 }
 
 async function cacheDAbord(req, nomCache) {

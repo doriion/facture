@@ -18,6 +18,13 @@ auto-entrepreneur BTP français (plomberie + climatisation/PAC).
 - **PDF auto-générés** conformes aux exigences légales françaises
 - **CRUD clients** (particulier/pro/syndic) + catalogue prestations
 - Conversion **devis → facture** en 1 clic
+- **Hors ligne** (PWA) : les écrans déjà ouverts et les principaux
+  (préchauffés après connexion) restent lisibles sans réseau, photos
+  comprises. Cocher une tâche, créer une tâche ou un rendez-vous,
+  enregistrer un paiement ou ajouter des photos d'intervention sans
+  réseau met la modification en file d'attente (IndexedDB) ; elle part
+  toute seule au retour du réseau, sans doublon (identifiant choisi par
+  le téléphone). Un bandeau montre ce qui attend ou a été refusé.
 
 ## Lancer en local
 

@@ -9,6 +9,9 @@ import {
   RepartitionActiviteChart,
 } from "@/components/dashboard/graphiques-differes";
 import { AlertesSection } from "@/components/dashboard/alertes-section";
+import { getJournalTaches } from "@/lib/actions/automatisations";
+import { automatismesEnPanne } from "@/lib/journal-helpers";
+import { aujourdhuiParis } from "@/lib/dates";
 import { AttestationsAlerte } from "@/components/dashboard/attestations-alerte";
 import { TopClients } from "@/components/dashboard/top-clients";
 import {
@@ -19,9 +22,10 @@ import {
 export const metadata = { title: "Tableau de bord — NG Gestion" };
 
 export default async function DashboardPage() {
-  const [data, tachesDuJour] = await Promise.all([
+  const [data, tachesDuJour, journal] = await Promise.all([
     getDashboardData(),
     getTachesDuJour(),
+    getJournalTaches(),
   ]);
 
   return (
@@ -66,6 +70,7 @@ export default async function DashboardPage() {
       </div>
 
       <AlertesSection
+        automatismes={automatismesEnPanne(journal, aujourdhuiParis())}
         facturesEnRetard={data.facturesEnRetard}
         devisExpirantBientot={data.devisExpirantBientot}
         prochainesVisitesMaintenance={data.prochainesVisitesMaintenance}
