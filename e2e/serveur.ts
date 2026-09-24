@@ -46,6 +46,9 @@ export async function demarrer(): Promise<Browser> {
         SENTRY_DSN: "",
       },
       stdio: ["ignore", "pipe", "pipe"],
+      // Groupe de processus à part : tuer `npx` seul laissait tourner
+      // `next-server` (port occupé, build périmé) au lancement suivant.
+      detached: true,
     });
     serveur.stdout?.on("data", () => {});
     serveur.stderr?.on("data", (d: Buffer) => {
@@ -65,7 +68,12 @@ export async function arreter(): Promise<void> {
   await navigateur?.close();
   navigateur = null;
   if (serveur) {
-    serveur.kill("SIGTERM");
+    try {
+      if (serveur.pid) process.kill(-serveur.pid, "SIGTERM");
+      else serveur.kill("SIGTERM");
+    } catch {
+      serveur.kill("SIGTERM");
+    }
     serveur = null;
   }
 }

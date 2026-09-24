@@ -1,3 +1,4 @@
+import { statutIntervention } from "@/lib/interventions-helpers";
 /**
  * Filtres des listes (factures, devis, clients, interventions) — logique
  * PURE, testée dans filtres-listes.test.ts.
@@ -90,7 +91,7 @@ export function filtrerClients<T extends ClientFiltrable>(clients: T[], f: Filtr
   );
 }
 
-export type FiltresInterventions = { search?: string; type?: string };
+export type FiltresInterventions = { search?: string; type?: string; statut?: string };
 
 type InterventionFiltrable = {
   type: string;
@@ -99,15 +100,26 @@ type InterventionFiltrable = {
   equipement_modele: string | null;
   equipement_num_serie: string | null;
   client: { nom: string } | null;
+  /** Champs du statut terrain (facultatifs : anciens appels). */
+  date_intervention?: string;
+  facture?: { id: string } | null;
+  a_facturer?: boolean | null;
 };
 
 export function filtrerInterventions<T extends InterventionFiltrable>(
   interventions: T[],
   f: FiltresInterventions,
+  aujourdhui?: string,
 ): T[] {
   return interventions.filter(
     (i) =>
       (TOUS(f.type) || i.type === f.type) &&
+      (TOUS(f.statut) ||
+        !i.date_intervention ||
+        statutIntervention(
+          { date_intervention: i.date_intervention, facture: i.facture, a_facturer: i.a_facturer },
+          aujourdhui ?? "",
+        ) === f.statut) &&
       contient(
         [i.description, i.equipement_marque, i.equipement_modele, i.equipement_num_serie, i.client?.nom],
         f.search ?? "",

@@ -71,6 +71,21 @@ describe("filtrerClients / filtrerInterventions", () => {
     expect(filtrerInterventions(its, { search: "sn-123 baldet" })).toHaveLength(1);
     expect(filtrerInterventions(its, { type: "depannage" })).toHaveLength(1);
   });
+  it("interventions : statut terrain (à facturer, à venir, facturées, rien à facturer)", () => {
+    const base = { type: "entretien", description: null, equipement_marque: null, equipement_modele: null, equipement_num_serie: null, client: null };
+    const its = [
+      { ...base, date_intervention: "2026-09-01" },
+      { ...base, date_intervention: "2026-09-02", facture: { id: "f" } },
+      { ...base, date_intervention: "2026-10-01" },
+      { ...base, date_intervention: "2026-09-03", a_facturer: false },
+    ];
+    const J = "2026-09-25";
+    expect(filtrerInterventions(its, { statut: "a_facturer" }, J)).toHaveLength(1);
+    expect(filtrerInterventions(its, { statut: "a_venir" }, J)).toHaveLength(1);
+    expect(filtrerInterventions(its, { statut: "facturee" }, J)).toHaveLength(1);
+    expect(filtrerInterventions(its, { statut: "rien_a_facturer" }, J)).toHaveLength(1);
+    expect(filtrerInterventions(its, { statut: "tous" }, J)).toHaveLength(4);
+  });
 });
 
 describe("parametresFiltres", () => {
