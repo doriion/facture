@@ -8,7 +8,8 @@ import { Loader2, Plus, Repeat, Save, Trash2, ExternalLink } from "lucide-react"
 import Link from "next/link";
 import { toast } from "sonner";
 
-import { appelerAction } from "@/lib/appel-action";
+import { appelerAction, appelerOuMettreEnAttente } from "@/lib/appel-action";
+import { genererId } from "@/lib/file-attente-helpers";
 
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { SelecteurCouleur } from "@/components/agenda/selecteur-couleur";
@@ -240,6 +241,9 @@ export function QuickInterventionDialog({
     // Affichage immédiat : le dialogue se ferme, le rendez-vous est déjà
     // dans l'agenda ; le serveur confirme derrière (ou on annule).
     const id = editIntervention?.id ?? `tmp-${Date.now()}`;
+    // Identifiant définitif du rendez-vous créé (UUID choisi ici) : la
+    // file d'attente hors ligne le rejoue tel quel.
+    const nouveauId = genererId();
     const clientNom =
       tousLesClients.find((c) => c.id === (values.client_id || ""))?.nom ?? null;
     const surLesSuivantes = enSerie && portee === "suivantes";
@@ -294,8 +298,27 @@ export function QuickInterventionDialog({
         ))
       : recurrence
         ? await appelerAction(() => createInterventionSerieAction(values, recurrence))
-        : await appelerAction(() => createInterventionAction(values));
+        : await appelerOuMettreEnAttente(
+            // Sans réseau : le rendez-vous part en file d'attente avec cet
+            // identifiant et sera créé tel quel au retour du réseau.
+            { id: nouveauId, type: "rdv_creer", payload: { values, date_intervention: values.date_intervention, clientNom } },
+            () => createInterventionAction({ ...values, id: nouveauId }),
+          );
     setSubmitting(false);
+
+    if (result.ok && "enAttente" in result) {
+      if (couleur) {
+        await appelerOuMettreEnAttente(
+          { id: genererId(), type: "couleur_evenements", payload: { cles: [`intervention:${nouveauId}`], couleur } },
+          async () => ({ ok: false as const, error: "Pas de réseau" }),
+        );
+        onCouleurOptimiste?.(`intervention:${nouveauId}`, couleur);
+      }
+      toast.info("Rendez-vous enregistré hors ligne", {
+        description: "Il partira au retour du réseau.",
+      });
+      return;
+    }
 
     if (result.ok) {
       // Couleur propre : après la création (il faut l'identifiant), ou si

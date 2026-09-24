@@ -38,6 +38,8 @@ export async function uploadInterventionPhotoAction(
   const file = formData.get("file");
   const moment = (formData.get("moment") as string) || "autre";
   const legende = ((formData.get("legende") as string) || "").trim();
+  const idBrut = formData.get("id");
+  const idClient = typeof idBrut === "string" && /^[0-9a-f-]{36}$/i.test(idBrut) ? idBrut : null;
 
   if (!(file instanceof File)) {
     return { ok: false, error: "Aucun fichier fourni." };
@@ -58,6 +60,16 @@ export async function uploadInterventionPhotoAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Non authentifié." };
+
+  // Rejeu d'une photo déjà reçue (file d'attente hors ligne) : succès.
+  if (idClient) {
+    const { data: deja } = await supabase
+      .from("intervention_photos")
+      .select("id")
+      .eq("id", idClient)
+      .maybeSingle();
+    if (deja) return { ok: true, data: { id: deja.id } };
+  }
 
   // Vérifie que l'intervention appartient à l'utilisateur (RLS le ferait
   // aussi mais on évite un upload inutile en cas d'ID frauduleux).
@@ -90,6 +102,7 @@ export async function uploadInterventionPhotoAction(
   const { data, error: dbErr } = await supabase
     .from("intervention_photos")
     .insert({
+      ...(idClient ? { id: idClient } : {}),
       user_id: user.id,
       intervention_id: interventionId,
       storage_path: path,

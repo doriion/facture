@@ -11,6 +11,9 @@ export type PrioriteTache = (typeof PRIORITES_TACHE)[number];
  * dans l'UI mais le schéma les tolère tous — la base les accepte.
  */
 export const tacheSchema = z.object({
+  // Identifiant choisi par le téléphone (file d'attente hors ligne) :
+  // rejouer la même création n'en fait pas deux.
+  id: z.string().uuid().optional(),
   titre: z
     .string()
     .trim()

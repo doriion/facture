@@ -11,6 +11,8 @@ import {
   type InterventionPhoto,
 } from "@/lib/actions/intervention-photos";
 import { compressImage } from "@/lib/image-compress";
+import { appelerOuMettreEnAttente } from "@/lib/appel-action";
+import { genererId } from "@/lib/file-attente-helpers";
 import {
   Card,
   CardContent,
@@ -78,6 +80,7 @@ export function InterventionPhotos({
     setProgression({ faites: 0, total: liste.length });
     let success = 0;
     let failed = 0;
+    let enAttente = 0;
     // Toutes les photos partent en même temps (compression + envoi)
     // au lieu d'une par une : cinq photos de chantier prenaient cinq
     // fois le temps d'un aller-retour, sur réseau de chantier.
@@ -86,12 +89,20 @@ export function InterventionPhotos({
         // Compression côté client (max ~1600 px, JPEG) : une photo de
         // téléphone passe de plusieurs Mo à quelques centaines de Ko.
         const compressed = await compressImage(file);
+        const photoId = genererId();
         const fd = new FormData();
+        fd.append("id", photoId);
         fd.append("file", compressed);
         fd.append("moment", moment);
         fd.append("legende", legende);
-        const res = await uploadInterventionPhotoAction(interventionId, fd);
-        if (res.ok) success++;
+        // Sans réseau : la photo (déjà compressée) attend sur le
+        // téléphone et part au retour du réseau.
+        const res = await appelerOuMettreEnAttente(
+          { id: photoId, type: "photo_intervention", payload: { interventionId, file: compressed, moment, legende } },
+          () => uploadInterventionPhotoAction(interventionId, fd),
+        );
+        if (res.ok && "enAttente" in res) enAttente++;
+        else if (res.ok) success++;
         else {
           failed++;
           toast.error(`Échec ${file.name}`, { description: res.error });
@@ -105,6 +116,11 @@ export function InterventionPhotos({
     if (success > 0) {
       toast.success(`${success} photo${success > 1 ? "s" : ""} ajoutée${success > 1 ? "s" : ""}`);
       router.refresh();
+    }
+    if (enAttente > 0) {
+      toast.info(`${enAttente} photo${enAttente > 1 ? "s" : ""} en attente de réseau`, {
+        description: "Elles partiront toutes seules dès que la connexion revient.",
+      });
     }
     if (failed > 0 && success === 0) {
       // Erreurs déjà affichées

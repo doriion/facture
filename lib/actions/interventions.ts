@@ -114,6 +114,7 @@ export async function bilanFluidesFrigo(annee?: number) {
 /** Colonnes d'une intervention à partir du formulaire (création). */
 function ligneIntervention(v: InterventionFormValues, userId: string) {
   return {
+    ...(v.id ? { id: v.id } : {}),
     user_id: userId,
     client_id: v.client_id || null,
     date_intervention: v.date_intervention,
@@ -167,6 +168,10 @@ export async function createInterventionAction(
     .select("id")
     .single();
 
+  // Déjà créé par un premier envoi (file d'attente hors ligne rejouée).
+  if (error?.code === "23505" && v.id) {
+    return { ok: true, data: { id: v.id } };
+  }
   if (error || !data) {
     return { ok: false, error: error?.message ?? "Échec de la création." };
   }

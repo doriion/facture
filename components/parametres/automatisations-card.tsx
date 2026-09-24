@@ -11,6 +11,8 @@ import {
   type ReglagesAutomatisations,
 } from "@/lib/actions/automatisations";
 import { sauvegarderMaintenantAction } from "@/lib/actions/sauvegarde";
+import { joursSansExecution as joursSansExecutionPur } from "@/lib/journal-helpers";
+import { aujourdhuiParis } from "@/lib/dates";
 import { formatDateFr } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
@@ -287,8 +289,5 @@ export function AutomatisationsCard({
 
 /** Jours écoulés depuis la dernière ligne de journal (999 si aucune). */
 function joursSansExecution(journal: LigneJournal[]): number {
-  if (journal.length === 0) return 999;
-  const derniere = journal.reduce((m, j) => (j.date_execution > m ? j.date_execution : m), "");
-  const ms = Date.now() - new Date(`${derniere}T00:00:00Z`).getTime();
-  return Math.floor(ms / (24 * 3600 * 1000));
+  return joursSansExecutionPur(journal, aujourdhuiParis());
 }

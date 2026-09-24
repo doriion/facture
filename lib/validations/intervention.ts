@@ -31,6 +31,8 @@ export const LABELS_TYPE_INTERVENTION = {
  * « client à renseigner » (la facturation, elle, exige un client).
  */
 export const interventionSchema = z.object({
+  /** Identifiant choisi par le téléphone (file d'attente hors ligne). */
+  id: z.string().uuid().optional(),
   client_id: z
     .string()
     .uuid("Client invalide.")

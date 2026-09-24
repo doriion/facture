@@ -129,6 +129,8 @@ export async function synchroniserStatutApresAvoir(factureId: string): Promise<v
 export async function addPaiementAction(
   factureId: string,
   raw: {
+    /** Identifiant choisi par le téléphone (file d'attente hors ligne). */
+    id?: string;
     date_paiement: string;
     montant: string | number;
     mode: string;
@@ -152,6 +154,13 @@ export async function addPaiementAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Non authentifié." };
+
+  // Rejeu d'un paiement déjà reçu (réseau coupé pendant la réponse).
+  const idClient = raw.id && /^[0-9a-f-]{36}$/i.test(raw.id) ? raw.id : null;
+  if (idClient) {
+    const { data: deja } = await supabase.from("paiements").select("id").eq("id", idClient).maybeSingle();
+    if (deja) return { ok: true, data: { id: deja.id } };
+  }
 
   // Gardes métier (lib/factures-transitions) : facture existante, ni
   // annulée ni ventilée en acomptes/solde, montant ≤ reste dû.
@@ -177,6 +186,7 @@ export async function addPaiementAction(
   const { data, error } = await supabase
     .from("paiements")
     .insert({
+      ...(idClient ? { id: idClient } : {}),
       user_id: user.id,
       facture_id: factureId,
       date_paiement: raw.date_paiement,

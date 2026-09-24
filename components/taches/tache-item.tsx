@@ -7,6 +7,8 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { formatDateFr } from "@/lib/format";
+import { appelerOuMettreEnAttente } from "@/lib/appel-action";
+import { genererId } from "@/lib/file-attente-helpers";
 import {
   deleteTacheAction,
   setTacheFaitAction,
@@ -52,10 +54,21 @@ export function TacheItem({
     const cible = !tache.fait;
     if (cible) setValidee(true);
     startTransition(async () => {
-      const res = await setTacheFaitAction(tache.id, cible);
+      // Sans réseau : mis en file d'attente, la tâche reste cochée à
+      // l'écran et l'envoi part au retour du réseau.
+      const res = await appelerOuMettreEnAttente(
+        { id: genererId(), type: "tache_fait", payload: { id: tache.id, fait: cible, titre: tache.titre } },
+        () => setTacheFaitAction(tache.id, cible),
+      );
       if (!res.ok) {
         setValidee(false);
         toast.error(res.error);
+        return;
+      }
+      if ("enAttente" in res) {
+        toast.info(cible ? "Tâche faite (hors ligne)" : "Tâche à refaire (hors ligne)", {
+          description: "Sera enregistrée au retour du réseau.",
+        });
         return;
       }
       if (cible) {

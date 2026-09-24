@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, CalendarClock, Clock, FileWarning } from "lucide-react";
+import { AlertCircle, CalendarClock, Clock, FileWarning, TimerOff } from "lucide-react";
 
 import { RegenererPdfButton } from "@/components/contrats/regenerer-pdf-button";
 
@@ -13,6 +13,8 @@ import {
 import { formatDateFr, formatEuros } from "@/lib/format";
 
 type Props = {
+  /** Tâches planifiées (sauvegarde, relances, rappels) sans exécution depuis ≥ 2 jours. */
+  automatismes?: { jours: number; jamais: boolean } | null;
   facturesEnRetard: Array<{
     id: string;
     numero: string;
@@ -44,12 +46,14 @@ type Props = {
 };
 
 export function AlertesSection({
+  automatismes = null,
   facturesEnRetard,
   devisExpirantBientot,
   prochainesVisitesMaintenance,
   contratsPdfManquant = [],
 }: Props) {
   const hasAny =
+    automatismes !== null ||
     facturesEnRetard.length > 0 ||
     devisExpirantBientot.length > 0 ||
     prochainesVisitesMaintenance.length > 0 ||
@@ -73,6 +77,29 @@ export function AlertesSection({
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
+      {automatismes && (
+        <Card className="border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 lg:col-span-3">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TimerOff className="size-4 text-amber-600 dark:text-amber-400" />
+              Les tâches planifiées ne tournent pas
+            </CardTitle>
+            <CardDescription>
+              {automatismes.jamais
+                ? "Aucune exécution enregistrée : sauvegarde mensuelle, relances, rappels et email quotidien sont à l'arrêt."
+                : `Aucune exécution depuis ${automatismes.jours} jours : sauvegarde, relances et rappels sont à l'arrêt.`}{" "}
+              Cause habituelle : la variable <code>PUSH_CRON_SECRET</code> absente
+              ou différente sur Vercel (voir Paramètres → Automatisations).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/parametres" className="text-sm font-medium text-primary hover:underline">
+              Ouvrir les paramètres
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
       {contratsPdfManquant.length > 0 && (
         <Card className="border-destructive/30 bg-destructive/5 lg:col-span-3">
           <CardHeader className="pb-3">
