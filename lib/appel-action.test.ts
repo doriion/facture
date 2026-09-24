@@ -45,7 +45,7 @@ describe("appelerAction", () => {
 // ---------------------------------------------------------------------------
 import { vi } from "vitest";
 
-const ajouterAFile = vi.fn(async () => undefined);
+const ajouterAFile = vi.fn(async (..._args: unknown[]) => undefined);
 vi.mock("@/lib/file-attente", () => ({ ajouterAFile: (...args: unknown[]) => ajouterAFile(...args) }));
 
 import { appelerOuMettreEnAttente } from "./appel-action";
