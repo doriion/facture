@@ -7,8 +7,16 @@ import { InterventionForm } from "@/components/interventions/intervention-form";
 
 export const metadata = { title: "Nouvelle intervention — NG Gestion" };
 
-export default async function NouvelleInterventionPage() {
+export default async function NouvelleInterventionPage({
+  searchParams,
+}: {
+  searchParams: { client?: string };
+}) {
   const clients = await listClients();
+  // ?client= (depuis la fiche client) : pré-sélectionné s'il existe.
+  const clientParDefaut = clients.some((c) => c.id === searchParams.client)
+    ? searchParams.client
+    : undefined;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -26,7 +34,7 @@ export default async function NouvelleInterventionPage() {
 
       {/* Le client est optionnel : on peut créer l'intervention sans
           client et le renseigner plus tard (obligatoire pour facturer). */}
-      <InterventionForm clients={clients} />
+      <InterventionForm clients={clients} clientIdParDefaut={clientParDefaut} />
     </div>
   );
 }

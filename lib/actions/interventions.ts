@@ -83,6 +83,49 @@ export async function getIntervention(id: string): Promise<{
 }
 
 /**
+ * Autres interventions chez le même client (corbeille exclue), les plus
+ * récentes d'abord — « déjà vu chez ce client » sur la fiche intervention.
+ */
+export async function listInterventionsClient(
+  clientId: string,
+  exclureId: string,
+  limite = 5,
+): Promise<
+  Array<{
+    id: string;
+    date_intervention: string;
+    type: string;
+    description: string | null;
+    equipement_marque: string | null;
+    equipement_modele: string | null;
+    equipement_num_serie: string | null;
+    facture: { id: string; numero: string } | null;
+  }>
+> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("interventions")
+    .select(
+      "id, date_intervention, type, description, equipement_marque, equipement_modele, equipement_num_serie, facture:factures(id, numero)",
+    )
+    .eq("client_id", clientId)
+    .neq("id", exclureId)
+    .is("supprime_le", null)
+    .order("date_intervention", { ascending: false })
+    .limit(limite);
+  return (data ?? []) as unknown as Array<{
+    id: string;
+    date_intervention: string;
+    type: string;
+    description: string | null;
+    equipement_marque: string | null;
+    equipement_modele: string | null;
+    equipement_num_serie: string | null;
+    facture: { id: string; numero: string } | null;
+  }>;
+}
+
+/**
  * Bilan annuel des fluides frigorigènes manipulés (utile pour la
  * déclaration F-Gas et le rapport au client).
  */

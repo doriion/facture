@@ -17,6 +17,7 @@ import { InterventionCerfa } from "@/components/interventions/intervention-cerfa
 import { InterventionBon } from "@/components/interventions/intervention-bon";
 import { InterventionDeleteButton } from "@/components/interventions/intervention-delete-button";
 import { InterventionCorbeilleBanner } from "@/components/interventions/intervention-corbeille-banner";
+import { HistoriqueClientCard } from "@/components/interventions/historique-client-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr } from "@/lib/format";
@@ -153,6 +154,16 @@ export default async function EditInterventionPage({
         <div className="max-md:order-3">
           <InterventionForm clients={clients} intervention={intervention} />
         </div>
+
+        {client && (
+          <div className="max-md:order-3">
+            <HistoriqueClientCard
+              clientId={client.id}
+              clientNom={client.nom}
+              interventionId={intervention.id}
+            />
+          </div>
+        )}
 
         <div className="max-md:order-4">
           <InterventionCerfa
