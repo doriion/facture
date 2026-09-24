@@ -59,6 +59,8 @@ export function FactureActions({
   numero,
   statut,
   ventilee = false,
+  typeFacture = "normale",
+  modeAvoir = null,
   clientEmail,
   clientNom,
   pdfBloqueMotif = null,
@@ -68,6 +70,10 @@ export function FactureActions({
   statut: StatutFacture | string;
   /** Facture d'origine remplacée par ses acomptes/solde : ni envoi ni encaissement. */
   ventilee?: boolean;
+  /** normale, acompte, solde ou avoir. */
+  typeFacture?: string | null;
+  /** Avoir : imputation ou remboursement. */
+  modeAvoir?: string | null;
   clientEmail?: string | null;
   clientNom?: string;
   /**
@@ -81,6 +87,9 @@ export function FactureActions({
   const [pending, setPending] = useState<string | null>(null);
   const [annulerOpen, setAnnulerOpen] = useState(false);
   const [motif, setMotif] = useState("");
+  const avoir = typeFacture === "avoir";
+  const remboursement = avoir && modeAvoir === "remboursement";
+  const leDocument = avoir ? "l'avoir" : "la facture";
 
   // Flux inverse « payée → envoyée » : proposer de supprimer les
   // paiements associés (sinon le CA encaissé resterait gonflé alors
@@ -157,7 +166,7 @@ export function FactureActions({
       toast.error("Annulation refusée", { description: result.error });
       return;
     }
-    toast.success("Facture annulée");
+    toast.success(avoir ? "Avoir annulé" : "Facture annulée");
     setAnnulerOpen(false);
     setMotif("");
     router.refresh();
@@ -208,7 +217,7 @@ export function FactureActions({
       {statut !== "annulee" && (
         <EmailDocumentButton
           documentId={factureId}
-          type="facture"
+          type={avoir ? "avoir" : "facture"}
           destinataireEmail={clientEmail ?? null}
           destinataireNom={clientNom ?? "le client"}
           variant="outline"
@@ -216,19 +225,24 @@ export function FactureActions({
       )}
 
       {/* Duplication par pré-remplissage : rien n'est créé ni numéroté
-          tant que la nouvelle facture n'est pas validée. */}
-      <Button variant="outline" asChild>
-        <Link href={`/factures/nouvelle?source=${factureId}`}>
-          <Copy className="size-4" />
-          Dupliquer
-        </Link>
-      </Button>
+          tant que la nouvelle facture n'est pas validée. Un avoir ne se
+          duplique pas (il se crée depuis sa facture d'origine). */}
+      {!avoir && (
+        <Button variant="outline" asChild>
+          <Link href={`/factures/nouvelle?source=${factureId}`}>
+            <Copy className="size-4" />
+            Dupliquer
+          </Link>
+        </Button>
+      )}
 
       {statut === "brouillon" && (
         <>
           {!ventilee && (
           <Button
-            onClick={() => changeStatut("envoyee", "Facture marquée envoyée")}
+            onClick={() =>
+              changeStatut("envoyee", avoir ? "Avoir émis" : "Facture marquée envoyée")
+            }
             disabled={pending === "envoyee"}
           >
             {pending === "envoyee" ? (
@@ -236,7 +250,7 @@ export function FactureActions({
             ) : (
               <Send className="size-4" />
             )}
-            Marquer envoyée
+            {avoir ? "Émettre l'avoir" : "Marquer envoyée"}
           </Button>
           )}
           <AlertDialog>
@@ -255,7 +269,7 @@ export function FactureActions({
               <AlertDialogHeader>
                 <AlertDialogTitle>Supprimer ce brouillon ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  La facture <strong>{numero}</strong> sera supprimée
+                  {avoir ? "L'avoir" : "La facture"} <strong>{numero}</strong> sera supprimé{avoir ? "" : "e"}
                   définitivement. Cette action est possible uniquement parce
                   qu'elle est en brouillon — les factures envoyées doivent être
                   annulées (et non supprimées) pour respecter la traçabilité légale.
@@ -284,7 +298,13 @@ export function FactureActions({
 
       {statut === "envoyee" && (
         <>
-          {!ventilee && <MarquerPayeeButton factureId={factureId} />}
+          {/* Avoir d'imputation : rien à encaisser ; de remboursement :
+              on enregistre l'argent rendu. */}
+          {!ventilee && (!avoir || remboursement) && (
+            <MarquerPayeeButton factureId={factureId} remboursement={remboursement} />
+          )}
+          {/* Un avoir émis ne revient pas en brouillon : il s'annule. */}
+          {!avoir && (
           <Button
             variant="outline"
             onClick={() => changeStatut("brouillon", "Repassée en brouillon")}
@@ -297,6 +317,7 @@ export function FactureActions({
             )}
             Repasser en brouillon
           </Button>
+          )}
           <Button
             variant="outline"
             className="text-destructive max-sm:mt-1 max-sm:w-full"
@@ -316,7 +337,7 @@ export function FactureActions({
           disabled={pending === "envoyee"}
         >
           <Undo2 className="size-4" />
-          Annuler le paiement
+          {remboursement ? "Annuler le remboursement" : "Annuler le paiement"}
         </Button>
       )}
 
@@ -324,7 +345,9 @@ export function FactureActions({
         <>
           <Button
             variant="outline"
-            onClick={() => changeStatut("brouillon", "Facture restaurée en brouillon")}
+            onClick={() =>
+              changeStatut("brouillon", avoir ? "Avoir restauré en brouillon" : "Facture restaurée en brouillon")
+            }
             disabled={pending === "brouillon"}
           >
             <Undo2 className="size-4" />
@@ -454,11 +477,12 @@ export function FactureActions({
       <Dialog open={annulerOpen} onOpenChange={setAnnulerOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Annuler la facture {numero} ?</DialogTitle>
+            <DialogTitle>Annuler {leDocument} {numero} ?</DialogTitle>
             <DialogDescription>
-              La facture sera conservée en base avec son numéro, marquée
-              « Annulée ». Le motif est obligatoire pour justifier le « trou »
+              {avoir ? "L'avoir" : "La facture"} sera conservé{avoir ? "" : "e"} en base avec son numéro, marqué{avoir ? "" : "e"}
+              « Annulé{avoir ? "" : "e"} ». Le motif est obligatoire pour justifier le « trou »
               dans la séquence en cas de contrôle fiscal.
+              {avoir && modeAvoir === "imputation" && " Le reste dû de la facture d'origine est recalculé."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">

@@ -265,6 +265,11 @@ export const LABELS_STATUT_FACTURE = {
   retard: "En retard",
   ventilee: "Ventilée (acompte / solde)",
   annulee: "Annulée",
+  // Avoirs (statuts affichés, dérivés de envoyee/payee — voir
+  // lib/factures-transitions statutAffichageFacture)
+  avoir_emis: "Avoir émis",
+  avoir_a_rembourser: "Avoir à rembourser",
+  avoir_rembourse: "Avoir remboursé",
 } as const;
 
 /**

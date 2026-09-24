@@ -11,6 +11,9 @@ const variantByStatut: Record<
   retard: "warning",
   ventilee: "secondary",
   annulee: "destructive",
+  avoir_emis: "secondary",
+  avoir_a_rembourser: "warning",
+  avoir_rembourse: "success",
 };
 
 export function StatutBadge({ statut }: { statut: string }) {

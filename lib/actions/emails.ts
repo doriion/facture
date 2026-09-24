@@ -81,6 +81,18 @@ export async function envoyerFactureParEmailAction(
     return { ok: false, error: e.explication };
   }
 
+  // Avoir : la facture corrigée est une mention obligatoire du PDF.
+  const factureParent =
+    facture.type_facture === "avoir" && facture.facture_parent_id
+      ? (
+          await supabase
+            .from("factures")
+            .select("numero, date_emission")
+            .eq("id", facture.facture_parent_id)
+            .maybeSingle()
+        ).data
+      : null;
+
   // Génère le PDF
   const pdfBuffer = await renderToBuffer(
     FacturePdf({
@@ -90,6 +102,7 @@ export async function envoyerFactureParEmailAction(
       profil,
       logoData: logoUrl,
       devisSource: await devisSourceDe(supabase, facture.devis_id),
+      factureParent,
     }),
   );
 
@@ -98,13 +111,19 @@ export async function envoyerFactureParEmailAction(
     [profil.prenom, profil.nom].filter(Boolean).join(" ") ||
     "Auto-entrepreneur";
 
+  const estAvoir = facture.type_facture === "avoir";
   const email = buildDocumentEmail({
-    type: "facture",
+    type: estAvoir ? "avoir" : "facture",
     numero: facture.numero,
     clientNom: client.nom,
     expediteurNom,
     totalText: formatEuros(Number(facture.total_ht)),
-    echeanceText: formatDateFr(facture.date_echeance),
+    // Avoir : pas d'échéance, mais la précision du mode.
+    echeanceText: estAvoir
+      ? facture.mode_avoir === "remboursement"
+        ? "qui vous sera remboursé"
+        : `venant en déduction de la facture ${factureParent?.numero ?? ""}`.trim()
+      : formatDateFr(facture.date_echeance),
     messagePerso,
   });
 
@@ -283,7 +302,7 @@ export async function envoyerRelanceFactureAction(
       error: "Le client n'a pas d'adresse email — renseignez-la sur sa fiche.",
     };
   }
-  if (facture.statut !== "envoyee") {
+  if (facture.statut !== "envoyee" || facture.type_facture === "avoir") {
     return { ok: false, error: "Seules les factures envoyées peuvent être relancées." };
   }
   const today = aujourdhuiParis();

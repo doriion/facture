@@ -70,6 +70,8 @@ export type PaiementExportInput = {
     total_ht: number;
     type_activite: string;
     statut: string;
+    /** 'avoir' : le « paiement » est un REMBOURSEMENT, compté en négatif. */
+    type_facture?: string | null;
     client: { nom: string } | null;
     lignes?: Array<{ total_ht: number; nature_fiscale: string }>;
   } | null;
@@ -80,7 +82,9 @@ export type PaiementExportInput = {
  *
  * Base URSSAF = somme des ENCAISSEMENTS (date de paiement), et non des
  * factures émises — c'est la règle micro-entreprise. Les paiements de
- * factures annulées ou orphelins (facture supprimée) sont exclus.
+ * factures annulées ou orphelins (facture supprimée) sont exclus. Un
+ * remboursement (paiement enregistré sur un AVOIR) vient en moins des
+ * recettes, à sa date, ventilé comme l'avoir.
  */
 export function summarizeEncaissements(paiements: PaiementExportInput[]): {
   rows: ExportRow[];
@@ -97,8 +101,14 @@ export function summarizeEncaissements(paiements: PaiementExportInput[]): {
     if (!p.facture) continue;
     if (p.facture.statut === "annulee") continue;
     facturesAffected.add(p.facture.id);
-    totalEncaisse += Number(p.montant);
-    const v = ventilerMontant(Number(p.montant), p.facture.lignes ?? []);
+    const signe = p.facture.type_facture === "avoir" ? -1 : 1;
+    const montant = signe * Number(p.montant);
+    totalEncaisse += montant;
+    const vAbs = ventilerMontant(Number(p.montant), p.facture.lignes ?? []);
+    const v: Ventilation =
+      signe < 0
+        ? { bic_prestations: -vAbs.bic_prestations, bic_ventes: -vAbs.bic_ventes, bnc: -vAbs.bnc }
+        : vAbs;
     ventilation = additionnerVentilations(ventilation, v);
     rows.push({
       numero_facture: p.facture.numero,
@@ -109,7 +119,7 @@ export function summarizeEncaissements(paiements: PaiementExportInput[]): {
       date_encaissement: p.date_paiement,
       mode_paiement: p.mode,
       reference_paiement: p.reference,
-      montant_encaisse: Number(p.montant),
+      montant_encaisse: montant,
       ventilation: v,
     });
   }
@@ -127,9 +137,13 @@ export function summarizeEncaissements(paiements: PaiementExportInput[]): {
  * l'export, hors base URSSAF).
  */
 export function totalFacturesEmises(
-  factures: Array<{ total_ht: number }>,
+  factures: Array<{ total_ht: number; type_facture?: string | null }>,
 ): number {
-  const total = factures.reduce((s, f) => s + Number(f.total_ht), 0);
+  // Un avoir émis vient en moins du facturé.
+  const total = factures.reduce(
+    (s, f) => s + (f.type_facture === "avoir" ? -1 : 1) * Number(f.total_ht),
+    0,
+  );
   return Math.round(total * 100) / 100;
 }
 

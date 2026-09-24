@@ -40,7 +40,13 @@ export type FacturePaiementsSummary = {
   total_encaisse: number;
   reste_du: number;
   paiements: Paiement[];
-  /** Statut stocké et type (normale/acompte/solde), pour les gardes métier. */
+  /** Statut stocké et type (normale/acompte/solde/avoir), pour les gardes métier. */
   statut: string;
   type_facture: string;
+  /** Avoir : imputation ou remboursement (null sinon). */
+  mode_avoir: string | null;
+  /** Avoirs d'imputation émis sur cette facture : déduits du reste dû. */
+  total_avoirs_imputes: number;
+  /** Avoirs de remboursement émis (non annulés) sur cette facture. */
+  total_avoirs_rembourses: number;
 };

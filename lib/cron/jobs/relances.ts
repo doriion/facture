@@ -43,7 +43,9 @@ async function executerRelances({
         "id, numero, statut, date_echeance, total_ht, exclure_relances_auto, client:clients(nom, email)",
       )
       .eq("user_id", userId)
-      .eq("statut", "envoyee"),
+      .eq("statut", "envoyee")
+      // Un avoir n'est pas un impayé à relancer.
+      .neq("type_facture", "avoir"),
     service
       .from("relances")
       .select("facture_id, envoyee_le, automatique")

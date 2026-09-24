@@ -69,6 +69,7 @@ export function FactureForm({
   interventionId,
   assujettiTva = false,
   verrouillee = false,
+  avoir = false,
 }: {
   clients: Client[];
   produits: Produit[];
@@ -92,6 +93,8 @@ export function FactureForm({
   interventionId?: string;
   /** Facture émise : tout est affiché mais rien n'est modifiable. */
   verrouillee?: boolean;
+  /** Avoir : ni échéance, ni relances, ni détails techniques, ni conditions. */
+  avoir?: boolean;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -321,7 +324,7 @@ export function FactureForm({
               </p>
             )}
           </div>
-          <div className="space-y-1.5">
+          <div className={avoir ? "hidden" : "space-y-1.5"}>
             <Label htmlFor="date_echeance">Date d'échéance *</Label>
             <Input
               id="date_echeance"
@@ -372,7 +375,7 @@ export function FactureForm({
             Date(s) d'exécution effective des travaux. Pour un chantier d'un
             seul jour, laissez la date de fin vide.
           </p>
-          <label className="flex items-start gap-2 md:col-span-2">
+          <label className={avoir ? "hidden" : "flex items-start gap-2 md:col-span-2"}>
             <input
               type="checkbox"
               className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
@@ -413,7 +416,7 @@ export function FactureForm({
       {/* Détails techniques : équipement clim/PAC et aides financières.
           Repliés par défaut (encombrants pour un dépannage), dépliés si
           déjà renseignés ; le contenu reste MONTÉ pour ne rien perdre. */}
-      <details className="group rounded-lg border bg-card" open={detailsRemplis}>
+      <details className={avoir ? "hidden" : "group rounded-lg border bg-card"} open={detailsRemplis}>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-6 py-4 font-semibold">
           <ChevronRight className="size-4 shrink-0 transition-transform group-open:rotate-90" />
           Détails techniques (optionnel)
@@ -534,7 +537,7 @@ export function FactureForm({
           <CardTitle>Conditions et notes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-1.5">
+          <div className={avoir ? "hidden" : "space-y-1.5"}>
             <Label htmlFor="conditions">Conditions de paiement</Label>
             <Textarea
               id="conditions"

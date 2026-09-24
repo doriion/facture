@@ -66,6 +66,17 @@ export async function GET(
           .maybeSingle()
       ).data
     : null;
+  // Avoir : la facture corrigée est une mention obligatoire du document.
+  const factureParent =
+    factureRaw.type_facture === "avoir" && factureRaw.facture_parent_id
+      ? (
+          await supabase
+            .from("factures")
+            .select("numero, date_emission")
+            .eq("id", factureRaw.facture_parent_id)
+            .maybeSingle()
+        ).data
+      : null;
 
   // Garde-fou : pas de rendu d'un document assujetti à la TVA tant que
   // l'app ne sait pas la calculer (snapshot émetteur prioritaire).
@@ -120,6 +131,7 @@ export async function GET(
       profil: profilRes.data,
       logoData,
       devisSource,
+      factureParent,
     }),
   );
 

@@ -49,9 +49,12 @@ import { cn } from "@/lib/utils";
 export function FacturePaiements({
   factureId,
   summary,
+  remboursement = false,
 }: {
   factureId: string;
   summary: FacturePaiementsSummary;
+  /** Avoir de remboursement : les « paiements » sont l'argent rendu au client. */
+  remboursement?: boolean;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -110,11 +113,20 @@ export function FacturePaiements({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Wallet className="size-4 text-primary" />
-          Suivi des encaissements
+          {remboursement ? "Suivi du remboursement" : "Suivi des encaissements"}
         </CardTitle>
         <CardDescription>
-          Enregistrez chaque versement (virement, chèque, espèces…). La facture
-          passe automatiquement en « payée » quand tout est encaissé.
+          {remboursement
+            ? "Enregistrez l'argent rendu au client : il vient en moins des recettes encaissées, à sa date. L'avoir passe « remboursé » quand tout est rendu."
+            : "Enregistrez chaque versement (virement, chèque, espèces…). La facture passe automatiquement en « payée » quand tout est encaissé."}
+          {!remboursement && summary.total_avoirs_imputes > 0 && (
+            <>
+              {" "}
+              Avoir{summary.total_avoirs_imputes > 0 ? "(s)" : ""} imputé
+              {summary.total_avoirs_imputes > 0 ? "(s)" : ""} :{" "}
+              {formatEuros(summary.total_avoirs_imputes)}, déduit du reste dû.
+            </>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -123,7 +135,7 @@ export function FacturePaiements({
           <div className="grid grid-cols-3 gap-3 text-sm">
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Total facture
+                {remboursement ? "Total avoir" : "Total facture"}
               </p>
               <p className="font-semibold tabular-nums">
                 {formatEuros(summary.total_facture)}
@@ -131,7 +143,7 @@ export function FacturePaiements({
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Encaissé
+                {remboursement ? "Remboursé" : "Encaissé"}
               </p>
               <p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
                 {formatEuros(summary.total_encaisse)}
@@ -139,7 +151,7 @@ export function FacturePaiements({
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Reste dû
+                {remboursement ? "Reste à rembourser" : "Reste dû"}
               </p>
               <p
                 className={cn(
@@ -232,7 +244,7 @@ export function FacturePaiements({
         {!allPaid && (
           <div className="space-y-3 rounded-md border bg-muted/30 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Enregistrer un paiement
+              {remboursement ? "Enregistrer un remboursement" : "Enregistrer un paiement"}
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <div className="space-y-1">

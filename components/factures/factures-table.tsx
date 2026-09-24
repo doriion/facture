@@ -22,8 +22,16 @@ type FactureRow = {
   type_activite: string;
   statut: string;
   statut_affichage: string;
+  /** normale, acompte, solde ou avoir. */
+  type_facture?: string | null;
   client: { id: string; nom: string; type: string } | null;
 };
+
+/** Montant affiché : un avoir vient en moins. */
+function montantAffiche(f: { total_ht: number | string; type_facture?: string | null }): string {
+  const m = formatEuros(Number(f.total_ht));
+  return f.type_facture === "avoir" ? `− ${m}` : m;
+}
 
 export function FacturesTable({ factures }: { factures: FactureRow[] }) {
   if (factures.length === 0) {
@@ -55,7 +63,14 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
               />
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-mono text-sm font-semibold">{f.numero}</p>
+                  <p className="font-mono text-sm font-semibold">
+                    {f.numero}
+                    {f.type_facture === "avoir" && (
+                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium uppercase text-muted-foreground">
+                        Avoir
+                      </span>
+                    )}
+                  </p>
                   <p className="mt-0.5 truncate text-sm">
                     {f.client?.nom ?? (
                       <span className="text-muted-foreground">—</span>
@@ -69,9 +84,7 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
                   <p>Émise le {formatDateFr(f.date_emission)}</p>
                   <p>Échéance le {formatDateFr(f.date_echeance)}</p>
                 </div>
-                <p className="text-lg font-bold tabular-nums">
-                  {formatEuros(Number(f.total_ht))}
-                </p>
+                <p className="text-lg font-bold tabular-nums">{montantAffiche(f)}</p>
               </div>
               {canMarkPaid && (
                 <div className="relative z-10 mt-3 border-t pt-3">
@@ -111,6 +124,11 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
                   >
                     {f.numero}
                   </Link>
+                  {f.type_facture === "avoir" && (
+                    <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
+                      Avoir
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm">
                   {formatDateFr(f.date_emission)}
@@ -139,7 +157,7 @@ export function FacturesTable({ factures }: { factures: FactureRow[] }) {
                   <StatutBadge statut={f.statut_affichage} />
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-right font-medium tabular-nums">
-                  {formatEuros(Number(f.total_ht))}
+                  {montantAffiche(f)}
                 </TableCell>
                 <TableCell className="text-right">
                   {canMarkPaid && (

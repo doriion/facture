@@ -8,7 +8,13 @@ import { getFacture, listFactureEnfants } from "@/lib/actions/factures";
 import { getProfil } from "@/lib/actions/profil";
 import { getFacturePaiements } from "@/lib/actions/paiements";
 import { aujourdhuiParis } from "@/lib/dates";
-import { estFactureVentilee, statutAffichageFacture } from "@/lib/factures-transitions";
+import {
+  estFactureVentilee,
+  LABELS_MODE_AVOIR,
+  statutAffichageFacture,
+  TYPE_AVOIR,
+  type ModeAvoir,
+} from "@/lib/factures-transitions";
 import {
   getAvailableEventsForFacture,
   getFactureCoveredEvents,
@@ -19,6 +25,7 @@ import { FacturePaiements } from "@/components/factures/facture-paiements";
 import { FactureAcompteSolde } from "@/components/factures/facture-acompte-solde";
 import { FactureEventsCouverts } from "@/components/factures/facture-events-couverts";
 import { FactureActions } from "@/components/factures/facture-actions";
+import { CreerAvoirDialog } from "@/components/factures/creer-avoir-dialog";
 import { ActionsFiche } from "@/components/actions-fiche";
 import { StatutBadge } from "@/components/factures/statut-badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +38,9 @@ import {
 import type { StatutFacture } from "@/lib/validations/facture";
 
 export const metadata = { title: "Édition facture — NG Gestion" };
+
+type Facture = NonNullable<Awaited<ReturnType<typeof getFacture>>["facture"]>;
+type Enfant = Awaited<ReturnType<typeof listFactureEnfants>>[number];
 
 export default async function EditFacturePage({
   params,
@@ -62,10 +72,21 @@ export default async function EditFacturePage({
   ]);
 
   const isLocked = facture.statut === "annulee";
-  // Statut AFFICHÉ (« retard », « ventilée ») : même règle que la liste,
-  // la fiche contredisait la liste sur une facture échue.
+  const avoir = facture.type_facture === TYPE_AVOIR;
+  // Facture d'origine d'un avoir (mention obligatoire, lien de retour).
+  const parent =
+    avoir && facture.facture_parent_id
+      ? (await getFacture(facture.facture_parent_id)).facture
+      : null;
+  const avoirs = enfants.filter((e) => e.type_facture === TYPE_AVOIR);
+  // Statut AFFICHÉ (« retard », « ventilée », « avoir émis »…) : même
+  // règle que la liste, la fiche contredisait la liste sur une facture échue.
   const ventilee = estFactureVentilee(facture, enfants);
   const statutAffiche = statutAffichageFacture(facture, aujourdhuiParis(), { ventilee });
+  // Un avoir se crée sur une facture émise (envoyée ou payée), non
+  // ventilée, qui n'est pas elle-même un avoir.
+  const peutCreerAvoir =
+    !avoir && !isLocked && !ventilee && (facture.statut === "envoyee" || facture.statut === "payee");
   // Libellés « HT » figés avec le document (snapshot émetteur).
   const assujettiTva = assujettiTvaEffectif(profil, facture.emetteur);
   // Garde TVA : la route PDF répond 501, mais un `<a download>` avale le
@@ -92,24 +113,39 @@ export default async function EditFacturePage({
               <StatutBadge statut={statutAffiche} />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Émise le {formatDateFr(facture.date_emission)} —{" "}
+              {avoir ? "Émis" : "Émise"} le {formatDateFr(facture.date_emission)} —{" "}
               {client?.nom ?? "Client inconnu"} —{" "}
               <span className="font-medium text-foreground">
+                {avoir ? "avoir de " : ""}
                 {formatEuros(Number(facture.total_ht))}
               </span>
             </p>
           </div>
           <ActionsFiche>
-            <AjouterTacheButton
-              lienLabel={`Facture ${facture.numero}`}
-              titre={`Relancer la facture ${facture.numero}`}
-              factureId={facture.id}
-            />
+            {!avoir && (
+              <AjouterTacheButton
+                lienLabel={`Facture ${facture.numero}`}
+                titre={`Relancer la facture ${facture.numero}`}
+                factureId={facture.id}
+              />
+            )}
+            {peutCreerAvoir && (
+              <CreerAvoirDialog
+                factureId={facture.id}
+                numero={facture.numero}
+                totalFacture={paiementsSummary.total_facture}
+                totalEncaisse={paiementsSummary.total_encaisse}
+                avoirsImputes={paiementsSummary.total_avoirs_imputes}
+                avoirsRembourses={paiementsSummary.total_avoirs_rembourses}
+              />
+            )}
             <FactureActions
               factureId={facture.id}
               numero={facture.numero}
               statut={facture.statut as StatutFacture}
               ventilee={ventilee}
+              typeFacture={facture.type_facture}
+              modeAvoir={facture.mode_avoir}
               clientEmail={client?.email ?? null}
               clientNom={client?.nom ?? "le client"}
               pdfBloqueMotif={pdfBloqueMotif}
@@ -117,6 +153,12 @@ export default async function EditFacturePage({
           </ActionsFiche>
         </div>
       </div>
+
+      {avoir && <BandeauAvoir facture={facture} parent={parent} />}
+
+      {!avoir && avoirs.length > 0 && (
+        <ListeAvoirs avoirs={avoirs} imputes={paiementsSummary.total_avoirs_imputes} />
+      )}
 
       {ventilee && !isLocked && (
         <div className="rounded-md border-l-4 border-slate-400 bg-slate-50 px-4 py-3 text-sm dark:bg-slate-900/40">
@@ -152,7 +194,7 @@ export default async function EditFacturePage({
       {isLocked ? (
         <div className="rounded-lg border-l-4 border-rose-500 bg-rose-50 p-4 text-sm dark:bg-rose-950/30">
           <p className="font-medium text-rose-900 dark:text-rose-100">
-            ⊘ Facture annulée
+            ⊘ {avoir ? "Avoir annulé" : "Facture annulée"}
             {facture.date_annulation && (
               <> le {formatDateFr(facture.date_annulation)}</>
             )}
@@ -177,15 +219,21 @@ export default async function EditFacturePage({
           defaultConditionsPaiement={profil?.conditions_paiement_default}
           assujettiTva={assujettiTva}
           verrouillee={facture.statut !== "brouillon"}
+          avoir={avoir}
         />
       )}
 
-      {!isLocked && facture.statut !== "brouillon" && (
-        <FacturePaiements
-          factureId={facture.id}
-          summary={paiementsSummary}
-        />
-      )}
+      {/* Paiements : encaissements d'une facture, ou remboursement d'un
+          avoir de remboursement (un avoir imputé n'a rien à encaisser). */}
+      {!isLocked &&
+        facture.statut !== "brouillon" &&
+        (!avoir || facture.mode_avoir === "remboursement") && (
+          <FacturePaiements
+            factureId={facture.id}
+            summary={paiementsSummary}
+            remboursement={avoir}
+          />
+        )}
 
       {/* Acompte/solde uniquement sur les factures normales (pas
           acomptes ni soldes eux-mêmes) et avec au moins une ligne. */}
@@ -200,7 +248,7 @@ export default async function EditFacturePage({
           />
         )}
 
-      {!isLocked && (
+      {!isLocked && !avoir && (
         <FactureEventsCouverts
           factureId={facture.id}
           interventions={available.interventions}
@@ -209,6 +257,62 @@ export default async function EditFacturePage({
           initialExternalUids={coveredCurrent.externalUids}
         />
       )}
+    </div>
+  );
+}
+
+function BandeauAvoir({ facture, parent }: { facture: Facture; parent: Facture | null }) {
+  const mode = facture.mode_avoir as ModeAvoir | null;
+  return (
+    <div className="rounded-md border-l-4 border-violet-500 bg-violet-50 px-4 py-3 text-sm dark:bg-violet-950/30">
+      <p className="font-medium text-violet-900 dark:text-violet-100">
+        Avoir sur la facture{" "}
+        {parent ? (
+          <Link href={`/factures/${parent.id}`} className="font-mono underline">
+            {parent.numero}
+          </Link>
+        ) : (
+          "d'origine"
+        )}
+        {parent ? ` du ${formatDateFr(parent.date_emission)}` : ""}
+      </p>
+      <p className="mt-1 text-violet-900/80 dark:text-violet-200/80">
+        {mode ? LABELS_MODE_AVOIR[mode] : ""}
+        {facture.motif_avoir ? ` — Motif : ${facture.motif_avoir}` : ""}
+      </p>
+      {facture.statut === "brouillon" && (
+        <p className="mt-1 text-xs text-violet-900/70 dark:text-violet-200/70">
+          Brouillon : vérifiez les lignes, puis « Émettre l&apos;avoir ». Le
+          montant doit rester dans le plafond de son mode.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ListeAvoirs({ avoirs, imputes }: { avoirs: Enfant[]; imputes: number }) {
+  return (
+    <div className="rounded-md border-l-4 border-violet-500 bg-violet-50 px-4 py-3 text-sm dark:bg-violet-950/30">
+      <p className="font-medium text-violet-900 dark:text-violet-100">
+        {avoirs.length > 1 ? "Avoirs émis sur cette facture" : "Avoir émis sur cette facture"}
+        {imputes > 0 ? ` — ${formatEuros(imputes)} imputés, déduits du reste dû` : ""}
+      </p>
+      <ul className="mt-1 space-y-0.5">
+        {avoirs.map((a) => (
+          <li key={a.id} className="flex flex-wrap items-center gap-2">
+            <Link href={`/factures/${a.id}`} className="font-mono underline">
+              {a.numero}
+            </Link>
+            <span>{formatEuros(Number(a.total_ht))}</span>
+            <StatutBadge
+              statut={statutAffichageFacture(
+                { statut: a.statut, type_facture: a.type_facture, mode_avoir: a.mode_avoir },
+                aujourdhuiParis(),
+              )}
+            />
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

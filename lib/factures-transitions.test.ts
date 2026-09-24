@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   estFactureVentilee,
+  montantAvoirAutorise,
+  montantAvoirMax,
   paiementAutorise,
   statutAffichageFacture,
   transitionFactureAutorisee,
@@ -78,5 +80,72 @@ describe("statutAffichageFacture", () => {
     expect(statutAffichageFacture({ statut: "payee", date_echeance: "2026-09-01" }, "2026-09-18")).toBe("payee");
     expect(statutAffichageFacture({ statut: "brouillon" }, "2026-09-18", { ventilee: true })).toBe("ventilee");
     expect(statutAffichageFacture({ statut: "annulee" }, "2026-09-18", { ventilee: true })).toBe("annulee");
+  });
+});
+
+describe("avoirs", () => {
+  const base = { totalFacture: 1000, totalEncaisse: 0, avoirsImputes: 0, avoirsRembourses: 0 };
+
+  it("plafond : imputation = reste dû, remboursement = encaissé non rendu", () => {
+    expect(montantAvoirMax("imputation", base)).toBe(1000);
+    expect(montantAvoirMax("imputation", { ...base, totalEncaisse: 300, avoirsImputes: 200 })).toBe(500);
+    expect(montantAvoirMax("remboursement", base)).toBe(0);
+    expect(montantAvoirMax("remboursement", { ...base, totalEncaisse: 1000, avoirsRembourses: 250 })).toBe(750);
+    expect(montantAvoirMax("imputation", { ...base, totalEncaisse: 1200 })).toBe(0);
+  });
+
+  it("refuse brouillon, annulée, ventilée, avoir sur avoir, montant nul", () => {
+    const ctx = { ...base, statutFacture: "envoyee" };
+    expect(montantAvoirAutorise("imputation", 100, { ...ctx, statutFacture: "brouillon" }).ok).toBe(false);
+    expect(montantAvoirAutorise("imputation", 100, { ...ctx, statutFacture: "annulee" }).ok).toBe(false);
+    expect(montantAvoirAutorise("imputation", 100, { ...ctx, ventilee: true }).ok).toBe(false);
+    expect(montantAvoirAutorise("imputation", 100, { ...ctx, typeFacture: "avoir" }).ok).toBe(false);
+    expect(montantAvoirAutorise("imputation", 0, ctx).ok).toBe(false);
+  });
+
+  it("respecte le plafond du mode (un centime d'arrondi toléré)", () => {
+    const ctx = { ...base, statutFacture: "envoyee" };
+    expect(montantAvoirAutorise("imputation", 1000, ctx).ok).toBe(true);
+    expect(montantAvoirAutorise("imputation", 1000.01, ctx).ok).toBe(true);
+    expect(montantAvoirAutorise("imputation", 1000.5, ctx).ok).toBe(false);
+    const r = montantAvoirAutorise("remboursement", 50, ctx);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/imputation/);
+    expect(
+      montantAvoirAutorise("remboursement", 400, { ...ctx, statutFacture: "payee", totalEncaisse: 1000 }).ok,
+    ).toBe(true);
+  });
+
+  it("un avoir émis ne revient pas en brouillon, il s'annule", () => {
+    expect(transitionFactureAutorisee("envoyee", "brouillon", { typeFacture: "avoir" }).ok).toBe(false);
+    expect(transitionFactureAutorisee("envoyee", "annulee", { typeFacture: "avoir" }).ok).toBe(true);
+    expect(transitionFactureAutorisee("brouillon", "envoyee", { typeFacture: "avoir" }).ok).toBe(true);
+    expect(transitionFactureAutorisee("annulee", "brouillon", { typeFacture: "avoir" }).ok).toBe(true);
+  });
+
+  it("paiement : refusé sur un avoir imputé ou en brouillon, accepté en remboursement émis", () => {
+    const ctx = { resteDu: 100, montant: 100, typeFacture: "avoir" };
+    expect(paiementAutorise("envoyee", { ...ctx, modeAvoir: "imputation" }).ok).toBe(false);
+    expect(paiementAutorise("brouillon", { ...ctx, modeAvoir: "remboursement" }).ok).toBe(false);
+    expect(paiementAutorise("envoyee", { ...ctx, modeAvoir: "remboursement" }).ok).toBe(true);
+  });
+
+  it("les avoirs ne ventilent pas la facture d'origine", () => {
+    expect(estFactureVentilee({ type_facture: "normale" }, [{ statut: "envoyee", type_facture: "avoir" }])).toBe(false);
+    expect(
+      estFactureVentilee({ type_facture: "normale" }, [
+        { statut: "envoyee", type_facture: "avoir" },
+        { statut: "envoyee", type_facture: "acompte" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("statut affiché d'un avoir : émis / à rembourser / remboursé, jamais en retard", () => {
+    const hier = "2026-09-01";
+    expect(statutAffichageFacture({ statut: "envoyee", date_echeance: hier, type_facture: "avoir", mode_avoir: "imputation" }, "2026-09-18")).toBe("avoir_emis");
+    expect(statutAffichageFacture({ statut: "envoyee", date_echeance: hier, type_facture: "avoir", mode_avoir: "remboursement" }, "2026-09-18")).toBe("avoir_a_rembourser");
+    expect(statutAffichageFacture({ statut: "payee", type_facture: "avoir", mode_avoir: "remboursement" }, "2026-09-18")).toBe("avoir_rembourse");
+    expect(statutAffichageFacture({ statut: "brouillon", type_facture: "avoir", mode_avoir: "imputation" }, "2026-09-18", { ventilee: true })).toBe("brouillon");
+    expect(statutAffichageFacture({ statut: "annulee", type_facture: "avoir", mode_avoir: "imputation" }, "2026-09-18")).toBe("annulee");
   });
 });

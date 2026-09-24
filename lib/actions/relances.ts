@@ -45,6 +45,7 @@ export async function getFacturesEnRetard(): Promise<FacturesEnRetardData> {
     .from("factures")
     .select("id, numero, date_echeance, total_ht, statut, client:clients(nom, email)")
     .eq("statut", "envoyee")
+    .neq("type_facture", "avoir")
     .lt("date_echeance", today)
     .order("date_echeance", { ascending: true });
 

@@ -34,7 +34,7 @@ export function EmailDocumentButton({
   disabled,
 }: {
   documentId: string;
-  type: "facture" | "devis";
+  type: "facture" | "devis" | "avoir";
   destinataireEmail: string | null;
   destinataireNom: string;
   variant?: "default" | "outline";
@@ -48,15 +48,15 @@ export function EmailDocumentButton({
   async function onSend() {
     if (!destinataireEmail) return;
     setSubmitting(true);
+    // Un avoir est stocké comme une facture (type_facture = 'avoir') :
+    // même action, PDF et email adaptés côté serveur.
     const action =
-      type === "facture"
-        ? envoyerFactureParEmailAction
-        : envoyerDevisParEmailAction;
+      type === "devis" ? envoyerDevisParEmailAction : envoyerFactureParEmailAction;
     const res = await action(documentId, message);
     setSubmitting(false);
     if (res.ok) {
       toast.success(
-        type === "facture" ? "Facture envoyée" : "Devis envoyé",
+        type === "facture" ? "Facture envoyée" : type === "avoir" ? "Avoir envoyé" : "Devis envoyé",
         { description: `Email envoyé à ${destinataireEmail}` },
       );
       setOpen(false);
@@ -84,7 +84,7 @@ export function EmailDocumentButton({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Envoyer {type === "facture" ? "la facture" : "le devis"} à{" "}
+              Envoyer {type === "facture" ? "la facture" : type === "avoir" ? "l'avoir" : "le devis"} à{" "}
               {destinataireNom}
             </DialogTitle>
             <DialogDescription>

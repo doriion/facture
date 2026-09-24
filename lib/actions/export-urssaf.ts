@@ -52,7 +52,7 @@ export async function buildExportUrssaf(
     supabase
       .from("paiements")
       .select(
-        "id, date_paiement, montant, mode, reference, facture:factures(id, numero, date_emission, total_ht, type_activite, statut, client:clients(nom), lignes:factures_lignes(total_ht, nature_fiscale))",
+        "id, date_paiement, montant, mode, reference, facture:factures(id, numero, date_emission, total_ht, type_activite, statut, type_facture, client:clients(nom), lignes:factures_lignes(total_ht, nature_fiscale))",
       )
       .gte("date_paiement", start)
       .lt("date_paiement", end)
@@ -60,10 +60,11 @@ export async function buildExportUrssaf(
     // Factures émises sur la période (info complémentaire, hors annulées)
     supabase
       .from("factures")
-      .select("id, total_ht")
+      .select("id, total_ht, type_facture")
       .gte("date_emission", start)
       .lt("date_emission", end)
-      .neq("statut", "annulee"),
+      .neq("statut", "annulee")
+      .neq("statut", "brouillon"),
     // Factures d'origine ventilées en acomptes/solde : leurs enfants
     // portent déjà le montant.
     idsParentsVentiles(),
