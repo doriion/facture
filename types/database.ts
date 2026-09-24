@@ -1187,6 +1187,47 @@ export type Database = {
           },
         ];
       };
+      intervention_bons: {
+        Row: {
+          id: string;
+          user_id: string;
+          intervention_id: string;
+          storage_path: string;
+          donnees: Json;
+          envoye_le: string | null;
+          destinataire: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          intervention_id: string;
+          storage_path: string;
+          donnees?: Json;
+          envoye_le?: string | null;
+          destinataire?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          intervention_id?: string;
+          storage_path?: string;
+          donnees?: Json;
+          envoye_le?: string | null;
+          destinataire?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "intervention_bons_intervention_id_fkey";
+            columns: ["intervention_id"];
+            isOneToOne: false;
+            referencedRelation: "interventions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       intervention_cerfa: {
         Row: {
           id: string;

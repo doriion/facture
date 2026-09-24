@@ -37,6 +37,7 @@ export const TABLES_SAUVEGARDE = [
   "intervention_photos",
   "intervention_signatures",
   "intervention_cerfa",
+  "intervention_bons",
   "contrats_maintenance",
   "facture_external_events",
   "numerotation",

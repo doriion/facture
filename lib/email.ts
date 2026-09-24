@@ -150,6 +150,36 @@ function escapeHtml(s: string): string {
 /**
  * Email de relance pour facture impayée. Ton ferme mais courtois.
  */
+/**
+ * Email d'envoi d'un bon d'intervention (PDF joint) au client.
+ */
+export function buildBonInterventionEmail(args: {
+  clientNom: string;
+  expediteurNom: string;
+  dateText: string;
+  messagePerso?: string;
+}): { subject: string; html: string; text: string } {
+  const subject = `Bon d'intervention du ${args.dateText}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
+  const perso = args.messagePerso?.trim()
+    ? `<p>${escapeHtml(args.messagePerso).replace(/\n/g, "<br/>")}</p>`
+    : "";
+  const html = `<!doctype html>
+<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
+<p>Bonjour ${escapeHtml(args.clientNom)},</p>
+<p>Veuillez trouver ci-joint le bon d'intervention du <strong>${escapeHtml(args.dateText)}</strong>, qui récapitule les travaux réalisés.</p>
+${perso}
+<p>Pour toute question, je reste à votre disposition.</p>
+<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
+<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
+<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+</body></html>`;
+  const text =
+    `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint le bon d'intervention du ${args.dateText}, qui récapitule les travaux réalisés.\n\n` +
+    (args.messagePerso?.trim() ? args.messagePerso.trim() + "\n\n" : "") +
+    `Pour toute question, je reste à votre disposition.\n\nCordialement,\n${args.expediteurNom}`;
+  return { subject, html, text };
+}
+
 export function buildRelanceEmail(args: {
   numero: string;
   clientNom: string;
