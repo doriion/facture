@@ -7,6 +7,7 @@ import {
   TYPES_INTERVENTION,
 } from "@/lib/validations/intervention";
 import { Button } from "@/components/ui/button";
+import { LABELS_STATUT_INTERVENTION, type StatutIntervention } from "@/lib/interventions-helpers";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -16,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export type FiltresInterventionsUi = { search: string; type: string };
+export type FiltresInterventionsUi = { search: string; type: string; statut: string };
 
 /** Recherche + filtre type, contrôlés par la liste (filtrage sur place, sans serveur). */
 export function InterventionsToolbar({
@@ -26,7 +27,10 @@ export function InterventionsToolbar({
   filtres: FiltresInterventionsUi;
   onChange: (f: FiltresInterventionsUi) => void;
 }) {
-  const hasFilters = filtres.search || (filtres.type && filtres.type !== "tous");
+  const hasFilters =
+    filtres.search ||
+    (filtres.type && filtres.type !== "tous") ||
+    (filtres.statut && filtres.statut !== "tous");
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -41,6 +45,19 @@ export function InterventionsToolbar({
           enterKeyHint="search"
         />
       </div>
+      <Select value={filtres.statut || "tous"} onValueChange={(v) => onChange({ ...filtres, statut: v })}>
+        <SelectTrigger className="w-[170px]" aria-label="Statut">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="tous">Tous statuts</SelectItem>
+          {(Object.keys(LABELS_STATUT_INTERVENTION) as StatutIntervention[]).map((s) => (
+            <SelectItem key={s} value={s}>
+              {LABELS_STATUT_INTERVENTION[s]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Select value={filtres.type || "tous"} onValueChange={(v) => onChange({ ...filtres, type: v })}>
         <SelectTrigger className="w-[180px]">
           <SelectValue />
@@ -55,7 +72,7 @@ export function InterventionsToolbar({
         </SelectContent>
       </Select>
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={() => onChange({ search: "", type: "" })}>
+        <Button variant="ghost" size="sm" onClick={() => onChange({ search: "", type: "", statut: "" })}>
           <X className="size-4" />
           Effacer
         </Button>

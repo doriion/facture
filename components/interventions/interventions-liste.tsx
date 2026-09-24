@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { filtrerInterventions } from "@/lib/filtres-listes";
+import { aujourdhuiParis } from "@/lib/dates";
 import { InterventionsTable } from "@/components/interventions/interventions-table";
 import {
   InterventionsToolbar,
@@ -20,7 +21,10 @@ export function InterventionsListe({
   initial: FiltresInterventionsUi;
 }) {
   const [filtres, setFiltres] = useFiltresListe("/interventions", initial);
-  const filtrees = useMemo(() => filtrerInterventions(interventions, filtres), [interventions, filtres]);
+  const filtrees = useMemo(
+    () => filtrerInterventions(interventions, filtres, aujourdhuiParis()),
+    [interventions, filtres],
+  );
 
   return (
     <div className="space-y-6">

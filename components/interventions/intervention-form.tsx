@@ -1,13 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Save } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Save, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { aujourdhuiParis } from "@/lib/dates";
+import { appelerAction } from "@/lib/appel-action";
+import { dureeDepuisHeures, formatDuree } from "@/lib/interventions-helpers";
+import type { EquipementClient } from "@/lib/equipements-client";
 
 import {
   interventionSchema,
@@ -18,8 +21,10 @@ import {
 } from "@/lib/validations/intervention";
 import {
   createInterventionAction,
+  listEquipementsClientAction,
   updateInterventionAction,
 } from "@/lib/actions/interventions";
+import { ClientPicker } from "@/components/clients/client-picker";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -54,22 +59,44 @@ import type { Database } from "@/types/database";
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Intervention = Database["public"]["Tables"]["interventions"]["Row"];
 
-/** Valeur du menu déroulant pour « aucun client » (Radix refuse la chaîne vide). */
-const SANS_CLIENT = "__sans_client__";
+/**
+ * Pré-remplissage à la création (« planifier la prochaine visite » depuis
+ * une intervention passée) : même client, même matériel, même fluide.
+ */
+export type InterventionPrefill = Partial<
+  Pick<
+    Intervention,
+    | "client_id"
+    | "type"
+    | "description"
+    | "equipement_marque"
+    | "equipement_modele"
+    | "equipement_num_serie"
+    | "fluide_frigo_type"
+    | "fluide_charge_totale_kg"
+  >
+>;
+
+function rempli(v: unknown): boolean {
+  return v !== null && v !== undefined && v !== "";
+}
 
 export function InterventionForm({
   clients,
   intervention,
   clientIdParDefaut,
+  prefill,
 }: {
   clients: Client[];
   intervention?: Intervention;
   /** Création depuis une fiche client : client déjà choisi. */
   clientIdParDefaut?: string;
+  prefill?: InterventionPrefill;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const isEdit = !!intervention;
+  const base = intervention ?? prefill;
 
   // Heure de Paris : à 0 h 30, la date UTC du téléphone était la veille.
   const today = aujourdhuiParis();
@@ -83,7 +110,7 @@ export function InterventionForm({
   } = useForm<InterventionFormInput, unknown, InterventionFormValues>({
     resolver: zodResolver(interventionSchema),
     defaultValues: {
-      client_id: intervention?.client_id ?? clientIdParDefaut ?? "",
+      client_id: intervention?.client_id ?? clientIdParDefaut ?? prefill?.client_id ?? "",
       date_intervention: intervention?.date_intervention ?? today,
       date_fin: intervention?.date_fin ?? "",
       heure_debut: intervention?.heure_debut
@@ -92,16 +119,15 @@ export function InterventionForm({
       heure_fin: intervention?.heure_fin
         ? intervention.heure_fin.slice(0, 5)
         : "",
-      type:
-        (intervention?.type as InterventionFormInput["type"]) ?? "entretien",
-      description: intervention?.description ?? "",
-      equipement_marque: intervention?.equipement_marque ?? "",
-      equipement_modele: intervention?.equipement_modele ?? "",
-      equipement_num_serie: intervention?.equipement_num_serie ?? "",
-      fluide_frigo_type: intervention?.fluide_frigo_type ?? "",
+      type: (base?.type as InterventionFormInput["type"]) ?? "entretien",
+      description: base?.description ?? "",
+      equipement_marque: base?.equipement_marque ?? "",
+      equipement_modele: base?.equipement_modele ?? "",
+      equipement_num_serie: base?.equipement_num_serie ?? "",
+      fluide_frigo_type: base?.fluide_frigo_type ?? "",
       fluide_frigo_kg_ajoute: intervention?.fluide_frigo_kg_ajoute ?? null,
       fluide_frigo_kg_recupere: intervention?.fluide_frigo_kg_recupere ?? null,
-      fluide_charge_totale_kg: intervention?.fluide_charge_totale_kg ?? null,
+      fluide_charge_totale_kg: base?.fluide_charge_totale_kg ?? null,
       etancheite_controle: intervention?.etancheite_controle ?? null,
       etancheite_detecteur: intervention?.etancheite_detecteur ?? "",
       etancheite_detecteur_controle_le:
@@ -116,6 +142,54 @@ export function InterventionForm({
       a_facturer: intervention?.a_facturer ?? true,
     },
   });
+
+  const clientId = watch("client_id") || "";
+  const heureDebut = watch("heure_debut");
+  const heureFin = watch("heure_fin");
+  const dureeSaisie = watch("duree_minutes");
+  const dureeDeduite = dureeDepuisHeures(heureDebut, heureFin);
+
+  // Matériel déjà vu chez ce client : un tap pour le reprendre au lieu
+  // de retaper marque / modèle / n° de série (et le fluide).
+  const [equipements, setEquipements] = useState<EquipementClient[]>([]);
+  useEffect(() => {
+    let annule = false;
+    if (!clientId) {
+      setEquipements([]);
+      return;
+    }
+    appelerAction(() => listEquipementsClientAction(clientId)).then((r) => {
+      if (!annule) setEquipements(r.ok ? r.data : []);
+    });
+    return () => {
+      annule = true;
+    };
+  }, [clientId]);
+
+  function reprendreEquipement(e: EquipementClient) {
+    setValue("equipement_marque", e.marque ?? "", { shouldDirty: true });
+    setValue("equipement_modele", e.modele ?? "", { shouldDirty: true });
+    setValue("equipement_num_serie", e.numSerie ?? "", { shouldDirty: true });
+    if (e.fluide && !watch("fluide_frigo_type")) {
+      setValue("fluide_frigo_type", e.fluide, { shouldDirty: true });
+    }
+    toast.success("Matériel repris", {
+      description: [e.marque, e.modele, e.numSerie].filter(Boolean).join(" · "),
+    });
+  }
+
+  // Le bloc F-Gas ne concerne que la clim / PAC : replié tant qu'il est
+  // vide, pour que la fiche d'un dépannage plomberie tienne sur l'écran.
+  const [fluideOuvert, setFluideOuvert] = useState(() =>
+    [
+      base?.fluide_frigo_type,
+      intervention?.fluide_frigo_kg_ajoute,
+      intervention?.fluide_frigo_kg_recupere,
+      base?.fluide_charge_totale_kg,
+      intervention?.etancheite_controle,
+      intervention?.fluide_observations,
+    ].some(rempli),
+  );
 
   // Validation refusée : sur le téléphone, l'erreur sous un champ hors
   // écran est invisible — on prévient et on y amène.
@@ -135,7 +209,13 @@ export function InterventionForm({
       ?.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
-  async function onSubmit(values: InterventionFormValues) {
+  async function onSubmit(valeurs: InterventionFormValues) {
+    // Durée non saisie mais heures connues : on la déduit (une info de
+    // moins à taper, et le temps passé est juste dans les bilans).
+    const values =
+      valeurs.duree_minutes === null && dureeDeduite !== null
+        ? { ...valeurs, duree_minutes: dureeDeduite }
+        : valeurs;
     setSubmitting(true);
     if (intervention) {
       const result = await updateInterventionAction(intervention.id, values);
@@ -167,41 +247,17 @@ export function InterventionForm({
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5 md:col-span-2">
             <Label htmlFor="client_id">Client</Label>
-            <Select
-              value={watch("client_id") || SANS_CLIENT}
-              onValueChange={(v) =>
-                setValue("client_id", v === SANS_CLIENT ? "" : v, {
-                  shouldValidate: true,
-                })
-              }
-            >
-              <SelectTrigger id="client_id">
-                <SelectValue placeholder="Client à renseigner" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={SANS_CLIENT}>
-                  <span className="text-muted-foreground">
-                    Aucun client pour l&apos;instant
-                  </span>
-                </SelectItem>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.nom}
-                    {c.ville && (
-                      <span className="text-muted-foreground"> · {c.ville}</span>
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!watch("client_id") && (
+            {/* Même sélecteur que devis / facture : recherche instantanée
+                et création d'un client sans quitter l'intervention. */}
+            <ClientPicker
+              clients={clients}
+              value={clientId}
+              onChange={(v) => setValue("client_id", v, { shouldValidate: true })}
+              error={errors.client_id?.message}
+            />
+            {!clientId && (
               <p className="text-xs text-orange-700 dark:text-orange-300">
-                Client à renseigner — indispensable pour créer la facture.
-              </p>
-            )}
-            {errors.client_id && (
-              <p className="text-xs text-destructive">
-                {errors.client_id.message}
+                Client à renseigner (facultatif pour l&apos;instant, indispensable pour facturer).
               </p>
             )}
           </div>
@@ -318,6 +374,12 @@ export function InterventionForm({
               placeholder="60"
               {...register("duree_minutes")}
             />
+            {dureeDeduite !== null && !rempli(dureeSaisie) && (
+              <p className="text-xs text-muted-foreground">
+                D&apos;après les heures : <strong>{formatDuree(dureeDeduite)}</strong>, repris à
+                l&apos;enregistrement si vous ne saisissez rien.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -330,6 +392,36 @@ export function InterventionForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
+          {equipements.length > 0 && (
+            <div className="md:col-span-2">
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                Matériel connu chez ce client — un tap pour le reprendre
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {equipements.slice(0, 6).map((e) => (
+                  <Button
+                    key={e.cle}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-auto whitespace-normal py-1.5 text-left"
+                    onClick={() => reprendreEquipement(e)}
+                  >
+                    <Wrench className="size-3.5 shrink-0" />
+                    <span>
+                      {[e.marque, e.modele].filter(Boolean).join(" ") || "Matériel"}
+                      {e.numSerie && (
+                        <span className="text-muted-foreground"> · {e.numSerie}</span>
+                      )}
+                      {e.nbInterventions > 1 && (
+                        <span className="text-muted-foreground"> · {e.nbInterventions} passages</span>
+                      )}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="marque">Marque</Label>
             <Input
@@ -351,14 +443,30 @@ export function InterventionForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Manipulation de fluide (F-Gas)</CardTitle>
-          <CardDescription>
-            Traçabilité réglementaire : quantités manipulées, charge de
-            l&apos;équipement (→ éq. CO2) et contrôle d&apos;étanchéité.
-            Ces données pré-remplissent le CERFA 15497.
-          </CardDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1.5">
+              <CardTitle>Manipulation de fluide (F-Gas)</CardTitle>
+              <CardDescription>
+                {fluideOuvert
+                  ? "Traçabilité réglementaire : quantités manipulées, charge de l'équipement (→ éq. CO2) et contrôle d'étanchéité. Ces données pré-remplissent le CERFA 15497."
+                  : "Clim / PAC uniquement. Rien à remplir pour la plomberie ou le chauffage."}
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-expanded={fluideOuvert}
+              aria-controls="bloc-fluide"
+              onClick={() => setFluideOuvert((o) => !o)}
+            >
+              {fluideOuvert ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              {fluideOuvert ? "Replier" : "Renseigner"}
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        {fluideOuvert && (
+        <CardContent id="bloc-fluide" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="fluide_type">Type de fluide</Label>
@@ -550,6 +658,7 @@ export function InterventionForm({
             />
           </div>
         </CardContent>
+        )}
       </Card>
 
       <Card>

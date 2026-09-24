@@ -1,21 +1,24 @@
 import Link from "next/link";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Receipt, Trash2 } from "lucide-react";
 
 import { bilanFluidesFrigo, listCorbeille, listInterventions } from "@/lib/actions/interventions";
 import { Button } from "@/components/ui/button";
 import { InterventionsListe } from "@/components/interventions/interventions-liste";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { aujourdhuiParis } from "@/lib/dates";
+import { compterStatuts } from "@/lib/interventions-helpers";
 
 export const metadata = { title: "Interventions — NG Gestion" };
 
 export default async function InterventionsPage({
   searchParams,
 }: {
-  searchParams: { search?: string; type?: string };
+  searchParams: { search?: string; type?: string; statut?: string };
 }) {
   const search = searchParams.search ?? "";
   const type = searchParams.type ?? "";
+  const statut = searchParams.statut ?? "";
 
   const [interventions, bilan, corbeille] = await Promise.all([
     // Liste entière : recherche et filtre sur place (InterventionsListe).
@@ -25,6 +28,7 @@ export default async function InterventionsPage({
   ]);
 
   const bilanEntries = Object.entries(bilan.bilan);
+  const compteurs = compterStatuts(interventions, aujourdhuiParis());
 
   return (
     <div className="space-y-6">
@@ -53,6 +57,21 @@ export default async function InterventionsPage({
           </Button>
         </div>
       </div>
+
+      {compteurs.a_facturer > 0 && (
+        <Link
+          href="/interventions?statut=a_facturer"
+          className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          <Receipt className="size-4 shrink-0" />
+          <span>
+            <strong>{compteurs.a_facturer}</strong> intervention{compteurs.a_facturer > 1 ? "s" : ""} passée
+            {compteurs.a_facturer > 1 ? "s" : ""} à facturer
+          </span>
+        </Link>
+      )}
+
+      <InterventionsListe interventions={interventions} initial={{ search, type, statut }} />
 
       {bilanEntries.length > 0 && (
         <Card>
@@ -91,8 +110,6 @@ export default async function InterventionsPage({
           </CardContent>
         </Card>
       )}
-
-      <InterventionsListe interventions={interventions} initial={{ search, type }} />
 
       <MobileActionBar>
         <Button asChild size="lg">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileText, Receipt, Repeat } from "lucide-react";
+import { ArrowLeft, CalendarPlus, FileText, Receipt, Repeat } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { getIntervention } from "@/lib/actions/interventions";
@@ -137,6 +137,13 @@ export default async function EditInterventionPage({
                 </Link>
               </Button>
             )}
+            {/* Prochaine visite : même client, même matériel, date à poser. */}
+            <Button variant="outline" asChild>
+              <Link href={`/interventions/nouvelle?source=${intervention.id}`}>
+                <CalendarPlus className="size-4" />
+                Planifier la prochaine visite
+              </Link>
+            </Button>
             <InterventionDeleteButton id={intervention.id} />
           </div>
           )}

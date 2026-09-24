@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { motifIlike } from "@/lib/postgrest";
+import { equipementsDepuisInterventions, type EquipementClient } from "@/lib/equipements-client";
 import {
   interventionSchema,
   type InterventionFormValues,
@@ -80,6 +81,26 @@ export async function getIntervention(id: string): Promise<{
   };
   const { client, facture, ...intervention } = data as WithJoins;
   return { intervention, client, facture };
+}
+
+/**
+ * Matériel connu chez un client (déduit de ses interventions), pour le
+ * reprendre en un tap dans le formulaire au lieu de le ressaisir.
+ */
+export async function listEquipementsClientAction(
+  clientId: string,
+): Promise<ActionResult<EquipementClient[]>> {
+  if (!/^[0-9a-f-]{36}$/i.test(clientId)) return { ok: true, data: [] };
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("interventions")
+    .select("date_intervention, equipement_marque, equipement_modele, equipement_num_serie, fluide_frigo_type")
+    .eq("client_id", clientId)
+    .is("supprime_le", null)
+    .order("date_intervention", { ascending: false })
+    .limit(100);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: equipementsDepuisInterventions(data ?? []) };
 }
 
 /**
