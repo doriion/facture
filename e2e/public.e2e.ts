@@ -68,6 +68,12 @@ describe("accès sans session", () => {
     expect(factures.headers.get("location")).toContain("/login?next=%2Ffactures");
   });
 
+  it("la seconde étape de connexion (double authentification) exige une session", async () => {
+    const res = await reponse("/login/verification?next=%2Ffactures");
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toMatch(/\/login$/);
+  });
+
   it("les routes API répondent 401, jamais une page de connexion", async () => {
     const pdf = await reponse("/api/factures/00000000-0000-0000-0000-000000000000/pdf");
     expect(pdf.status).toBe(401);

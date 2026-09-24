@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/types/database";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/config";
+import { verificationRequise } from "@/lib/mfa-helpers";
 
 /**
  * Middleware d'auth Supabase (pattern officiel @supabase/ssr pour
@@ -87,6 +88,23 @@ export async function middleware(request: NextRequest) {
       url.searchParams.set("next", nextPath);
     }
     return NextResponse.redirect(url);
+  }
+
+  // Double authentification activée mais session au mot de passe seul
+  // (aal1) : rien d'autre que la page de vérification. `user.factors`
+  // vient de getUser() (à jour), le niveau courant du JWT.
+  if (user && !isPublicPage) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (verificationRequise(aal?.currentLevel, user.factors)) {
+      if (path.startsWith("/api/")) {
+        return new NextResponse("Double authentification requise", { status: 401 });
+      }
+      const url = request.nextUrl.clone();
+      url.pathname = "/login/verification";
+      url.search = "";
+      url.searchParams.set("next", path + request.nextUrl.search);
+      return NextResponse.redirect(url);
+    }
   }
 
   // Pages et routes publiques (lien de signature, PDF public) : jamais

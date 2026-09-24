@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { verificationRequise } from "@/lib/mfa-helpers";
 import { sanitizeNextPath } from "@/lib/safe-next";
 
 type SignInResult = { ok: false; error: string };
@@ -31,7 +32,7 @@ export async function signInAction(
   next?: string,
 ): Promise<SignInResult | void> {
   const supabase = createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { ok: false, error: error.message };
@@ -39,6 +40,14 @@ export async function signInAction(
 
   // Force le re-render de toutes les pages (le user est maintenant connecté).
   revalidatePath("/", "layout");
+
+  // Double authentification activée : le mot de passe ne suffit pas, la
+  // session (aal1) doit être élevée par le code de l'application.
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (verificationRequise(aal?.currentLevel, data.user?.factors)) {
+    const cible = sanitizeNextPath(next);
+    redirect(`/login/verification?next=${encodeURIComponent(cible)}`);
+  }
   redirect(sanitizeNextPath(next));
 }
 
