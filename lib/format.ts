@@ -24,6 +24,19 @@ export function formatEuros(amount: number, options?: { withSymbol?: boolean }) 
 }
 
 /**
+ * Quantité pour les documents (jusqu'à 3 décimales). Même précaution
+ * que formatEuros : l'espace fine insécable (U+202F) du séparateur de
+ * milliers n'existe pas dans Helvetica et s'imprimait « 1/000 ».
+ */
+export function formatQuantite(n: number | string | null | undefined): string {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "";
+  return v
+    .toLocaleString("fr-FR", { maximumFractionDigits: 3 })
+    .replace(/[\u202f\u00a0]/g, " ");
+}
+
+/**
  * Formate une date ISO en JJ/MM/AAAA.
  */
 export function formatDateFr(date: string | Date | null | undefined) {

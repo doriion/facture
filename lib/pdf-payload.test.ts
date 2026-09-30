@@ -165,3 +165,14 @@ describe("garde-fou : aucune marge dans les rendus PDF", () => {
     });
   }
 });
+
+describe("nettoyerTextePdf", () => {
+  it("garde le français, remplace les symboles courants, retire les emojis", async () => {
+    const { nettoyerTextePdf } = await import("./pdf-payload");
+    expect(nettoyerTextePdf("Pose d'un ballon 200 L — été, œuvre, 12 m², 30 €")).toBe(
+      "Pose d'un ballon 200 L — été, œuvre, 12 m², 30 €",
+    );
+    expect(nettoyerTextePdf("Débit ≥ 5 → 8 l/min 😀 Ω")).toBe("Débit >= 5 -> 8 l/min Ohm");
+    expect(nettoyerTextePdf(null)).toBe("");
+  });
+});

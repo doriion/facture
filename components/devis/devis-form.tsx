@@ -169,7 +169,11 @@ export function DevisForm({
           | "etablissement"
           | "hors_etablissement"
           | "distance"
-          | undefined) ?? (base?.signe_a_domicile ? "hors_etablissement" : "etablissement"),
+          | undefined) ??
+        // Nouveau devis : « à distance » par défaut — un devis envoyé par
+        // email ou signé chez le client ouvre un droit de rétractation ;
+        // « dans mon local » se choisit explicitement.
+        (base?.signe_a_domicile ? "hors_etablissement" : base ? "etablissement" : "distance"),
       adresse_chantier: (base as { adresse_chantier?: string | null } | undefined)?.adresse_chantier ?? "",
       conditions: base?.conditions ?? defaultConditions ?? "",
       notes: base?.notes ?? "",
@@ -485,6 +489,15 @@ export function DevisForm({
                 {libelle}
               </label>
             ))}
+            {watch("mode_conclusion") === "etablissement" &&
+              clients.find((c) => c.id === watch("client_id"))?.type === "particulier" && (
+                <p className="text-xs text-orange-700 dark:text-orange-300">
+                  Client particulier et devis signé dans votre local : aucun droit de
+                  rétractation ne sera imprimé. S&apos;il signe chez lui ou accepte par
+                  email, choisissez l&apos;autre option, sinon le délai de rétractation
+                  passe à 12 mois.
+                </p>
+              )}
           </fieldset>
           <div className="space-y-1.5 md:col-span-2">
             <Label htmlFor="adresse_chantier">Adresse du chantier (si différente du client)</Label>

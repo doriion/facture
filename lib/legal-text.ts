@@ -89,21 +89,53 @@ export const MENTION_ESCOMPTE_DEFAULT = "Pas d'escompte pour règlement anticip�
 
 /**
  * Pénalités de retard pour un client PARTICULIER : l'indemnité
- * forfaitaire de 40 € (D441-5) ne s'applique qu'entre professionnels ;
- * on n'imprime que le taux légal.
+ * forfaitaire de 40 € (D441-5) et le taux L441-10 ne s'appliquent
+ * qu'entre professionnels ; envers un consommateur, les intérêts de
+ * retard relèvent de l'art. 1231-6 du Code civil (taux légal, à
+ * compter de la mise en demeure).
  */
 export const MENTION_PENALITES_RETARD_PARTICULIER =
-  "En cas de retard de paiement, des pénalités au taux de l'intérêt légal en vigueur seront appliquées (art. L441-10 du Code de commerce).";
+  "En cas de retard de paiement, des intérêts de retard au taux légal en vigueur seront dus à compter de la mise en demeure (art. 1231-6 du Code civil).";
 
-/** Texte des pénalités selon le type de client, sauf texte personnalisé. */
+/**
+ * Texte des pénalités selon le type de client.
+ * `regleV3` (documents émis à partir de la version 3 du snapshot, et
+ * brouillons) : le texte personnalisé du profil ne s'applique qu'aux
+ * professionnels — un particulier reçoit toujours la mention qui lui
+ * est opposable. Avant la v3, le texte du profil primait pour tous :
+ * les documents déjà émis se réimpriment ainsi.
+ */
 export function mentionPenalitesRetard(
   texteProfil: string | null | undefined,
   typeClient: string | null | undefined,
+  regleV3 = false,
 ): string {
+  if (regleV3 && typeClient === "particulier") return MENTION_PENALITES_RETARD_PARTICULIER;
   if (texteProfil && texteProfil.trim()) return texteProfil;
   return typeClient === "particulier"
     ? MENTION_PENALITES_RETARD_PARTICULIER
     : MENTION_PENALITES_RETARD_DEFAULT;
+}
+
+/** Une mention d'escompte est une phrase : au moins un mot de 3 lettres. */
+export function escompteValide(texte: string | null | undefined): boolean {
+  return /[A-Za-zÀ-ÿ]{3,}/.test(texte ?? "");
+}
+
+/**
+ * Mention d'escompte imprimée au pied des factures. En règle v3, une
+ * valeur qui n'est pas une phrase (« 30 » saisi par erreur dans le
+ * champ) est remplacée par la mention par défaut ; avant, le texte du
+ * profil était imprimé tel quel.
+ */
+export function mentionEscompte(
+  texteProfil: string | null | undefined,
+  regleV3 = false,
+): string {
+  const texte = (texteProfil ?? "").trim();
+  if (!texte) return MENTION_ESCOMPTE_DEFAULT;
+  if (regleV3 && !escompteValide(texte)) return MENTION_ESCOMPTE_DEFAULT;
+  return texte;
 }
 
 /**
@@ -148,7 +180,7 @@ export function mentionRetractation(mode: string | null | undefined): string | n
  * l'acceptation.
  */
 export const MENTION_DEVIS_RECU_AVANT_TRAVAUX =
-  "Mention manuscrite à porter par le client : « Devis reçu avant l'exécution des travaux »";
+  "Mention manuscrite à porter par le client : «\u00a0Devis reçu avant l'exécution des travaux\u00a0»";
 
 /** Formulaire de rétractation type (annexe à l'art. R221-1 c. conso, simplifié). */
 export const FORMULAIRE_RETRACTATION_LIGNES = [

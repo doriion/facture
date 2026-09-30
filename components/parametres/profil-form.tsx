@@ -501,9 +501,10 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
             />
           </Field>
           <Field
-            label="Escompte"
+            label="Mention d'escompte (imprimée au pied des factures)"
             id="escompte_text"
             error={errors.escompte_text?.message}
+            help="Mention obligatoire (art. L441-9 du Code de commerce). Une phrase, par exemple « Pas d'escompte pour règlement anticipé. » ; laissez vide pour cette mention par défaut."
           >
             <Input id="escompte_text" {...register("escompte_text")} />
           </Field>

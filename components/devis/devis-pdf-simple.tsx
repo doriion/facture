@@ -10,6 +10,7 @@ import {
 import {
   formatDateFr,
   formatEuros,
+  formatQuantite,
   formatIban,
   formatSiret,
 } from "@/lib/format";
@@ -30,9 +31,11 @@ import {
   ligneAcompte,
   ligneePiedDePage,
   lignesReglementairesDevis,
+  MODELE_DEVIS_COMPLET,
+  versionModeleDevis,
 } from "@/lib/devis-modele";
 import type { Database } from "@/types/database";
-import type { LignePdf } from "@/lib/pdf-payload";
+import { nettoyerTextePdf, type LignePdf } from "@/lib/pdf-payload";
 import * as PALETTE from "@/lib/theme";
 
 type Devis = Database["public"]["Tables"]["devis"]["Row"];
@@ -304,6 +307,22 @@ export function DevisPdfSimple({
     devis.acompte_montant !== null ? Number(devis.acompte_montant) : null,
   );
   const { sections } = computeSections(lignes);
+  // Version 3 : délai d'exécution et conditions imprimés s'ils sont
+  // saisis. Les devis v2 déjà émis se réimpriment sans (intangibles).
+  const complet =
+    versionModeleDevis((devis as { pdf_template_version?: unknown }).pdf_template_version) >=
+    MODELE_DEVIS_COMPLET;
+  const dureeJours = devis.duree_estimee_jours ? Number(devis.duree_estimee_jours) : null;
+  const delaiExecution =
+    complet && (devis.date_debut_travaux || dureeJours)
+      ? [
+          devis.date_debut_travaux ? `début prévu le ${formatDateFr(devis.date_debut_travaux)}` : null,
+          dureeJours ? `durée estimée ${dureeJours} jour${dureeJours > 1 ? "s" : ""}` : null,
+        ]
+          .filter(Boolean)
+          .join(", ")
+      : null;
+  const conditions = complet ? nettoyerTextePdf(devis.conditions).trim() : "";
 
   return (
     <Document
@@ -384,6 +403,11 @@ export function DevisPdfSimple({
               devis.type_activite as keyof typeof LABELS_TYPE_ACTIVITE
             ] ?? devis.type_activite}
           </Text>
+          {delaiExecution && (
+            <Text style={{ fontSize: 9, marginTop: 2 }}>
+              Délai d&apos;exécution : {delaiExecution}.
+            </Text>
+          )}
         </View>
 
         {/* Tableau unique : aucune colonne ni ligne de TVA */}
@@ -415,11 +439,7 @@ export function DevisPdfSimple({
                   minPresenceAhead={30}
                 >
                   <Text style={styles.colDesignation}>{ligne.designation}</Text>
-                  <Text style={styles.colQte}>
-                    {Number(ligne.quantite).toLocaleString("fr-FR", {
-                      maximumFractionDigits: 3,
-                    })}
-                  </Text>
+                  <Text style={styles.colQte}>{formatQuantite(ligne.quantite)}</Text>
                   <Text style={styles.colPu}>
                     {formatEuros(Number(ligne.prix_unitaire_ht))}
                   </Text>
@@ -479,7 +499,7 @@ export function DevisPdfSimple({
             <Text style={styles.accordTitre}>Bon pour accord</Text>
             <Text style={styles.accordMention}>
               Date et signature du client, précédées de la mention
-              « Bon pour accord ».
+              «{"\u00a0"}Bon pour accord{"\u00a0"}».
             </Text>
             <Text style={styles.accordMention}>{MENTION_DEVIS_RECU_AVANT_TRAVAUX}</Text>
             {signatureData ? (
@@ -505,6 +525,15 @@ export function DevisPdfSimple({
         </View>
 
         </View>
+
+        {/* Conditions saisies sur le devis (v3) : paiement, garanties,
+            réserves — ce que le client accepte en signant. */}
+        {conditions ? (
+          <View style={{ marginTop: 10 }} minPresenceAhead={40}>
+            <Text style={styles.ribTitre}>Conditions</Text>
+            <Text style={{ fontSize: 8.5 }}>{conditions}</Text>
+          </View>
+        ) : null}
 
         {/* Rétractation : obligation légale quand le devis est signé au
             domicile du client, pas une condition commerciale. */}

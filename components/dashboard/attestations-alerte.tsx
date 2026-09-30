@@ -11,13 +11,32 @@ import { formatDateFr } from "@/lib/format";
  */
 export function AttestationsAlerte({
   attestations,
+  mediateurManquant = false,
 }: {
   attestations: DashboardData["attestations"];
+  mediateurManquant?: boolean;
 }) {
-  if (attestations.length === 0) return null;
+  if (attestations.length === 0 && !mediateurManquant) return null;
 
   return (
     <div className="space-y-2">
+      {mediateurManquant && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-600/40 bg-amber-500/10 p-3 text-sm">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Médiateur de la consommation non renseigné</p>
+            <p className="text-xs text-muted-foreground">
+              Obligatoire sur les devis et factures aux particuliers (art. L616-1 du
+              Code de la consommation) : adhérez à un médiateur, puis renseignez ses
+              coordonnées dans{" "}
+              <Link href="/parametres" className="underline underline-offset-2">
+                Paramètres
+              </Link>
+              .
+            </p>
+          </div>
+        </div>
+      )}
       {attestations.map((a) => {
         const expiree = a.alerte.niveau === "expiree";
         return (

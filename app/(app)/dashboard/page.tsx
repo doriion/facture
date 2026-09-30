@@ -39,7 +39,10 @@ export default async function DashboardPage() {
 
       <TachesDuJourCard taches={tachesDuJour} />
 
-      <AttestationsAlerte attestations={data.attestations} />
+      <AttestationsAlerte
+        attestations={data.attestations}
+        mediateurManquant={data.mediateurManquant}
+      />
 
       <KpiCards
         caMois={data.caMois}
