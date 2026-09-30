@@ -42,12 +42,15 @@ reçue par email (`sauvegarde-facture-ae-AAAA-MM-JJ.json`).
 3. Répétition à blanc (rien n'est écrit) :
 
    ```bash
+   SUPABASE_SERVICE_ROLE_KEY=<clé service role du projet cible> \
    node scripts/restaurer-sauvegarde.mjs \
      --fichier sauvegarde-facture-ae-2026-09-01.json \
      --url https://<projet>.supabase.co \
-     --service-role <clé service role du projet cible> \
      --utilisateur <uuid du compte>
    ```
+
+   La clé passe par la variable d'environnement (pas en argument : elle
+   resterait dans l'historique du shell).
 
    Le script contrôle le format du fichier, compte les lignes par table
    et vérifie que le compte cible est vide. Il refuse de continuer si une

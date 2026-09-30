@@ -26,6 +26,13 @@ export const dynamic = "force-dynamic";
  * Le token est résolu côté serveur (service role) — la RLS reste
  * fermée à anon.
  */
+/** « j***@exemple.fr » : l'adresse n'est pas affichée en clair sur une page publique. */
+function masquerEmail(email: string): string {
+  const [local, domaine] = email.split("@");
+  if (!local || !domaine) return "votre adresse";
+  return `${local.slice(0, 1)}***@${domaine}`;
+}
+
 export default async function SignatureContratPage({
   params,
 }: {
@@ -89,7 +96,7 @@ export default async function SignatureContratPage({
               ? ` le ${formatDateFr(dateParis(contrat.signed_at))}`
               : ""
           }. Vous allez recevoir (ou avez reçu) le PDF signé par e-mail${
-            clientSnapshot.email ? ` à ${clientSnapshot.email}` : ""
+            clientSnapshot.email ? ` à ${masquerEmail(clientSnapshot.email)}` : ""
           }. ${nomPrestataire} en a également reçu une copie.`}
         />
         {contrat.pdf_path && (

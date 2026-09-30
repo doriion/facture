@@ -327,3 +327,15 @@ describe("buildCsv", () => {
     expect(csv.endsWith("\r\n")).toBe(true);
   });
 });
+
+describe("escapeCsv", () => {
+  it("neutralise les formules et laisse les nombres négatifs intacts", async () => {
+    const { escapeCsv } = await import("./urssaf-helpers");
+    expect(escapeCsv("=HYPERLINK(\"http://x\")")).toBe("\"'=HYPERLINK(\"\"http://x\"\")\"");
+    expect(escapeCsv("+33 6 12")).toBe("\"'+33 6 12\"");
+    expect(escapeCsv("@dupont")).toBe("\"'@dupont\"");
+    expect(escapeCsv("-150,00")).toBe("-150,00");
+    expect(escapeCsv("Dupont & Fils")).toBe("Dupont & Fils");
+    expect(escapeCsv("a;b")).toBe("\"a;b\"");
+  });
+});

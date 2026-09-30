@@ -248,11 +248,19 @@ export function buildCsv(summary: ExportSummary): string {
   );
 }
 
-function escapeCsv(s: string): string {
-  if (s.includes(";") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
+/**
+ * Cellule CSV : guillemets si nécessaire, et neutralisation des
+ * formules (une valeur commençant par = + - @ ou une tabulation serait
+ * exécutée par Excel / LibreOffice). Un nombre nu (montant négatif d'un
+ * avoir) n'est pas touché.
+ */
+export function escapeCsv(s: string): string {
+  let v = s;
+  if (/^[=+\-@\t\r]/.test(v) && !/^-?\d+(?:[.,]\d+)?$/.test(v)) v = `'${v}`;
+  if (v.includes(";") || v.includes('"') || v.includes("\n") || v !== s) {
+    return `"${v.replace(/"/g, '""')}"`;
   }
-  return s;
+  return v;
 }
 
 function formatNumberFr(n: number): string {

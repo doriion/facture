@@ -429,6 +429,8 @@ export async function getAgendaExternes(fenetre: Fenetre): Promise<AgendaExterne
  * est absente ou le fetch échoue, renvoie une liste vide + l'erreur.
  * Cache HTTP 5 min pour limiter les appels répétés.
  */
+const TAILLE_MAX_ICAL = 2 * 1024 * 1024;
+
 async function fetchExternalCalendar(
   url: string | null,
 ): Promise<{
@@ -437,9 +439,12 @@ async function fetchExternalCalendar(
 }> {
   if (!url) return { events: [], error: null };
   try {
+    // Délai plafonné (une fonction Vercel a 10 s) et taille plafonnée :
+    // un flux lent ou énorme ne doit pas faire tomber l'agenda.
     const res = await fetch(url, {
       next: { revalidate: 300 },
       headers: { Accept: "text/calendar, text/plain, */*" },
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) {
       return {
@@ -448,6 +453,12 @@ async function fetchExternalCalendar(
       };
     }
     const text = await res.text();
+    if (text.length > TAILLE_MAX_ICAL) {
+      return {
+        events: [],
+        error: "Le calendrier externe est trop volumineux (plus de 2 Mo).",
+      };
+    }
     return { events: parseIcal(text), error: null };
   } catch (e) {
     return {

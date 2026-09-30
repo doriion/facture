@@ -26,7 +26,11 @@ export type ReglagesRappelsPush = {
 };
 
 const abonnementSchema = z.object({
-  endpoint: z.string().url().max(2000),
+  endpoint: z
+    .string()
+    .url()
+    .max(2000)
+    .refine((u) => u.startsWith("https://"), "Le service push doit être en https."),
   p256dh: z.string().min(1).max(500),
   auth: z.string().min(1).max(500),
   appareil: z.string().max(120).optional().nullable(),

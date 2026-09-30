@@ -1,12 +1,42 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
+/**
+ * Hôte Supabase du projet, pour n'autoriser l'optimiseur d'images que
+ * sur NOTRE stockage (le motif *.supabase.co laissait n'importe quel
+ * projet tiers faire traiter ses fichiers par /_next/image).
+ */
+const hoteSupabase = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname || "*.supabase.co";
+  } catch {
+    return "*.supabase.co";
+  }
+})();
+
+/**
+ * En-têtes de sécurité sur toutes les réponses. Pas de CSP complète :
+ * Next 14 injecte des scripts en ligne, une CSP stricte casserait
+ * l'application ; frame-ancestors suffit contre le clickjacking.
+ */
+const ENTETES_SECURITE = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
+  },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "*.supabase.co",
+        hostname: hoteSupabase,
         pathname: "/storage/v1/**",
       },
     ],
@@ -14,6 +44,9 @@ const nextConfig = {
   experimental: {
     // Requis par instrumentation.ts (Sentry) sur Next 14
     instrumentationHook: true,
+  },
+  async headers() {
+    return [{ source: "/(.*)", headers: ENTETES_SECURITE }];
   },
 };
 

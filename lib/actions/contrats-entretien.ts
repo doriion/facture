@@ -385,8 +385,9 @@ export async function revoquerLienContratAction(
       token_expires_at: null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id)
-    .eq("statut", "envoye");
+    // Révocable quel que soit le statut : après signature, le lien
+    // affichait encore le contrat et les coordonnées du client.
+    .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(`/contrats/${id}`);

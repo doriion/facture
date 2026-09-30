@@ -178,8 +178,15 @@ describe("etatLienPublic", () => {
 
   it("déjà signé (ou actif/résilié/expiré) → confirmation seulement", () => {
     for (const statut of ["signe", "actif", "resilie", "expire"]) {
-      expect(etatLienPublic({ ...base, statut }, NOW)).toBe("deja-signe");
+      expect(etatLienPublic({ ...base, statut, signed_at: "2026-09-01T10:00:00Z" }, NOW)).toBe("deja-signe");
     }
+  });
+
+  it("après signature, le lien expire au bout de 30 jours et reste révocable", () => {
+    const signe = { ...base, statut: "signe", signed_at: "2026-07-01T10:00:00Z" };
+    expect(etatLienPublic(signe, NOW)).toBe("expire");
+    expect(etatLienPublic({ ...signe, signed_at: "2026-08-20T10:00:00Z" }, NOW)).toBe("deja-signe");
+    expect(etatLienPublic({ ...signe, signed_at: "2026-08-20T10:00:00Z", access_token: null }, NOW)).toBe("revoque");
   });
 
   it("introuvable si aucun contrat", () => {

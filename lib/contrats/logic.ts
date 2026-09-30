@@ -127,14 +127,18 @@ export type EtatLienPublic =
  * État d'un lien public de signature. Le token n'est utilisable que
  * pour un contrat au statut « envoye », non expiré (30 jours), non
  * révoqué. Après signature, la page peut encore reconnaître le contrat
- * (« deja-signe ») pour afficher la confirmation — mais plus rien
- * n'est modifiable.
+ * (« deja-signe ») pour afficher la confirmation — pendant 30 jours
+ * après la signature seulement (comme le PDF public), et tant que le
+ * lien n'a pas été révoqué : le contrat complet et les coordonnées du
+ * client ne restent pas consultables indéfiniment par quiconque détient
+ * l'URL.
  */
 export function etatLienPublic(
   contrat: {
     statut: string;
     access_token: string | null;
     token_expires_at: string | null;
+    signed_at?: string | null;
   } | null,
   nowIso: string,
 ): EtatLienPublic {
@@ -145,6 +149,8 @@ export function etatLienPublic(
     contrat.statut === "resilie" ||
     contrat.statut === "expire"
   ) {
+    if (!contrat.access_token) return "revoque";
+    if (contrat.signed_at && expirationToken(contrat.signed_at) <= nowIso) return "expire";
     return "deja-signe";
   }
   if (contrat.statut !== "envoye" || !contrat.access_token) return "revoque";
