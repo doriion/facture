@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MODELE_DEVIS_COMPLET } from "@/lib/devis-modele";
 import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
+import { ajouterJours } from "@/lib/agenda-vues";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
 import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
 import {
@@ -569,9 +570,9 @@ export async function convertirDevisEnFactureAction(
 
   // Création facture (brouillon)
   const today = aujourdhuiParis();
-  const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  // Échéance calculée sur la date d'émission (heure de Paris), pas sur
+  // l'horloge UTC : entre 0 h et 2 h, elle tombait à J+29.
+  const echeance = ajouterJours(today, 30);
 
   const { data: facture, error: insertErr } = await supabase
     .from("factures")
@@ -584,12 +585,7 @@ export async function convertirDevisEnFactureAction(
       date_prestation: devis.date_debut_travaux,
       date_prestation_fin:
         devis.date_debut_travaux && devis.duree_estimee_jours
-          ? new Date(
-              new Date(devis.date_debut_travaux).getTime() +
-                (devis.duree_estimee_jours - 1) * 24 * 3600 * 1000,
-            )
-              .toISOString()
-              .slice(0, 10)
+          ? ajouterJours(devis.date_debut_travaux, devis.duree_estimee_jours - 1)
           : null,
       type_activite: devis.type_activite,
       statut: "brouillon",

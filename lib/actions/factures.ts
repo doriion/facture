@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
+import { ajouterJours } from "@/lib/agenda-vues";
 import { formatEuros } from "@/lib/format";
 import {
   estFactureVentilee,
@@ -694,9 +695,9 @@ export async function duplicateFactureAction(
   }
 
   const today = aujourdhuiParis();
-  const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  // Échéance calculée sur la date d'émission (heure de Paris), pas sur
+  // l'horloge UTC : entre 0 h et 2 h, elle tombait à J+29.
+  const echeance = ajouterJours(today, 30);
 
   const { data: facture, error: insertErr } = await supabase
     .from("factures")
@@ -850,9 +851,9 @@ export async function createAcompteAction(
   }
 
   const today = aujourdhuiParis();
-  const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  // Échéance calculée sur la date d'émission (heure de Paris), pas sur
+  // l'horloge UTC : entre 0 h et 2 h, elle tombait à J+29.
+  const echeance = ajouterJours(today, 30);
 
   const { data: facture, error: insertErr } = await supabase
     .from("factures")
@@ -980,9 +981,9 @@ export async function createSoldeAction(
   }
 
   const today = aujourdhuiParis();
-  const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  // Échéance calculée sur la date d'émission (heure de Paris), pas sur
+  // l'horloge UTC : entre 0 h et 2 h, elle tombait à J+29.
+  const echeance = ajouterJours(today, 30);
 
   const { data: facture, error: insertErr } = await supabase
     .from("factures")

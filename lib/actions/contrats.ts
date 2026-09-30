@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
+import { ajouterJours } from "@/lib/agenda-vues";
 import {
   contratSchema,
   nextVisitDate,
@@ -228,9 +229,9 @@ export async function genererFactureVisiteAction(
     contrat.frequence as Frequence,
   );
   const today = aujourdhuiParis();
-  const echeance = new Date(Date.now() + 30 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  // Échéance calculée sur la date d'émission (heure de Paris), pas sur
+  // l'horloge UTC : entre 0 h et 2 h, elle tombait à J+29.
+  const echeance = ajouterJours(today, 30);
 
   const designation = [
     "Visite d'entretien",

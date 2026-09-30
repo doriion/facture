@@ -15,7 +15,7 @@ import {
 
 import { getClient } from "@/lib/actions/clients";
 import { statutAffichageDevis } from "@/lib/validations/devis";
-import { aujourdhuiParis } from "@/lib/dates";
+import { aujourdhuiParis, dateParis } from "@/lib/dates";
 import { statutAffichageFacture } from "@/lib/factures-transitions";
 import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
@@ -327,7 +327,7 @@ export default async function ClientDetailPage({
                     <p className="font-medium">Contrat {c.numero ?? ""}</p>
                     <p className="text-xs text-muted-foreground">
                       {c.statut}
-                      {c.signed_at ? ` · signé le ${formatDateFr(c.signed_at.slice(0, 10))}` : ""}
+                      {c.signed_at ? ` · signé le ${formatDateFr(dateParis(c.signed_at))}` : ""}
                     </p>
                   </Link>
                 ))}

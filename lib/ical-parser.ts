@@ -3,27 +3,34 @@
  * Calendar publié, etc.) dans l'agenda en lecture seule.
  *
  * Couvre les VEVENT all-day (DTSTART;VALUE=DATE) ET timed (DTSTART
- * avec heure), avec ou sans TZID. Pas de support des RRULE
- * (récurrences) pour rester simple — un évènement récurrent ne
- * remonte que sa première occurrence.
+ * avec heure), avec ou sans TZID, en UTC (suffixe Z) ou avec DURATION.
+ * Les heures sont ramenées en heure de PARIS : un flux Google Calendar
+ * publie ses heures en UTC (un RDV à 8 h 30 s'affichait à 6 h 30, et
+ * un RDV à 0 h 30 la veille). Pas de support des RRULE (récurrences)
+ * pour rester simple — un évènement récurrent ne remonte que sa
+ * première occurrence ; une occurrence MODIFIÉE (RECURRENCE-ID) est
+ * bien remontée, avec un identifiant distinct de la série.
  *
  * Pas une implémentation RFC 5545 complète mais largement suffisante
  * pour les calendriers publiés depuis iPhone (iCloud) ou Google.
  */
 
+import { dateHeureParis, fuseauConnu, instantDepuisLocale } from "@/lib/dates";
+
 export type ParsedIcalEvent = {
+  /** UID iCal ; pour une occurrence modifiée d'une série : « uid#RECURRENCE-ID ». */
   uid: string;
   summary: string;
   description: string | null;
   /** LOCATION iCal (adresse saisie sur l'iPhone), null si absente */
   location: string | null;
-  /** YYYY-MM-DD (date locale, sans heure) */
+  /** YYYY-MM-DD (date locale Paris, sans heure) */
   date_start: string;
-  /** YYYY-MM-DD (date locale, inclusive, sans heure) */
+  /** YYYY-MM-DD (date locale Paris, inclusive, sans heure) */
   date_end: string;
-  /** HH:MM ou null si all-day */
+  /** HH:MM (heure de Paris) ou null si all-day */
   time_start: string | null;
-  /** HH:MM ou null si all-day */
+  /** HH:MM (heure de Paris) ou null si all-day */
   time_end: string | null;
   all_day: boolean;
 };
@@ -67,7 +74,7 @@ function parseLine(line: string): {
     const p = headParts[i]!;
     const eq = p.indexOf("=");
     if (eq !== -1) {
-      params[p.slice(0, eq).toUpperCase()] = p.slice(eq + 1);
+      params[p.slice(0, eq).toUpperCase()] = p.slice(eq + 1).replace(/^"|"$/g, "");
     }
   }
   // Dé-escape RFC 5545
@@ -79,21 +86,21 @@ function parseLine(line: string): {
   return { name, params, value };
 }
 
+type DateIcal = { ymd: string; hm: string | null; allDay: boolean };
+
+const p2 = (n: number) => String(n).padStart(2, "0");
+
 /**
  * Parse une date iCal. 3 formats possibles :
  *   - "20260511"            → date all-day
- *   - "20260511T093000"     → datetime locale (TZID éventuel)
+ *   - "20260511T093000"     → datetime locale (TZID éventuel, Paris sinon)
  *   - "20260511T093000Z"    → datetime UTC
  *
- * Renvoie { ymd, hm, allDay } où ymd = "YYYY-MM-DD" et hm = "HH:MM" ou null.
- * Les conversions de fuseau sont approximatives (on garde la date/heure
- * telle qu'elle apparaît, sans recalculer vers Europe/Paris).
+ * Les heures UTC et celles d'un autre fuseau (TZID connu) sont
+ * converties en heure de Paris. null si la valeur est illisible :
+ * l'évènement est alors ignoré (il apparaissait « aujourd'hui »).
  */
-function parseIcalDate(raw: string): {
-  ymd: string;
-  hm: string | null;
-  allDay: boolean;
-} {
+function parseIcalDate(raw: string, params: Record<string, string> = {}): DateIcal | null {
   const s = raw.trim();
   // Date pure (8 chiffres)
   const dateMatch = s.match(/^(\d{4})(\d{2})(\d{2})$/);
@@ -105,32 +112,65 @@ function parseIcalDate(raw: string): {
     };
   }
   // Datetime
-  const dtMatch = s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?$/);
-  if (dtMatch) {
-    return {
-      ymd: `${dtMatch[1]}-${dtMatch[2]}-${dtMatch[3]}`,
-      hm: `${dtMatch[4]}:${dtMatch[5]}`,
-      allDay: false,
-    };
+  const dtMatch = s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z?)$/);
+  if (!dtMatch) return null;
+  const [annee, mois, jour, heure, minute] = [1, 2, 3, 4, 5].map((i) => Number(dtMatch[i]));
+  const utc = dtMatch[7] === "Z";
+  const tzid = params.TZID;
+  if (utc) {
+    return { ...dateHeureParis(new Date(Date.UTC(annee!, mois! - 1, jour!, heure!, minute!))), allDay: false };
   }
-  // Fallback : aujourd'hui
+  if (tzid && tzid !== "Europe/Paris" && fuseauConnu(tzid)) {
+    return { ...dateHeureParis(instantDepuisLocale(tzid, annee!, mois!, jour!, heure!, minute!)), allDay: false };
+  }
+  // Heure locale (TZID Paris, absent ou inconnu) : telle quelle.
   return {
-    ymd: new Date().toISOString().slice(0, 10),
-    hm: null,
-    allDay: true,
+    ymd: `${annee}-${p2(mois!)}-${p2(jour!)}`,
+    hm: `${p2(heure!)}:${p2(minute!)}`,
+    allDay: false,
   };
+}
+
+/** Durée RFC 5545 (P1DT2H30M, PT45M, P2W) en minutes ; null si illisible. */
+export function parseIcalDuration(raw: string): number | null {
+  const m = /^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(raw.trim());
+  if (!m) return null;
+  const [, signe, w, d, h, mi, s] = m;
+  const minutes =
+    Number(w ?? 0) * 7 * 24 * 60 +
+    Number(d ?? 0) * 24 * 60 +
+    Number(h ?? 0) * 60 +
+    Number(mi ?? 0) +
+    Math.floor(Number(s ?? 0) / 60);
+  return signe === "-" ? -minutes : minutes;
 }
 
 function addDaysYmd(ymd: string, days: number): string {
   const [y, m, d] = ymd.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
+  const dt = new Date(Date.UTC(y!, m! - 1, d!));
   dt.setUTCDate(dt.getUTCDate() + days);
   return dt.toISOString().slice(0, 10);
 }
 
+/** Date/heure « naïve » + minutes (sans fuseau : déjà en heure de Paris). */
+function ajouterMinutes(start: DateIcal, minutes: number): DateIcal {
+  const [y, m, d] = start.ymd.split("-").map(Number);
+  const [h, mi] = (start.hm ?? "00:00").split(":").map(Number);
+  const dt = new Date(Date.UTC(y!, m! - 1, d!, h!, mi!) + minutes * 60_000);
+  if (start.allDay) {
+    // Durée en jours entiers : DTEND exclusif → inclusif (−1 jour)
+    return { ymd: addDaysYmd(dt.toISOString().slice(0, 10), -1), hm: null, allDay: true };
+  }
+  return {
+    ymd: dt.toISOString().slice(0, 10),
+    hm: `${p2(dt.getUTCHours())}:${p2(dt.getUTCMinutes())}`,
+    allDay: false,
+  };
+}
+
 /**
  * Parse un texte iCal complet. Tolérant aux erreurs : un VEVENT invalide
- * est ignoré, le reste continue.
+ * (sans DTSTART lisible) est ignoré, le reste continue.
  */
 export function parseIcal(text: string): ParsedIcalEvent[] {
   const events: ParsedIcalEvent[] = [];
@@ -141,8 +181,10 @@ export function parseIcal(text: string): ParsedIcalEvent[] {
     summary: string;
     description: string;
     location: string;
+    recurrenceId: string;
     rawStart: { value: string; params: Record<string, string> };
     rawEnd: { value: string; params: Record<string, string> };
+    rawDuration: string;
   }> | null = null;
 
   for (const line of lines) {
@@ -153,20 +195,34 @@ export function parseIcal(text: string): ParsedIcalEvent[] {
     }
     if (trimmed === "END:VEVENT") {
       if (current && current.rawStart) {
-        const start = parseIcalDate(current.rawStart.value);
-        let end = current.rawEnd
-          ? parseIcalDate(current.rawEnd.value)
-          : { ymd: start.ymd, hm: start.hm, allDay: start.allDay };
-
-        // RFC 5545 : pour les évènements all-day, DTEND est exclusif.
-        // On le rend inclusif pour notre modèle interne en retirant 1 jour
-        // (sauf si DTEND == DTSTART).
-        if (start.allDay && current.rawEnd && end.ymd !== start.ymd) {
-          end = { ...end, ymd: addDaysYmd(end.ymd, -1) };
+        const start = parseIcalDate(current.rawStart.value, current.rawStart.params);
+        if (!start) {
+          current = null;
+          continue;
         }
+        let end: DateIcal | null = null;
+        if (current.rawEnd) {
+          end = parseIcalDate(current.rawEnd.value, current.rawEnd.params);
+          // RFC 5545 : pour les évènements all-day, DTEND est exclusif.
+          // On le rend inclusif pour notre modèle interne en retirant 1
+          // jour (sauf si DTEND == DTSTART).
+          if (end && start.allDay && end.ymd !== start.ymd) {
+            end = { ...end, ymd: addDaysYmd(end.ymd, -1) };
+          }
+        } else if (current.rawDuration) {
+          const minutes = parseIcalDuration(current.rawDuration);
+          if (minutes !== null && minutes > 0) end = ajouterMinutes(start, minutes);
+        }
+        if (!end) end = { ymd: start.ymd, hm: start.hm, allDay: start.allDay };
+
+        const uidBase = (current.uid ?? "").trim() || `${Date.now()}-${Math.random()}`;
+        // Occurrence modifiée d'une série : même UID que le maître dans
+        // le flux → identifiant distinct chez nous, sinon deux évènements
+        // partageaient la même clé (rattachement et reprise confondus).
+        const uid = current.recurrenceId ? `${uidBase}#${current.recurrenceId.trim()}` : uidBase;
 
         events.push({
-          uid: current.uid ?? `${Date.now()}-${Math.random()}`,
+          uid,
           summary: (current.summary ?? "").trim() || "(sans titre)",
           description: current.description?.trim() || null,
           location: current.location?.trim() || null,
@@ -201,6 +257,12 @@ export function parseIcal(text: string): ParsedIcalEvent[] {
         break;
       case "DTEND":
         current.rawEnd = { value, params };
+        break;
+      case "DURATION":
+        current.rawDuration = value;
+        break;
+      case "RECURRENCE-ID":
+        current.recurrenceId = value;
         break;
     }
   }

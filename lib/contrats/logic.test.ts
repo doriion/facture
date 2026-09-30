@@ -147,7 +147,8 @@ describe("montants et échéance", () => {
 
   it("échéance initiale : un an après la date d'effet (29 février géré)", () => {
     expect(echeanceInitiale("2026-10-01")).toBe("2027-10-01");
-    expect(echeanceInitiale("2028-02-29")).toBe("2029-03-01");
+    // 29 février → 28 février (même règle que la reconduction)
+    expect(echeanceInitiale("2028-02-29")).toBe("2029-02-28");
   });
 });
 

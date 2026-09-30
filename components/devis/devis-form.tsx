@@ -48,6 +48,7 @@ import { ClientPicker } from "@/components/clients/client-picker";
 import type { Database } from "@/types/database";
 import type { NatureFiscale } from "@/lib/fiscal";
 import type { BaremeEntretien } from "@/lib/bareme-entretien";
+import { aujourdhuiParis } from "@/lib/dates";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Produit = Database["public"]["Tables"]["produits_services"]["Row"];
@@ -130,7 +131,8 @@ export function DevisForm({
         type: ((l as { type?: string }).type ?? "ligne") as "ligne" | "titre",
       }));
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Heure de Paris : entre 0 h et 2 h, la date UTC est encore la veille.
+  const today = aujourdhuiParis();
   // « Valable jusqu'au » pré-rempli depuis le réglage (défaut 30 j),
   // surchargeable librement dans le champ.
   const dureeValidite = dureeValiditeSure(dureeValiditeJours);

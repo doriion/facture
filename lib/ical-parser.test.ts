@@ -69,7 +69,7 @@ describe("parseIcal", () => {
     });
   });
 
-  it("accepte le format UTC (suffixe Z)", () => {
+  it("convertit le format UTC (suffixe Z, flux Google) en heure de Paris", () => {
     const events = parseIcal(
       ics(
         [
@@ -77,12 +77,100 @@ describe("parseIcal", () => {
           "UID:evt-4",
           "SUMMARY:Visio",
           "DTSTART:20260511T140000Z",
+          "DTEND:20260511T150000Z",
+          "END:VEVENT",
+          "BEGIN:VEVENT",
+          "UID:evt-nuit",
+          "SUMMARY:Astreinte",
+          "DTSTART:20260110T233000Z",
           "END:VEVENT",
         ].join("\r\n"),
       ),
     );
-    expect(events[0]!.time_start).toBe("14:00");
+    // Mai : UTC+2 ; janvier : UTC+1 — et 23:30 UTC devient le LENDEMAIN 00:30
+    expect(events[0]!.time_start).toBe("16:00");
+    expect(events[0]!.time_end).toBe("17:00");
     expect(events[0]!.all_day).toBe(false);
+    expect(events[1]!.date_start).toBe("2026-01-11");
+    expect(events[1]!.time_start).toBe("00:30");
+  });
+
+  it("convertit un TZID étranger en heure de Paris, garde l'heure locale pour Paris ou un TZID inconnu", () => {
+    const events = parseIcal(
+      ics(
+        [
+          "BEGIN:VEVENT",
+          "UID:ny",
+          "SUMMARY:Appel",
+          "DTSTART;TZID=America/New_York:20260511T090000",
+          "END:VEVENT",
+          "BEGIN:VEVENT",
+          "UID:paris",
+          "SUMMARY:Chantier",
+          "DTSTART;TZID=Europe/Paris:20260511T090000",
+          "END:VEVENT",
+          "BEGIN:VEVENT",
+          "UID:inconnu",
+          "SUMMARY:Bizarre",
+          "DTSTART;TZID=Mars/Olympus:20260511T090000",
+          "END:VEVENT",
+        ].join("\r\n"),
+      ),
+    );
+    expect(events[0]!.time_start).toBe("15:00");
+    expect(events[1]!.time_start).toBe("09:00");
+    expect(events[2]!.time_start).toBe("09:00");
+  });
+
+  it("DURATION sans DTEND donne une fin, et une date illisible fait ignorer l'évènement", () => {
+    const events = parseIcal(
+      ics(
+        [
+          "BEGIN:VEVENT",
+          "UID:duree",
+          "SUMMARY:Entretien",
+          "DTSTART:20260511T090000",
+          "DURATION:PT1H30M",
+          "END:VEVENT",
+          "BEGIN:VEVENT",
+          "UID:duree-jours",
+          "SUMMARY:Congés",
+          "DTSTART;VALUE=DATE:20260511",
+          "DURATION:P3D",
+          "END:VEVENT",
+          "BEGIN:VEVENT",
+          "UID:illisible",
+          "SUMMARY:Fantôme",
+          "DTSTART:pas-une-date",
+          "END:VEVENT",
+        ].join("\r\n"),
+      ),
+    );
+    expect(events.map((e) => e.uid)).toEqual(["duree", "duree-jours"]);
+    expect(events[0]!.time_end).toBe("10:30");
+    expect(events[1]!.date_end).toBe("2026-05-13");
+  });
+
+  it("une occurrence modifiée d'une série (RECURRENCE-ID) a un identifiant distinct du maître", () => {
+    const events = parseIcal(
+      ics(
+        [
+          "BEGIN:VEVENT",
+          "UID:serie",
+          "SUMMARY:Visite hebdo",
+          "DTSTART:20260504T090000",
+          "RRULE:FREQ=WEEKLY",
+          "END:VEVENT",
+          "BEGIN:VEVENT",
+          "UID:serie",
+          "RECURRENCE-ID:20260511T090000",
+          "SUMMARY:Visite hebdo (déplacée)",
+          "DTSTART:20260512T140000",
+          "END:VEVENT",
+        ].join("\r\n"),
+      ),
+    );
+    expect(events.map((e) => e.uid)).toEqual(["serie", "serie#20260511T090000"]);
   });
 
   it("déplie les lignes pliées RFC 5545 (continuation espace/tab)", () => {

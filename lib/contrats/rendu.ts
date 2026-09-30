@@ -5,6 +5,7 @@ import {
 } from "@/lib/legal-text";
 import type { Database } from "@/types/database";
 import type { EquipementContrat } from "@/lib/contrats/types";
+import { dateParis } from "@/lib/dates";
 
 /**
  * Préparation du rendu d'un contrat (page publique, aperçu admin, PDF) :
@@ -131,7 +132,8 @@ export function dateReferenceContrat(contrat: {
   sent_at?: string | null;
 }): string | null {
   const horodatage = contrat.signed_at || contrat.sent_at;
-  return horodatage ? horodatage.slice(0, 10) : null;
+  // Date de Paris (un timestamp UTC tronqué donnait la veille entre 0 h et 2 h).
+  return horodatage ? dateParis(horodatage) : null;
 }
 
 /**

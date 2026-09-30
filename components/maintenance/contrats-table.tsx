@@ -14,6 +14,7 @@ import {
   LABELS_FREQUENCE,
   LABELS_STATUT_CONTRAT,
 } from "@/lib/validations/contrat";
+import { aujourdhuiParis } from "@/lib/dates";
 
 type ContratRow = {
   id: string;
@@ -47,7 +48,8 @@ export function ContratsTable({ contrats }: { contrats: ContratRow[] }) {
     );
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Heure de Paris : entre 0 h et 2 h, la date UTC est encore la veille.
+  const today = aujourdhuiParis();
 
   return (
     <div className="rounded-lg border bg-card">

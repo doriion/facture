@@ -575,7 +575,7 @@ export function ContratPdf({
             <Text style={styles.petit}>{nomPresta}</Text>
             <Text style={styles.petit}>
               {contrat.sent_at
-                ? `Validé électroniquement le ${formatDateFr(contrat.sent_at.slice(0, 10))} — l'envoi du présent contrat vaut engagement du prestataire.`
+                ? `Validé électroniquement le ${formatDateFr(dateParis(contrat.sent_at))} — l'envoi du présent contrat vaut engagement du prestataire.`
                 : "Fait à ................................ le ....../....../.........."}
             </Text>
           </View>

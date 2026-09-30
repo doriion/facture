@@ -9,6 +9,7 @@
  */
 
 import { ajouterJours, depuisYmd, libelleJour, ymd } from "@/lib/agenda-vues";
+import { ajouterMois } from "@/lib/mois";
 
 export const FREQUENCES = ["hebdomadaire", "mensuelle", "annuelle"] as const;
 export type Frequence = (typeof FREQUENCES)[number];
@@ -71,9 +72,8 @@ export function choixDeRegle(r: { frequence: Frequence; intervalle: number }): C
  * mensuelles, cinq ans pour les annuelles (visite annuelle d'entretien).
  */
 export function finParDefaut(date_debut: string, frequence: Frequence): string {
-  const d = depuisYmd(date_debut);
-  d.setFullYear(d.getFullYear() + (frequence === "annuelle" ? 5 : 1));
-  return ymd(d);
+  // ajouterMois rogne au dernier jour du mois (29 février → 28 février).
+  return ajouterMois(date_debut, frequence === "annuelle" ? 60 : 12);
 }
 
 function joursDansMois(annee: number, mois0: number): number {

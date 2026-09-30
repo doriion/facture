@@ -1,3 +1,4 @@
+import { prochaineEcheance } from "@/lib/contrats/reconduction";
 import { TEMPLATE_CONTRAT_V1 } from "@/lib/contrats/template-v1";
 import { TEMPLATE_CONTRAT_V2 } from "@/lib/contrats/template-v2";
 import type {
@@ -104,11 +105,13 @@ export function netAPayer(redevance: number, remise: number): number {
   return Math.round(Math.max(0, net) * 100) / 100;
 }
 
-/** Échéance initiale (art. 7) : un an après la date d'effet. */
+/**
+ * Échéance initiale (art. 7) : un an après la date d'effet. Même règle
+ * que la reconduction : un 29 février est ramené au 28 (sinon
+ * l'échéance glissait au 1er mars, puis chaque année).
+ */
 export function echeanceInitiale(dateEffetIso: string): string {
-  const d = new Date(`${dateEffetIso}T00:00:00Z`);
-  d.setUTCFullYear(d.getUTCFullYear() + 1);
-  return d.toISOString().slice(0, 10);
+  return prochaineEcheance(dateEffetIso);
 }
 
 export type EtatLienPublic =

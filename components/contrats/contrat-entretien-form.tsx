@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/select";
 
 import type { Database } from "@/types/database";
+import { aujourdhuiParis } from "@/lib/dates";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 
@@ -86,7 +87,8 @@ export function ContratEntretienForm({
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const isEdit = !!contrat;
-  const today = new Date().toISOString().slice(0, 10);
+  // Heure de Paris : entre 0 h et 2 h, la date UTC est encore la veille.
+  const today = aujourdhuiParis();
 
   const {
     register,
