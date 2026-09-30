@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
 import { ajouterJours } from "@/lib/agenda-vues";
-import { formatEuros } from "@/lib/format";
+import { formatDateFr, formatEuros } from "@/lib/format";
 import {
   estFactureVentilee,
   estModeAvoir,
@@ -394,7 +394,7 @@ export async function setFactureStatutAction(
     await Promise.all([
       supabase
         .from("factures")
-        .select("statut, type_facture, mode_avoir, facture_parent_id, total_ht")
+        .select("statut, type_facture, mode_avoir, facture_parent_id, total_ht, numero, date_emission, email_envoye_le")
         .eq("id", id)
         .maybeSingle(),
       supabase.from("paiements").select("id", { count: "exact", head: true }).eq("facture_id", id),
@@ -407,8 +407,34 @@ export async function setFactureStatutAction(
     nbPaiements: nbPaiements ?? 0,
     ventilee: estFactureVentilee(existing, enfants ?? []),
     typeFacture: existing.type_facture,
+    emailEnvoye: Boolean(existing.email_envoye_le),
   });
   if (!autorisee.ok) return autorisee;
+
+  // Numérotation chronologique (art. 242 nonies A ann. II CGI) : une
+  // facture ne s'émet pas avec une date d'émission antérieure à celle
+  // d'une facture émise portant un numéro plus petit (le numéro est
+  // consommé à la création, la date reste libre jusqu'à l'émission).
+  if (statut === "envoyee" && existing.type_facture !== TYPE_AVOIR) {
+    const { data: anterieure, error: erreurChrono } = await supabase
+      .from("factures")
+      .select("numero, date_emission")
+      .eq("user_id", user.id)
+      .neq("type_facture", TYPE_AVOIR)
+      .in("statut", ["envoyee", "payee", "annulee"])
+      .lt("numero", existing.numero)
+      .gt("date_emission", existing.date_emission)
+      .order("date_emission", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (erreurChrono) return { ok: false, error: erreurChrono.message };
+    if (anterieure) {
+      return {
+        ok: false,
+        error: `La facture ${anterieure.numero}, émise le ${formatDateFr(anterieure.date_emission)}, porte un numéro plus petit : la date d'émission de ${existing.numero} doit être au plus tôt le ${formatDateFr(anterieure.date_emission)} (numérotation chronologique).`,
+      };
+    }
+  }
 
   // Émission d'un avoir : le plafond se revérifie au moment où il prend
   // effet (un autre avoir ou un paiement a pu arriver depuis le brouillon).
@@ -1053,18 +1079,17 @@ export async function deleteFactureAction(id: string): Promise<ActionResult> {
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Facture introuvable." };
-  // Suppression autorisée pour brouillons et factures annulées.
-  // - Brouillon : pas de numéro réellement utilisé en pratique.
-  // - Annulée : utile pour purger les tests. ⚠️ En usage réel, conserver
-  //   la facture annulée est recommandé pour justifier le « trou » dans
-  //   la séquence des numéros (art. 242 nonies A annexe II CGI).
-  // Les statuts envoyée / payée / retard sont protégés : annulation
-  // obligatoire au préalable.
-  if (existing.statut !== "brouillon" && existing.statut !== "annulee") {
+  // Seuls les brouillons se suppriment physiquement (et un trigger en
+  // base le garantit). Une facture émise — même annulée — reste en base :
+  // c'est elle qui justifie le « trou » dans la séquence des numéros
+  // (art. 242 nonies A annexe II CGI). L'interface propose d'ailleurs
+  // d'ABANDONNER un brouillon (annulation tracée) plutôt que de le
+  // supprimer, pour la même raison.
+  if (existing.statut !== "brouillon") {
     return {
       ok: false,
       error:
-        "Cette facture doit d'abord être annulée avant d'être supprimée.",
+        "Une facture émise ne se supprime pas, même annulée : elle justifie le trou dans la numérotation.",
     };
   }
   const { error } = await supabase.from("factures").delete().eq("id", id);
@@ -1104,7 +1129,7 @@ export async function resetNumerotationAction(
   if ((count ?? 0) > 0) {
     return {
       ok: false,
-      error: `Il reste ${count} ${type}(s) en base pour ${annee}. Supprimez-les d'abord (en passant par "Annulé" → "Supprimer définitivement" si nécessaire).`,
+      error: `Il reste ${count} ${type}(s) en base pour ${annee} : la numérotation ne se réinitialise que pour une année sans aucun document.`,
     };
   }
 

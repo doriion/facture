@@ -144,6 +144,7 @@ export default async function EditFacturePage({
               numero={facture.numero}
               statut={facture.statut as StatutFacture}
               ventilee={ventilee}
+              emailEnvoye={Boolean(facture.email_envoye_le)}
               typeFacture={facture.type_facture}
               modeAvoir={facture.mode_avoir}
               clientEmail={client?.email ?? null}

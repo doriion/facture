@@ -37,6 +37,8 @@ export const TRANSITIONS_FACTURE: Record<StatutFactureStocke, readonly StatutFac
 export type ContexteFacture = {
   /** Nombre de paiements enregistrés sur la facture. */
   nbPaiements?: number;
+  /** La facture a été envoyée par email au client (email_envoye_le renseigné). */
+  emailEnvoye?: boolean;
   /** Facture normale dont des acomptes / un solde non annulés existent. */
   ventilee?: boolean;
   /** Type du document (normale, acompte, solde, avoir). */
@@ -104,6 +106,13 @@ export function transitionFactureAutorisee(
       ok: false,
       error:
         "Cette facture porte des encaissements : l'annuler les ferait disparaître de la base URSSAF. Créez un avoir de remboursement ; si un paiement a été saisi par erreur, supprimez-le d'abord.",
+    };
+  }
+  if (cible === "brouillon" && ctx.emailEnvoye) {
+    return {
+      ok: false,
+      error:
+        "Cette facture a été envoyée par email au client : elle ne se modifie plus. Annulez-la (le motif est conservé) et créez-en une nouvelle, ou établissez un avoir.",
     };
   }
   if (cible === "brouillon" && (ctx.nbPaiements ?? 0) > 0) {
