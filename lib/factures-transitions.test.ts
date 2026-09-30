@@ -34,6 +34,15 @@ describe("transitionFactureAutorisee", () => {
     if (!r.ok) expect(r.error).toMatch(/avoir de remboursement/);
   });
 
+  it("envoyée par email au client : plus de retour en brouillon (ni depuis annulée)", () => {
+    const r = transitionFactureAutorisee("envoyee", "brouillon", { emailEnvoye: true });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/envoyée par email/);
+    expect(transitionFactureAutorisee("annulee", "brouillon", { emailEnvoye: true }).ok).toBe(false);
+    // Marquée envoyée à la main sans email : retour possible (rien n'a été remis au client)
+    expect(transitionFactureAutorisee("envoyee", "brouillon", { emailEnvoye: false }).ok).toBe(true);
+  });
+
   it("avec des paiements, pas de retour en brouillon", () => {
     const r = transitionFactureAutorisee("envoyee", "brouillon", { nbPaiements: 1 });
     expect(r.ok).toBe(false);

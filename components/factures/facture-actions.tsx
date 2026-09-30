@@ -16,7 +16,6 @@ import {
 import { toast } from "sonner";
 
 import {
-  deleteFactureAction,
   setFactureStatutAction,
 } from "@/lib/actions/factures";
 import {
@@ -64,6 +63,7 @@ export function FactureActions({
   clientEmail,
   clientNom,
   pdfBloqueMotif = null,
+  emailEnvoye = false,
 }: {
   factureId: string;
   numero: string;
@@ -76,6 +76,8 @@ export function FactureActions({
   modeAvoir?: string | null;
   clientEmail?: string | null;
   clientNom?: string;
+  /** Envoyée par email au client : ne revient plus en brouillon. */
+  emailEnvoye?: boolean;
   /**
    * Motif de blocage du PDF (garde TVA). Non nul → le téléchargement
    * est remplacé par l'explication : la route répond 501, mais un
@@ -172,13 +174,18 @@ export function FactureActions({
     router.refresh();
   }
 
-  async function onDelete() {
+  // Un brouillon porte déjà un numéro : le supprimer laissait un trou
+  // sans trace dans la séquence. On l'ABANDONNE (annulation tracée,
+  // motif conservé) : la facture reste en base, marquée annulée.
+  async function onAbandonner() {
     setPending("delete");
-    const result = await deleteFactureAction(factureId);
+    const result = await setFactureStatutAction(factureId, "annulee", "Brouillon abandonné");
     setPending(null);
     if (result.ok) {
-      toast.success("Brouillon supprimé");
-      router.push("/factures");
+      toast.success(avoir ? "Brouillon d'avoir abandonné" : "Brouillon abandonné", {
+        description: `${numero} reste en base, annulé${avoir ? "" : "e"} : le numéro est justifié.`,
+      });
+      router.refresh();
     } else {
       toast.error("Erreur", { description: result.error });
     }
@@ -264,25 +271,26 @@ export function FactureActions({
                 className="text-destructive max-sm:mt-1 max-sm:w-full"
               >
                 <Trash2 className="size-4" />
-                Supprimer
+                Abandonner
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Supprimer ce brouillon ?</AlertDialogTitle>
+                <AlertDialogTitle>Abandonner ce brouillon ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {avoir ? "L'avoir" : "La facture"} <strong>{numero}</strong> sera supprimé{avoir ? "" : "e"}
-                  définitivement. Cette action est possible uniquement parce
-                  qu'elle est en brouillon — les factures envoyées doivent être
-                  annulées (et non supprimées) pour respecter la traçabilité légale.
+                  {avoir ? "L'avoir" : "La facture"} <strong>{numero}</strong> porte déjà
+                  un numéro : {avoir ? "il" : "elle"} sera marqué{avoir ? "" : "e"}{" "}
+                  annulé{avoir ? "" : "e"} (motif « Brouillon abandonné ») et
+                  restera en base. C&apos;est ce qui justifie le trou dans la
+                  numérotation en cas de contrôle : rien n&apos;est supprimé.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogCancel>Garder</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={(e) => {
                     e.preventDefault();
-                    onDelete();
+                    onAbandonner();
                   }}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   disabled={pending === "delete"}
@@ -290,7 +298,7 @@ export function FactureActions({
                   {pending === "delete" && (
                     <Loader2 className="size-4 animate-spin" />
                   )}
-                  Supprimer
+                  Abandonner
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -305,8 +313,9 @@ export function FactureActions({
           {!ventilee && (!avoir || remboursement) && (
             <MarquerPayeeButton factureId={factureId} remboursement={remboursement} />
           )}
-          {/* Un avoir émis ne revient pas en brouillon : il s'annule. */}
-          {!avoir && (
+          {/* Un avoir émis ne revient pas en brouillon : il s'annule. Une
+              facture envoyée par email non plus (document remis au client). */}
+          {!avoir && !emailEnvoye && (
           <Button
             variant="outline"
             onClick={() => changeStatut("brouillon", "Repassée en brouillon")}
@@ -343,71 +352,20 @@ export function FactureActions({
         </Button>
       )}
 
-      {statut === "annulee" && (
-        <>
-          <Button
-            variant="outline"
-            onClick={() =>
-              changeStatut("brouillon", avoir ? "Avoir restauré en brouillon" : "Facture restaurée en brouillon")
-            }
-            disabled={pending === "brouillon"}
-          >
-            <Undo2 className="size-4" />
-            Restaurer en brouillon
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive max-sm:mt-1 max-sm:w-full"
-              >
-                <Trash2 className="size-4" />
-                Supprimer (test)
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Supprimer définitivement {numero} ?
-                </AlertDialogTitle>
-                <AlertDialogDescription asChild>
-                  <div className="space-y-2">
-                    <p>
-                      ⚠️ <strong>À n'utiliser qu'en phase de test.</strong> En usage
-                      réel, garde plutôt les factures annulées en base : leur
-                      conservation justifie le « trou » dans la séquence des
-                      numéros en cas de contrôle fiscal.
-                    </p>
-                    <p>
-                      La facture <strong>{numero}</strong> sera supprimée
-                      définitivement, mais le numéro reste « consommé » par le
-                      compteur. Pour repartir d'une numérotation propre,
-                      utilise « Réinitialiser la numérotation » dans Paramètres
-                      après avoir supprimé toutes les factures de l'année.
-                    </p>
-                  </div>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onDelete();
-                  }}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={pending === "delete"}
-                >
-                  {pending === "delete" && (
-                    <Loader2 className="size-4 animate-spin" />
-                  )}
-                  Supprimer
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
+      {/* Facture annulée : elle reste en base (c'est elle qui justifie le
+          trou de numérotation) ; plus de suppression « test ». Restaurer
+          en brouillon n'est proposé que si rien n'a été remis au client. */}
+      {statut === "annulee" && !emailEnvoye && (
+        <Button
+          variant="outline"
+          onClick={() =>
+            changeStatut("brouillon", avoir ? "Avoir restauré en brouillon" : "Facture restaurée en brouillon")
+          }
+          disabled={pending === "brouillon"}
+        >
+          <Undo2 className="size-4" />
+          Restaurer en brouillon
+        </Button>
       )}
 
       <Dialog
