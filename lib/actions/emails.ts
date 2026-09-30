@@ -18,7 +18,13 @@ import { formatDateFr, formatEuros } from "@/lib/format";
 import { joursDeRetard } from "@/lib/relances-helpers";
 import { FacturePdf } from "@/components/factures/facture-pdf";
 import { DevisPdf } from "@/components/devis/devis-pdf";
-import { getFacture } from "@/lib/actions/factures";
+import { getFacture, setFactureStatutAction } from "@/lib/actions/factures";
+import { getFacturePaiements } from "@/lib/actions/paiements";
+import {
+  estFactureVentilee,
+  MOTIF_FACTURE_VENTILEE,
+  transitionFactureAutorisee,
+} from "@/lib/factures-transitions";
 import { getDevis } from "@/lib/actions/devis";
 import { getProfil, getLogoUrl } from "@/lib/actions/profil";
 
@@ -59,6 +65,22 @@ export async function envoyerFactureParEmailAction(
       ok: false,
       error: "Le client n'a pas d'adresse email — renseignez-la sur sa fiche.",
     };
+  }
+  // Mêmes règles que « Marquer envoyée » : une facture ventilée en
+  // acomptes/solde ne part pas au client, et un brouillon passe par la
+  // machine à états (gardes des avoirs, statut de la facture d'origine).
+  const { data: enfants } = await supabase
+    .from("factures")
+    .select("statut, type_facture")
+    .eq("facture_parent_id", factureId);
+  if (estFactureVentilee(facture, enfants ?? [])) {
+    return { ok: false, error: MOTIF_FACTURE_VENTILEE };
+  }
+  if (facture.statut === "brouillon") {
+    const transition = transitionFactureAutorisee("brouillon", "envoyee", {
+      typeFacture: facture.type_facture,
+    });
+    if (!transition.ok) return transition;
   }
 
   const profil = await getProfil();
@@ -144,18 +166,24 @@ export async function envoyerFactureParEmailAction(
 
   if (!res.ok) return { ok: false, error: res.error };
 
-  // Update DB
   const now = new Date().toISOString();
-  await supabase
-    .from("factures")
-    .update({
-      email_envoye_le: now,
-      statut: facture.statut === "brouillon" ? "envoyee" : facture.statut,
-    })
-    .eq("id", factureId);
+  await supabase.from("factures").update({ email_envoye_le: now }).eq("id", factureId);
 
-  // Document envoyé au client : mentions émetteur figées.
-  await figerEmetteurDocument(supabase, "factures", factureId);
+  // Brouillon : émission par la machine à états (plafond de l'avoir
+  // revérifié, facture d'origine synchronisée, émetteur figé) — et non
+  // par une mise à jour directe du statut.
+  if (facture.statut === "brouillon") {
+    const passage = await setFactureStatutAction(factureId, "envoyee");
+    if (!passage.ok) {
+      return {
+        ok: false,
+        error: `Email envoyé, mais le document n'a pas pu passer « envoyé » : ${passage.error}`,
+      };
+    }
+  } else {
+    // Document envoyé au client : mentions émetteur figées.
+    await figerEmetteurDocument(supabase, "factures", factureId);
+  }
 
   revalidatePath(`/factures/${factureId}`);
   revalidatePath("/factures");
@@ -311,6 +339,15 @@ export async function envoyerRelanceFactureAction(
   }
   const joursRetard = joursDeRetard(facture.date_echeance, today);
 
+  // Montant réclamé = reste dû (acompte encaissé, avoir imputé), pas le
+  // total de la facture.
+  const resume = await getFacturePaiements(factureId);
+  if (resume.reste_du <= 0.005) {
+    return { ok: false, error: "Cette facture est soldée : rien à relancer." };
+  }
+  const resteText =
+    resume.reste_du < resume.total_facture - 0.005 ? formatEuros(resume.reste_du) : undefined;
+
   const profil = await getProfil();
   const expediteurNom =
     profil?.nom_commercial ||
@@ -342,6 +379,7 @@ export async function envoyerRelanceFactureAction(
     clientNom: client.nom,
     expediteurNom,
     totalText: formatEuros(Number(facture.total_ht)),
+    resteText,
     echeanceText: formatDateFr(facture.date_echeance),
     joursRetard,
   });

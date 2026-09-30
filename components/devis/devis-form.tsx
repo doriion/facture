@@ -19,7 +19,7 @@ import { dateValiditeDevis, dureeValiditeSure } from "@/lib/devis-validite";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
 import { ligneAcompte } from "@/lib/devis-modele";
 import { parseMoneyInput } from "@/lib/format";
-import { prixEffectif, quantiteEffective } from "@/lib/lignes-saisie";
+import { totalLigneEffectif } from "@/lib/lignes-saisie";
 import {
   createDevisAction,
   updateDevisAction,
@@ -228,10 +228,7 @@ export function DevisForm({
     if ((l as { type?: string })?.type === "titre") return somme;
     // Même lecture que l'éditeur de lignes : quantité vide = 1, prix
     // vide = 0 (lib/lignes-saisie).
-    return (
-      somme +
-      quantiteEffective(l?.quantite) * prixEffectif(l?.prix_unitaire_ht)
-    );
+    return somme + totalLigneEffectif(l?.quantite, l?.prix_unitaire_ht);
   }, 0);
 
   const acomptePctSaisi = watch("acompte_pct");

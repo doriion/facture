@@ -6,9 +6,10 @@ import {
   facturesARelancer,
   type FactureRelancable,
 } from "@/lib/relances-auto";
-import { buildRelanceEmail, isEmailConfigured, sendEmail } from "@/lib/email";
+import { buildRelanceEmail, escapeHtml, isEmailConfigured, sendEmail } from "@/lib/email";
 import { lignePenseBeteHtml } from "@/lib/cron/pense-bete";
 import { formatDateFr, formatEuros } from "@/lib/format";
+import { montantRestant } from "@/lib/paiements-helpers";
 
 /**
  * Relances d'impayés automatiques — OFF par défaut, soumises au mode
@@ -84,14 +85,57 @@ async function executerRelances({
     return { statut: "succes", details: "Aucune facture à relancer." };
   }
 
-  const libelles = aRelancer.map(
-    (f) => `${f.numero} (${f.joursRetard} j de retard)`,
+  // Reste dû par facture (acompte encaissé, avoir d'imputation) : c'est
+  // ce montant que la relance réclame, pas le total.
+  const ids = aRelancer.map((f) => f.id);
+  const [{ data: paiements, error: erreurPaiements }, { data: avoirs, error: erreurAvoirs }] =
+    await Promise.all([
+      service
+        .from("paiements")
+        .select("facture_id, montant")
+        .eq("user_id", userId)
+        .in("facture_id", ids),
+      service
+        .from("factures")
+        .select("facture_parent_id, total_ht")
+        .eq("user_id", userId)
+        .eq("type_facture", "avoir")
+        .eq("mode_avoir", "imputation")
+        .in("statut", ["envoyee", "payee"])
+        .in("facture_parent_id", ids),
+    ]);
+  if (erreurPaiements || erreurAvoirs) {
+    return {
+      statut: "erreur",
+      details: `Reste dû illisible, aucune relance envoyée : ${(erreurPaiements ?? erreurAvoirs)!.message}`,
+    };
+  }
+  const deduit = new Map<string, number>();
+  for (const p of paiements ?? []) {
+    deduit.set(p.facture_id, (deduit.get(p.facture_id) ?? 0) + Number(p.montant));
+  }
+  for (const a of avoirs ?? []) {
+    if (!a.facture_parent_id) continue;
+    deduit.set(a.facture_parent_id, (deduit.get(a.facture_parent_id) ?? 0) + Number(a.total_ht));
+  }
+  const avecReste = aRelancer
+    .map((f) => ({ ...f, reste: montantRestant(f.total_ht, deduit.get(f.id) ?? 0) }))
+    .filter((f) => f.reste > 0.005);
+  if (avecReste.length === 0) {
+    return { statut: "succes", details: "Aucune facture à relancer (toutes soldées)." };
+  }
+
+  const libelles = avecReste.map(
+    (f) =>
+      `${f.numero} (${f.joursRetard} j de retard${
+        f.reste < f.total_ht - 0.005 ? `, reste ${formatEuros(f.reste)}` : ""
+      })`,
   );
 
   if (dryRun) {
     return {
       statut: "succes",
-      details: `SIMULATION : ${aRelancer.length} relance(s) auraient été envoyée(s) — ${libelles.join(", ")}. Désactivez le mode simulation pour envoyer réellement.`,
+      details: `SIMULATION : ${avecReste.length} relance(s) auraient été envoyée(s) — ${libelles.join(", ")}. Désactivez le mode simulation pour envoyer réellement.`,
     };
   }
 
@@ -110,12 +154,13 @@ async function executerRelances({
   const envoyees: string[] = [];
   const echecs: string[] = [];
 
-  for (const f of aRelancer) {
+  for (const f of avecReste) {
     const email = buildRelanceEmail({
       numero: f.numero,
       clientNom: f.client_nom,
       expediteurNom,
       totalText: formatEuros(f.total_ht),
+      resteText: f.reste < f.total_ht - 0.005 ? formatEuros(f.reste) : undefined,
       echeanceText: formatDateFr(f.date_echeance),
       joursRetard: f.joursRetard,
     });
@@ -154,11 +199,14 @@ async function executerRelances({
 
   // Récapitulatif à l'artisan dès qu'au moins une relance est partie
   if (envoyees.length > 0 && profil.email_pro) {
-    const lignes = aRelancer
+    // Noms de clients échappés (contenu HTML).
+    const lignes = avecReste
       .filter((f) => envoyees.includes(f.numero))
       .map(
         (f) =>
-          `<li>${f.numero} — ${f.client_nom} — ${formatEuros(f.total_ht)} — ${f.joursRetard} j de retard</li>`,
+          `<li>${escapeHtml(f.numero)} — ${escapeHtml(f.client_nom)} — ${formatEuros(f.reste)}${
+            f.reste < f.total_ht - 0.005 ? ` (sur ${formatEuros(f.total_ht)})` : ""
+          } — ${f.joursRetard} j de retard</li>`,
       )
       .join("");
     const penseBete = await lignePenseBeteHtml(service, userId, today);

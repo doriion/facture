@@ -214,7 +214,9 @@ export function FactureActions({
         </Button>
       )}
 
-      {statut !== "annulee" && (
+      {/* Une facture ventilée en acomptes/solde ne s'envoie pas : ce
+          sont ses enfants qui partent au client. */}
+      {statut !== "annulee" && !ventilee && (
         <EmailDocumentButton
           documentId={factureId}
           type={avoir ? "avoir" : "facture"}
@@ -227,7 +229,7 @@ export function FactureActions({
       {/* Duplication par pré-remplissage : rien n'est créé ni numéroté
           tant que la nouvelle facture n'est pas validée. Un avoir ne se
           duplique pas (il se crée depuis sa facture d'origine). */}
-      {!avoir && (
+      {typeFacture === "normale" && (
         <Button variant="outline" asChild>
           <Link href={`/factures/nouvelle?source=${factureId}`}>
             <Copy className="size-4" />

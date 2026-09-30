@@ -52,7 +52,9 @@ export default async function NouvelleFacturePage({
   // brouillon dupliqué puis supprimé laissait un trou de numérotation).
   if (searchParams.source && !searchParams.intervention) {
     const { facture: source, lignes: lignesSource } = await getFacture(searchParams.source);
-    if (source) {
+    // Un acompte, un solde ou un avoir ne se duplique pas : sa ligne
+    // unique (« Acompte de 30 % sur facture F-… ») n'a aucun sens seule.
+    if (source && (source.type_facture ?? "normale") === "normale") {
       prefill = {
         facture: {
           client_id: source.client_id,

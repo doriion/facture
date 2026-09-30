@@ -44,6 +44,17 @@ export function quantiteEffective(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Total d'une ligne pendant la frappe, avec les MÊMES arrondis que
+ * l'enregistrement (quantité 3 décimales, prix 2, total 2) : l'aperçu
+ * ne diffère plus d'un centime du total serveur.
+ */
+export function totalLigneEffectif(quantite: unknown, prix: unknown): number {
+  const q = Math.round(quantiteEffective(quantite) * 1000) / 1000;
+  const p = Math.round(prixEffectif(prix) * 100) / 100;
+  return Math.round(q * p * 100) / 100;
+}
+
 /** Prix unitaire pour les totaux en direct : vide ou invalide → 0. */
 export function prixEffectif(v: unknown): number {
   const n = prixSaisi(v);

@@ -43,19 +43,24 @@ export const ligneFactureSchema = z.object({
   // Champs laissés VIDES dans le formulaire (saisie directe, sans
   // effacer un « 1 » ou un « 0 ») : quantité vide = 1, prix vide = 0.
   // Voir lib/lignes-saisie.ts. Le calcul quantité × prix ne change pas.
+  // Arrondis IDENTIQUES à la base (quantité numeric(10,3), prix
+  // numeric(10,2)) avant le calcul du total : 3 × 1,005 € donnait un
+  // total de 3,01 € pour un prix imprimé 1,01 € (attendu 3,03 €).
   quantite: z.preprocess(
     quantiteSaisie,
     z
       .number({ error: "Quantité invalide." })
       .positive("La quantité doit être positive.")
-      .max(100000, "Quantité trop élevée."),
+      .max(100000, "Quantité trop élevée.")
+      .transform((n) => Math.round(n * 1000) / 1000),
   ),
   prix_unitaire_ht: z.preprocess(
     prixSaisi,
     z
       .number({ error: "Prix unitaire invalide." })
       .min(0, "Le prix ne peut pas être négatif.")
-      .max(1_000_000, "Prix trop élevé."),
+      .max(1_000_000, "Prix trop élevé.")
+      .transform((n) => Math.round(n * 100) / 100),
   ),
   // Coûts PRIVÉS de suivi de marge — jamais rendus au client (liste
   // blanche lib/pdf-payload.ts). Prix d'achat saisi TTC : en franchise
