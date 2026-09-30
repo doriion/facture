@@ -5,7 +5,7 @@
  *
  * Configuration : variables d'environnement Vercel
  * - RESEND_API_KEY : clé API Resend (commence par re_…)
- * - RESEND_FROM : adresse d'expédition (ex : "Facture AE <facture@tondomaine.fr>")
+ * - RESEND_FROM : adresse d'expédition (ex : "NG Gestion <facture@tondomaine.fr>")
  *
  * En l'absence de ces variables, les actions d'email retourneront une
  * erreur explicite et l'utilisateur sera invité à configurer Resend.
@@ -15,6 +15,7 @@ import { Resend } from "resend";
 
 import { mentionTvaFranchise } from "@/lib/legal-text";
 import { PRINCIPAL } from "@/lib/theme";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 type SendEmailParams = {
   to: string;
@@ -118,7 +119,7 @@ ${perso}
 <p>Pour toute question, je reste à votre disposition.</p>
 ${signature}
 <hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
 </body></html>`;
 
   const textIntro =
@@ -133,7 +134,7 @@ ${signature}
     (args.messagePerso?.trim() ? args.messagePerso + "\n\n" : "") +
     "Pour toute question, je reste à votre disposition.\n\n" +
     (args.expediteurNom ? `Cordialement,\n${args.expediteurNom}\n` : "") +
-    "\n— Envoyé via Facture AE";
+    "\n— Envoyé via ${NOM_APPLICATION}";
 
   return { subject, html, text };
 }
@@ -171,7 +172,7 @@ ${perso}
 <p>Pour toute question, je reste à votre disposition.</p>
 <p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
 <hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
 </body></html>`;
   const text =
     `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint le bon d'intervention du ${args.dateText}, qui récapitule les travaux réalisés.\n\n` +
@@ -204,7 +205,7 @@ export function buildRelanceEmail(args: {
 <p>Si le paiement a été effectué entre temps, considérez ce mail comme nul et merci de me communiquer la date d'encaissement.</p>
 <p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
 <hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
 </body></html>`;
 
   const text = `Bonjour ${args.clientNom},
@@ -218,7 +219,7 @@ Si le paiement a été effectué entre temps, considérez ce mail comme nul et m
 Cordialement,
 ${args.expediteurNom}
 
-— Envoyé via Facture AE`;
+— Envoyé via ${NOM_APPLICATION}`;
 
   return { subject, html, text };
 }
@@ -246,7 +247,7 @@ export function buildLienContratEmail(args: {
 <p>Une fois signé, vous recevrez immédiatement le contrat en PDF par retour d'e-mail.</p>
 <p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
 <hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
 </body></html>`;
 
   const text = `Bonjour ${args.clientNom},
@@ -260,7 +261,7 @@ Ce lien est personnel et valable jusqu'au ${args.expireLeText}. Une fois signé,
 Cordialement,
 ${args.expediteurNom}
 
-— Envoyé via Facture AE`;
+— Envoyé via ${NOM_APPLICATION}`;
 
   return { subject, html, text };
 }
@@ -287,7 +288,7 @@ export function buildContratSigneEmail(args: {
 <html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
 ${intro}
 <hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
 </body></html>`;
 
   const text = args.pourArtisan
@@ -296,7 +297,7 @@ ${intro}
 
 Votre contrat d'entretien ${args.numero} a bien été signé le ${args.dateSignatureText}. Votre exemplaire PDF est en pièce jointe, à conserver.
 
-— Envoyé via Facture AE`;
+— Envoyé via ${NOM_APPLICATION}`;
 
   return { subject, html, text };
 }
@@ -337,7 +338,7 @@ export function buildRappelEntretienEmail(args: {
 ${contactHtml}
 <p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
 <hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via Facture AE.</p>
+<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
 </body></html>`;
 
   const contactText = coordonnees
@@ -355,7 +356,7 @@ ${contactText}
 Cordialement,
 ${args.expediteurNom}
 
-— Envoyé via Facture AE`;
+— Envoyé via ${NOM_APPLICATION}`;
 
   return { subject, html, text };
 }
@@ -420,7 +421,7 @@ ${enTeteHtml}
 ${contactHtml}
 <p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
 <hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via Facture AE. ${escapeHtml(mentionTva)}.</p>
+<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}. ${escapeHtml(mentionTva)}.</p>
 </body></html>`;
 
   const enTeteText = args.pourArtisan
@@ -444,7 +445,7 @@ ${contactText}
 Cordialement,
 ${args.expediteurNom}
 
-— Envoyé via Facture AE. ${mentionTva}.`;
+— Envoyé via ${NOM_APPLICATION}. ${mentionTva}.`;
 
   return { subject, html, text };
 }

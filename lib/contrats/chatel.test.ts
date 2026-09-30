@@ -17,8 +17,8 @@ function contrat(over: Partial<ContratAviseable> = {}): ContratAviseable {
     numero: "2026-001",
     statut: "actif",
     qualite_client: "particulier",
-    // J-60 pile
-    date_echeance: "2026-11-10",
+    // Date limite de dénonciation (échéance − 2 mois) = 2026-11-10 : J-60 pile
+    date_echeance: "2027-01-10",
     rappel_chatel_envoye_pour: null,
     client_email: "client@example.fr",
     client_nom: "Mme Durand",
@@ -76,20 +76,32 @@ describe("dateLimiteDenonciation (préavis de 2 mois)", () => {
 });
 
 describe("contratsAAviserChatel — fenêtre", () => {
-  it("avise à la cible (J-60)", () => {
-    expect(aviser([contrat()])).toHaveLength(1);
+  it("avise à la cible (60 jours avant la date limite de dénonciation)", () => {
+    const [c] = aviser([contrat()]);
+    expect(c).toBeDefined();
+    expect(c!.joursAvantLimite).toBe(60);
+    expect(c!.joursAvantEcheance).toBe(121);
   });
 
-  it("n'avise pas trop tôt (J-61 et au-delà)", () => {
-    expect(aviser([contrat({ date_echeance: "2026-11-11" })])).toHaveLength(0);
-    expect(aviser([contrat({ date_echeance: "2026-12-11" })])).toHaveLength(0);
+  it("la date limite annoncée au client est encore à venir au moment de l'envoi", () => {
+    for (const echeance of ["2027-01-10", "2026-12-13", "2026-12-31"]) {
+      const [c] = aviser([contrat({ date_echeance: echeance })]);
+      if (c) expect(dateLimiteDenonciation(echeance) > TODAY).toBe(true);
+    }
   });
 
-  it("rattrape jusqu'à la borne basse (J-32) puis s'arrête", () => {
-    // J-32 : dernier jour de rattrapage
-    expect(aviser([contrat({ date_echeance: "2026-10-13" })])).toHaveLength(1);
-    // J-31 : trop tard, la marge sur la borne légale (J-30) est épuisée
-    expect(aviser([contrat({ date_echeance: "2026-10-12" })])).toHaveLength(0);
+  it("n'avise pas trop tôt (J-61 avant la date limite et au-delà)", () => {
+    expect(aviser([contrat({ date_echeance: "2027-01-11" })])).toHaveLength(0);
+    expect(aviser([contrat({ date_echeance: "2027-02-11" })])).toHaveLength(0);
+  });
+
+  it("rattrape jusqu'à la borne basse (J-32 avant la date limite) puis s'arrête", () => {
+    // Date limite 2026-10-13 : J-32, dernier jour de rattrapage
+    expect(aviser([contrat({ date_echeance: "2026-12-13" })])).toHaveLength(1);
+    // Date limite 2026-10-12 : J-31, trop tard (marge sur la borne légale épuisée)
+    expect(aviser([contrat({ date_echeance: "2026-12-12" })])).toHaveLength(0);
+    // Ancienne fenêtre (J-60 avant l'ÉCHÉANCE) : la date limite est déjà passée, pas d'avis
+    expect(aviser([contrat({ date_echeance: "2026-11-10" })])).toHaveLength(0);
   });
 
   it("les bornes restent à l'intérieur des bornes légales (90 / 30 jours)", () => {
@@ -126,13 +138,13 @@ describe("contratsAAviserChatel — éligibilité", () => {
 
   it("n'envoie qu'un seul avis par échéance", () => {
     expect(
-      aviser([contrat({ rappel_chatel_envoye_pour: "2026-11-10" })]),
+      aviser([contrat({ rappel_chatel_envoye_pour: "2027-01-10" })]),
     ).toHaveLength(0);
   });
 
   it("ré-arme l'avis quand l'échéance a changé (contrat reconduit)", () => {
     expect(
-      aviser([contrat({ rappel_chatel_envoye_pour: "2025-11-10" })]),
+      aviser([contrat({ rappel_chatel_envoye_pour: "2026-01-10" })]),
     ).toHaveLength(1);
   });
 });
@@ -140,12 +152,15 @@ describe("contratsAAviserChatel — éligibilité", () => {
 describe("contratsAAviserChatel — sortie", () => {
   it("trie par échéance la plus proche et expose le nombre de jours", () => {
     const resultat = aviser([
-      contrat({ id: "loin", date_echeance: "2026-11-10" }),
-      contrat({ id: "proche", date_echeance: "2026-10-15" }),
+      contrat({ id: "loin", date_echeance: "2027-01-10" }),
+      contrat({ id: "proche", date_echeance: "2026-12-15" }),
     ]);
     expect(resultat.map((c) => c.id)).toEqual(["proche", "loin"]);
-    expect(resultat[0].joursAvantEcheance).toBe(34);
-    expect(resultat[1].joursAvantEcheance).toBe(60);
+    // Jours avant la date limite (échéance − 2 mois) et avant l'échéance
+    expect(resultat[0].joursAvantLimite).toBe(34);
+    expect(resultat[0].joursAvantEcheance).toBe(95);
+    expect(resultat[1].joursAvantLimite).toBe(60);
+    expect(resultat[1].joursAvantEcheance).toBe(121);
   });
 
   it("liste vide → aucun avis", () => {

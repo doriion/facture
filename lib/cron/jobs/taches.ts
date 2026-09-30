@@ -5,6 +5,7 @@ import type { ResultatTache } from "@/lib/cron/journal";
 import { classerTaches } from "@/lib/taches-logic";
 import { isEmailConfigured, sendEmail } from "@/lib/email";
 import { formatDateFr } from "@/lib/format";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 /**
  * Email quotidien « Tes tâches du jour » — envoyé à L'ARTISAN
@@ -26,12 +27,17 @@ async function executerEmailTaches({
   profil,
   today,
 }: ContexteJob): Promise<ResultatTache> {
-  const { data } = await service
+  const { data, error } = await service
     .from("taches")
     .select("id, titre, date_echeance, heure, priorite, fait, fait_le")
     .eq("user_id", userId)
     .eq("fait", false)
     .not("date_echeance", "is", null);
+  // Une lecture en panne ne vaut pas « aucune tâche » : sinon le journal
+  // disait « succès » et l'idempotence empêchait tout nouvel essai.
+  if (error) {
+    return { statut: "erreur", details: `Lecture des tâches : ${error.message}` };
+  }
 
   const { enRetard, aujourdhui } = classerTaches(
     (data ?? []).map((t) => ({ ...t, heure: t.heure?.slice(0, 5) ?? null })),
@@ -87,7 +93,7 @@ async function executerEmailTaches({
   const res = await sendEmail({
     to: profil.email_pro,
     subject: `${total} tâche(s) à faire aujourd'hui — ${formatDateFr(today)}`,
-    html: `<p>Bonjour,</p>${sectionRetard}${sectionJour}<p>Ouvrez le pense-bête pour cocher au fur et à mesure.</p><p>— Facture AE</p>`,
+    html: `<p>Bonjour,</p>${sectionRetard}${sectionJour}<p>Ouvrez le pense-bête pour cocher au fur et à mesure.</p><p>— ${NOM_APPLICATION}</p>`,
   });
 
   if (!res.ok) return { statut: "erreur", details: res.error };

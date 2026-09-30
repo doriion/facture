@@ -10,6 +10,7 @@ import { buildRelanceEmail, escapeHtml, isEmailConfigured, sendEmail } from "@/l
 import { lignePenseBeteHtml } from "@/lib/cron/pense-bete";
 import { formatDateFr, formatEuros } from "@/lib/format";
 import { montantRestant } from "@/lib/paiements-helpers";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 /**
  * Relances d'impayés automatiques — OFF par défaut, soumises au mode
@@ -213,7 +214,7 @@ async function executerRelances({
     await sendEmail({
       to: profil.email_pro,
       subject: `${envoyees.length} relance(s) automatique(s) envoyée(s) — ${formatDateFr(today)}`,
-      html: `<p>Bonjour,</p><p>Les relances suivantes sont parties ce matin :</p><ul>${lignes}</ul><p>Rappel : maximum 2 relances automatiques par facture — au-delà, un appel vaut mieux qu'un email.</p>${penseBete}<p>— Facture AE</p>`,
+      html: `<p>Bonjour,</p><p>Les relances suivantes sont parties ce matin :</p><ul>${lignes}</ul><p>Rappel : maximum 2 relances automatiques par facture — au-delà, un appel vaut mieux qu'un email.</p>${penseBete}<p>— ${NOM_APPLICATION}</p>`,
     });
   }
 

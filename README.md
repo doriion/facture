@@ -1,4 +1,4 @@
-# Facture AE
+# NG Gestion (dépôt `facture`)
 
 Application web personnelle de gestion de **factures et devis** pour
 auto-entrepreneur BTP français (plomberie + climatisation/PAC).

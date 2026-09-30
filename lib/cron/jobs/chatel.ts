@@ -84,7 +84,7 @@ async function executerChatel({
 
   const libelles = aAviser.map(
     (c) =>
-      `${c.numero ?? c.id} (${c.client_nom}, échéance le ${formatDateFr(c.date_echeance!)}, J-${c.joursAvantEcheance})`,
+      `${c.numero ?? c.id} (${c.client_nom}, échéance le ${formatDateFr(c.date_echeance!)}, dénonciation possible jusqu'au ${formatDateFr(dateLimiteDenonciation(c.date_echeance!))}, J-${c.joursAvantLimite})`,
   );
 
   if (dryRun) {
@@ -124,6 +124,27 @@ async function executerChatel({
       ...commun,
       clientNom: c.client_nom,
     });
+
+    // Anti-doublon : l'échéance avisée est mémorisée AVANT l'envoi
+    // (conditionnelle : un déclencheur concurrent ne renvoie pas) et
+    // retirée si l'envoi échoue — mieux vaut un avis en retard d'un
+    // jour qu'un second avis au client demain matin.
+    const { data: marque, error: erreurMarque } = await service
+      .from("contrats")
+      .update({
+        rappel_chatel_envoye_pour: echeance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", c.id)
+      .eq("user_id", userId)
+      .or(`rappel_chatel_envoye_pour.is.null,rappel_chatel_envoye_pour.neq.${echeance}`)
+      .select("id");
+    if (erreurMarque) {
+      echecs.push(`${c.numero ?? c.id} : anti-doublon non enregistré, avis non envoyé (${erreurMarque.message})`);
+      continue;
+    }
+    if (!marque || marque.length === 0) continue; // déjà avisé entre-temps
+
     const res = await sendEmail({
       to: c.client_email!,
       subject: emailClient.subject,
@@ -132,25 +153,12 @@ async function executerChatel({
       replyTo: profil.email_pro ?? undefined,
     });
     if (!res.ok) {
+      await service
+        .from("contrats")
+        .update({ rappel_chatel_envoye_pour: c.rappel_chatel_envoye_pour ?? null })
+        .eq("id", c.id)
+        .eq("user_id", userId);
       echecs.push(`${c.numero ?? c.id} : ${res.error}`);
-      continue;
-    }
-
-    // Anti-doublon : mémorise l'échéance avisée AVANT toute autre
-    // étape — mieux vaut un avis non copié à l'artisan qu'un second
-    // avis au client demain matin.
-    const { error: erreurMarque } = await service
-      .from("contrats")
-      .update({
-        rappel_chatel_envoye_pour: echeance,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", c.id)
-      .eq("user_id", userId);
-    if (erreurMarque) {
-      // L'avis est parti mais l'anti-doublon n'a pas pu être posé :
-      // signalé en erreur pour qu'on le voie avant demain matin.
-      echecs.push(`${c.numero ?? c.id} : avis envoyé mais anti-doublon non enregistré (${erreurMarque.message})`);
       continue;
     }
 

@@ -37,6 +37,7 @@ import {
 import type { Database } from "@/types/database";
 import { nettoyerTextePdf, type LignePdf } from "@/lib/pdf-payload";
 import * as PALETTE from "@/lib/theme";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 type Devis = Database["public"]["Tables"]["devis"]["Row"];
 type Ligne = LignePdf;
@@ -328,7 +329,7 @@ export function DevisPdfSimple({
     <Document
       title={`Devis ${devis.numero}`}
       author={enseigne}
-      creator="Facture AE"
+      creator={NOM_APPLICATION}
     >
       <Page size="A4" style={[styles.page, { paddingBottom: reservePied }]}>
         {/* En-tête : identité + coordonnées, puis le devis à droite */}
