@@ -9,6 +9,9 @@ import {
   addPaiementAction,
   deletePaiementAction,
 } from "@/lib/actions/paiements";
+import { appelerAction, appelerOuMettreEnAttente } from "@/lib/appel-action";
+import { genererId } from "@/lib/file-attente-helpers";
+import { parseMoneyInput } from "@/lib/format";
 import {
   LABELS_MODE_PAIEMENT,
   MODES_PAIEMENT,
@@ -77,28 +80,46 @@ export function FacturePaiements({
 
   async function onAdd() {
     setSubmitting(true);
-    const res = await addPaiementAction(factureId, {
-      date_paiement: datePaiement,
-      montant,
-      mode,
-      reference,
-      notes,
-    });
-    setSubmitting(false);
-    if (res.ok) {
-      toast.success("Paiement enregistré");
+    // Même mécanisme que « Marquer payée » : sans réseau, le paiement est
+    // mis en file (identifiant choisi ici, rejeu sans doublon).
+    const paiementId = genererId();
+    const saisie = { date_paiement: datePaiement, montant, mode, reference, notes };
+    try {
+      const res = await appelerOuMettreEnAttente(
+        {
+          id: paiementId,
+          type: "paiement_ajouter",
+          payload: {
+            factureId,
+            ...saisie,
+            montantTexte: formatEuros(parseMoneyInput(montant)),
+          },
+        },
+        () => addPaiementAction(factureId, { id: paiementId, ...saisie }),
+      );
+      if (!res.ok) {
+        toast.error("Erreur", { description: res.error });
+        return;
+      }
       setMontant("");
       setReference("");
       setNotes("");
-      router.refresh();
-    } else {
-      toast.error("Erreur", { description: res.error });
+      if ("enAttente" in res) {
+        toast.success("Paiement mis en attente", {
+          description: "Pas de réseau : il partira tout seul au retour de la connexion.",
+        });
+      } else {
+        toast.success("Paiement enregistré");
+        router.refresh();
+      }
+    } finally {
+      setSubmitting(false);
     }
   }
 
   function onDelete(id: string) {
     startTransition(async () => {
-      const res = await deletePaiementAction(id);
+      const res = await appelerAction(() => deletePaiementAction(id));
       if (res.ok) {
         toast.success("Paiement supprimé");
         router.refresh();

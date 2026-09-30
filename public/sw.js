@@ -21,7 +21,9 @@
  * /api/cron/rappels-push ; un tap dessus ouvre (ou ramène) l'app sur le
  * jour du rendez-vous.
  *
- * Changer VERSION invalide les anciens caches à l'activation.
+ * Changer VERSION invalide les anciens caches à l'activation : le build
+ * (scripts/stamper-sw.mjs) l'estampille avec le SHA du commit, chaque
+ * déploiement est donc une nouvelle version.
  *
  * Mise à jour : le nouveau SW ATTEND (pas de skipWaiting automatique) ;
  * la page propose « Nouvelle version — recharger » et lui envoie
@@ -38,8 +40,12 @@ const CACHE_PHOTOS = `ng-photos-${VERSION}`;
 const MAX_PHOTOS = 300;
 const PAGE_HORS_LIGNE = "/hors-ligne";
 
-/** Au-delà, on sert la copie en cache (réseau mobile qui rame). */
-const DELAI_RESEAU_MS = 4000;
+/**
+ * Au-delà, on sert la copie en cache (réseau mobile qui rame) et la page
+ * est prévenue (PAGE_PERIMEE) pour l'afficher. 4 s coupaient des pages
+ * lentes mais vivantes.
+ */
+const DELAI_RESEAU_MS = 8000;
 /** Écrans mis en cache d'avance après connexion. */
 const PAGES_A_PRECHAUFFER = [
   "/agenda",
@@ -63,10 +69,10 @@ self.addEventListener("install", (event) => {
 self.addEventListener("message", (event) => {
   const data = event.data || {};
   if (data.type === "SKIP_WAITING") self.skipWaiting();
-  if (data.type === "VIDER_PAGES") {
+  if (data.type === "VIDER_PAGES" || data.type === "VIDER_TOUT") {
+    // Déconnexion : pages ET photos/signatures (données personnelles).
     event.waitUntil(
-      caches
-        .delete(CACHE_PAGES)
+      Promise.all([caches.delete(CACHE_PAGES), caches.delete(CACHE_PHOTOS)])
         .then(() => precacherPage(PAGE_HORS_LIGNE))
         .catch(() => {}),
     );
@@ -127,8 +133,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   // Pages : réseau d'abord (délai plafonné), copie en cache en secours.
+  // Les PDF (/api/…/pdf ouverts dans un onglet) et le lien public de
+  // signature ne sont PAS interceptés : le délai plafonné renvoyait
+  // « Pas de connexion » à la place d'un PDF un peu long à produire.
   if (req.mode === "navigate") {
-    event.respondWith(pageReseauPuisCache(req));
+    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/c/")) return;
+    event.respondWith(pageReseauPuisCache(req, event));
   }
   // Le reste (API, PDF, RSC, Supabase) passe par le réseau, sans interception.
 });
@@ -139,7 +149,7 @@ function pageCachable(url) {
   return !PAGES_SANS_CACHE.some((p) => url.pathname === p || url.pathname.startsWith(p + "/"));
 }
 
-async function pageReseauPuisCache(req) {
+async function pageReseauPuisCache(req, event) {
   const url = new URL(req.url);
   const cachable = pageCachable(url);
   const cache = await caches.open(CACHE_PAGES);
@@ -160,10 +170,37 @@ async function pageReseauPuisCache(req) {
   } catch {
     if (cachable) {
       const enCache = await cache.match(cle);
-      if (enCache) return enCache;
+      if (enCache) {
+        signalerPagePerimee(event, enCache);
+        return enCache;
+      }
     }
     return (await cache.match(PAGE_HORS_LIGNE)) || Response.error();
   }
+}
+
+/**
+ * Prévient la page servie depuis le cache qu'elle est une copie (réseau
+ * lent ou absent) : le bandeau « dernière version connue » s'affiche.
+ * Le client d'une navigation n'existe qu'une fois la page engagée : on
+ * réessaie quelques instants.
+ */
+function signalerPagePerimee(event, reponse) {
+  const date = reponse.headers.get("date") || "";
+  const idClient = event.resultingClientId;
+  if (!idClient) return;
+  event.waitUntil(
+    (async () => {
+      for (let i = 0; i < 12; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        const client = await self.clients.get(idClient);
+        if (client) {
+          client.postMessage({ type: "PAGE_PERIMEE", date });
+          return;
+        }
+      }
+    })(),
+  );
 }
 
 function cleDePage(url) {
@@ -250,12 +287,21 @@ async function photoCacheDAbord(req, url) {
   const cle = url.origin + url.pathname;
   const enCache = await cache.match(cle);
   if (enCache) return enCache;
-  const reponse = await fetch(req);
-  // Réponse opaque (no-cors) ou normale : on la garde telle quelle.
-  if (reponse.ok || reponse.type === "opaque") {
-    cache.put(cle, reponse.clone()).then(() => limiterCache(cache, MAX_PHOTOS)).catch(() => {});
+  // Requête CORS explicite (le Storage Supabase l'autorise) : une balise
+  // <img> fait une requête no-cors dont la réponse est opaque — un 400
+  // (jeton expiré) ou un 404 (photo supprimée) était mis en cache pour
+  // toujours et servait une image cassée. Avec un vrai statut, seules
+  // les réponses 200 sont gardées.
+  try {
+    const reponse = await fetch(new Request(req.url, { mode: "cors", credentials: "omit" }));
+    if (reponse.ok) {
+      cache.put(cle, reponse.clone()).then(() => limiterCache(cache, MAX_PHOTOS)).catch(() => {});
+    }
+    return reponse;
+  } catch {
+    // CORS refusé ou réseau absent : requête d'origine, sans mise en cache.
+    return fetch(req);
   }
-  return reponse;
 }
 
 async function limiterCache(cache, max) {

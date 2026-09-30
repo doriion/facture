@@ -5,6 +5,7 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { signOutAction } from "@/lib/actions/auth";
+import { viderCachePages } from "@/components/sw-register";
 import { verifierCodeConnexionAction } from "@/lib/actions/mfa";
 import { normaliserCodeTotp } from "@/lib/mfa-helpers";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,10 @@ export function MfaVerificationForm({ nextPath }: { nextPath?: string }) {
             variant="ghost"
             size="sm"
             className="w-full"
-            onClick={() => signOutAction()}
+            onClick={() => {
+              viderCachePages();
+              void signOutAction();
+            }}
           >
             Se déconnecter
           </Button>

@@ -5,6 +5,7 @@ import { createInterventionAction } from "@/lib/actions/interventions";
 import { uploadInterventionPhotoAction } from "@/lib/actions/intervention-photos";
 import { setCouleursEvenementsAction } from "@/lib/actions/agenda-couleurs";
 import { addPaiementAction } from "@/lib/actions/paiements";
+import { uploadInterventionSignatureAction } from "@/lib/actions/signatures";
 import {
   estErreurReseau,
   idParent,
@@ -35,6 +36,8 @@ async function envoyer(e: EntreeFile): Promise<Resultat> {
         date_paiement: String(p.date_paiement),
         montant: p.montant as string | number,
         mode: String(p.mode),
+        reference: p.reference === undefined ? undefined : String(p.reference),
+        notes: p.notes === undefined ? undefined : String(p.notes),
       });
     case "photo_tache": {
       const fd = new FormData();
@@ -49,6 +52,15 @@ async function envoyer(e: EntreeFile): Promise<Resultat> {
       fd.append("moment", String(p.moment ?? "autre"));
       fd.append("legende", String(p.legende ?? ""));
       return uploadInterventionPhotoAction(String(p.interventionId), fd);
+    }
+    case "signature_intervention": {
+      const fd = new FormData();
+      fd.append("id", e.id);
+      fd.append("file", p.file as File);
+      fd.append("role", String(p.role));
+      fd.append("nom", String(p.nom ?? ""));
+      fd.append("qualite", String(p.qualite ?? ""));
+      return uploadInterventionSignatureAction(String(p.interventionId), fd);
     }
     default:
       return { ok: false, error: "Type d'entrée inconnu." };

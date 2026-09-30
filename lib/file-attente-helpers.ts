@@ -16,7 +16,8 @@ export type TypeEntree =
   | "rdv_creer"
   | "couleur_evenements"
   | "paiement_ajouter"
-  | "photo_intervention";
+  | "photo_intervention"
+  | "signature_intervention";
 
 export type EntreeFile = {
   /** Identifiant de l'entrée ET de l'objet créé (UUID côté téléphone). */
@@ -65,6 +66,10 @@ export function libelleEntree(e: EntreeFile): string {
       }`;
     case "photo_intervention":
       return "Photo d'intervention";
+    case "signature_intervention":
+      return `Signature ${p.role === "detenteur" ? "du client" : "de l'opérateur"}${
+        p.nom ? ` (${String(p.nom)})` : ""
+      }`;
     default:
       return "Modification";
   }
@@ -87,6 +92,7 @@ export function ordonnerPourRejeu(entrees: EntreeFile[]): EntreeFile[] {
     couleur_evenements: 1,
     paiement_ajouter: 1,
     photo_intervention: 1,
+    signature_intervention: 1,
   };
   return [...entrees].sort((a, b) => {
     if (a.creeLe !== b.creeLe) return a.creeLe < b.creeLe ? -1 : 1;
@@ -101,7 +107,9 @@ export function ordonnerPourRejeu(entrees: EntreeFile[]): EntreeFile[] {
  */
 export function idParent(e: EntreeFile): string | null {
   if (e.type === "photo_tache") return String(e.payload.tacheId ?? "") || null;
-  if (e.type === "photo_intervention") return String(e.payload.interventionId ?? "") || null;
+  if (e.type === "photo_intervention" || e.type === "signature_intervention") {
+    return String(e.payload.interventionId ?? "") || null;
+  }
   if (e.type === "couleur_evenements") {
     const cles = e.payload.cles;
     if (Array.isArray(cles) && cles.length === 1) return String(cles[0]).replace(/^intervention:/, "");

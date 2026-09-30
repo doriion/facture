@@ -9,6 +9,8 @@ import {
   uploadInterventionSignatureAction,
   type InterventionSignature,
 } from "@/lib/actions/signatures";
+import { appelerOuMettreEnAttente } from "@/lib/appel-action";
+import { genererId } from "@/lib/file-attente-helpers";
 import {
   SignaturePad,
   type SignaturePadHandle,
@@ -65,21 +67,44 @@ function SignatureBlock({
       return;
     }
     setSaving(true);
+    // Signature faite sur place : sans réseau (cave, sous-sol), elle est
+    // mise en file avec son identifiant et partira au retour du réseau —
+    // le client n'a pas à re-signer.
+    const signatureId = genererId();
+    const file = new File([blob], "signature.png", { type: "image/png" });
     const fd = new FormData();
-    fd.append("file", new File([blob], "signature.png", { type: "image/png" }));
+    fd.append("id", signatureId);
+    fd.append("file", file);
     fd.append("role", role);
     fd.append("nom", nom);
     fd.append("qualite", qualite);
-    const res = await uploadInterventionSignatureAction(interventionId, fd);
-    setSaving(false);
-    if (res.ok) {
+    try {
+      const res = await appelerOuMettreEnAttente(
+        {
+          id: signatureId,
+          type: "signature_intervention",
+          payload: { interventionId, file, role, nom, qualite },
+        },
+        () => uploadInterventionSignatureAction(interventionId, fd),
+      );
+      if (!res.ok) {
+        toast.error("Erreur", { description: res.error });
+        return;
+      }
+      if ("enAttente" in res) {
+        toast.success("Signature mise en attente", {
+          description: "Pas de réseau : elle partira toute seule au retour de la connexion.",
+        });
+        setMode("view");
+        return;
+      }
       toast.success("Signature enregistrée", {
         description: "Elle est figée : re-signer créera une nouvelle version.",
       });
       setMode("view");
       router.refresh();
-    } else {
-      toast.error("Erreur", { description: res.error });
+    } finally {
+      setSaving(false);
     }
   }
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { appelerAction } from "@/lib/appel-action";
+import { useBrouillonFormulaire } from "@/lib/brouillon-formulaire";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -144,6 +146,7 @@ export function FactureForm({
     control,
     watch,
     setValue,
+    reset,
     formState: { errors, isDirty },
   } = useForm<FactureFormInput, unknown, FactureFormValues>({
     resolver: zodResolver(factureSchema),
@@ -212,37 +215,49 @@ export function FactureForm({
       ?.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
+  // Brouillon local (voir devis-form) : rien pour une facture verrouillée.
+  const brouillon = useBrouillonFormulaire<FactureFormInput>({
+    cle: `facture:${facture?.id ?? `nouvelle:${interventionId ?? ""}`}`,
+    actif: !verrouillee && (isEdit || !prefill || Boolean(interventionId)),
+    watch,
+    reset,
+    libelle: "Facture",
+  });
+
   async function onSubmit(values: FactureFormValues) {
     if (verrouillee) return;
     setSubmitting(true);
-    if (isEdit) {
-      const result = await updateFactureAction(facture!.id, values);
-      setSubmitting(false);
-      if (result.ok) {
-        toast.success("Facture enregistrée");
-        router.refresh();
+    try {
+      if (isEdit) {
+        const result = await appelerAction(() => updateFactureAction(facture!.id, values));
+        if (result.ok) {
+          brouillon.effacer();
+          toast.success("Facture enregistrée");
+          router.refresh();
+        } else {
+          toast.error("Erreur", { description: result.error });
+        }
       } else {
-        toast.error("Erreur", { description: result.error });
+        const result = await appelerAction(() =>
+          createFactureAction(values, interventionId ? { interventionId } : undefined),
+        );
+        if (result.ok) {
+          brouillon.effacer();
+          const id = result.data.id;
+          toast.success(`Facture ${result.data.numero} créée`, {
+            description: "En brouillon : vérifiez, puis marquez-la envoyée.",
+            action: {
+              label: "Voir le PDF",
+              onClick: () => window.open(`/api/factures/${id}/pdf`, "_blank", "noopener"),
+            },
+          });
+          router.push(`/factures/${id}`);
+        } else {
+          toast.error("Erreur", { description: result.error });
+        }
       }
-    } else {
-      const result = await createFactureAction(
-        values,
-        interventionId ? { interventionId } : undefined,
-      );
+    } finally {
       setSubmitting(false);
-      if (result.ok) {
-        const id = result.data.id;
-        toast.success(`Facture ${result.data.numero} créée`, {
-          description: "En brouillon : vérifiez, puis marquez-la envoyée.",
-          action: {
-            label: "Voir le PDF",
-            onClick: () => window.open(`/api/factures/${id}/pdf`, "_blank", "noopener"),
-          },
-        });
-        router.push(`/factures/${id}`);
-      } else {
-        toast.error("Erreur", { description: result.error });
-      }
     }
   }
 

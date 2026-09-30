@@ -217,24 +217,26 @@ export function InterventionForm({
         ? { ...valeurs, duree_minutes: dureeDeduite }
         : valeurs;
     setSubmitting(true);
-    if (intervention) {
-      const result = await updateInterventionAction(intervention.id, values);
-      setSubmitting(false);
-      if (result.ok) {
-        toast.success("Intervention enregistrée");
-        router.refresh();
+    try {
+      if (intervention) {
+        const result = await appelerAction(() => updateInterventionAction(intervention.id, values));
+        if (result.ok) {
+          toast.success("Intervention enregistrée");
+          router.refresh();
+        } else {
+          toast.error("Erreur", { description: result.error });
+        }
       } else {
-        toast.error("Erreur", { description: result.error });
+        const result = await appelerAction(() => createInterventionAction(values));
+        if (result.ok) {
+          toast.success("Intervention créée");
+          router.push(`/interventions/${result.data.id}`);
+        } else {
+          toast.error("Erreur", { description: result.error });
+        }
       }
-    } else {
-      const result = await createInterventionAction(values);
+    } finally {
       setSubmitting(false);
-      if (result.ok) {
-        toast.success("Intervention créée");
-        router.push(`/interventions/${result.data.id}`);
-      } else {
-        toast.error("Erreur", { description: result.error });
-      }
     }
   }
 

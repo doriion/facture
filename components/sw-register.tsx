@@ -19,10 +19,14 @@ import { toast } from "sonner";
  */
 const CLE_PRECHAUFFE = "ng:prechauffe";
 
-/** Vide les pages gardées pour le hors ligne (appelé à la déconnexion). */
+/**
+ * Vide ce que le service worker garde pour le hors ligne — pages ET
+ * photos / signatures (URL signées) — appelé à la déconnexion : ces
+ * données ne doivent pas rester lisibles sur un téléphone prêté.
+ */
 export function viderCachePages(): void {
   try {
-    navigator.serviceWorker?.controller?.postMessage({ type: "VIDER_PAGES" });
+    navigator.serviceWorker?.controller?.postMessage({ type: "VIDER_TOUT" });
     sessionStorage.removeItem(CLE_PRECHAUFFE);
   } catch {
     // Sans service worker (navigation privée), rien à vider.
