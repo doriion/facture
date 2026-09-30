@@ -61,6 +61,21 @@ select cron.schedule(
 ```
 
 Vérifier : `select * from cron.job;` puis `select * from cron.job_run_details order by start_time desc limit 10;`.
+
+**Attention** : `net.http_get` est asynchrone, `cron.job_run_details` dit
+« succeeded » dès que la requête est mise en file, même si l'API répond
+401 ou 500. La vraie réponse est dans `net._http_response` (purgée après
+quelques heures) :
+
+```sql
+select status_code, count(*), max(created)
+from net._http_response
+group by status_code;
+```
+
+Un `401` = secret absent ou différent sur Vercel (`PUSH_CRON_SECRET`).
+Le tableau de bord affiche aussi une alerte quand aucune tâche n'a
+laissé de trace dans `taches_journal` depuis deux jours.
 Arrêter : `select cron.unschedule('rappels-push');`.
 
 ## iPhone

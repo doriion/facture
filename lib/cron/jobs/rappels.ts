@@ -6,13 +6,10 @@ import {
   contratsARappeler,
   type ContratRappelable,
 } from "@/lib/rappels-entretien";
-import {
-  buildRappelEntretienEmail,
-  isEmailConfigured,
-  sendEmail,
-} from "@/lib/email";
+import { buildRappelEntretienEmail, escapeHtml, isEmailConfigured, sendEmail } from "@/lib/email";
 import { lignePenseBeteHtml } from "@/lib/cron/pense-bete";
 import { formatDateFr } from "@/lib/format";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 /**
  * Rappels d'entretien automatiques — OFF par défaut, soumis au mode
@@ -37,13 +34,18 @@ async function executerRappels({
   today,
   dryRun,
 }: ContexteJob): Promise<ResultatTache> {
-  const { data: contrats } = await service
+  const { data: contrats, error: erreurLecture } = await service
     .from("contrats_maintenance")
     .select(
       "id, intitule, equipement, statut, prochaine_visite, rappel_envoye_pour, client:clients(nom, email)",
     )
     .eq("user_id", userId)
     .eq("statut", "actif");
+  // Une lecture en panne ne vaut pas « rien à rappeler » (le journal
+  // disait « succès » et bloquait tout nouvel essai le jour même).
+  if (erreurLecture) {
+    return { statut: "erreur", details: `Lecture des contrats : ${erreurLecture.message}` };
+  }
 
   const candidates = (contrats ?? []).map((c) => ({
     id: c.id,
@@ -107,6 +109,23 @@ async function executerRappels({
       telephone: profil.telephone,
       emailPro: profil.email_pro,
     });
+    // Un seul rappel par échéance : la marque est posée AVANT l'envoi
+    // (conditionnelle : un déclencheur concurrent ne renvoie pas) et
+    // retirée si l'envoi échoue. Avant, l'email partait d'abord : si la
+    // marque échouait ensuite, le second déclencheur du jour ou le
+    // lendemain renvoyait le même email au client.
+    const { data: marque, error: erreurMarque } = await service
+      .from("contrats_maintenance")
+      .update({ rappel_envoye_pour: c.prochaine_visite })
+      .eq("id", c.id)
+      .eq("user_id", userId)
+      .or(`rappel_envoye_pour.is.null,rappel_envoye_pour.neq.${c.prochaine_visite}`)
+      .select("id");
+    if (erreurMarque) {
+      echecs.push(`${objet(c)} : anti-doublon non enregistré, rappel non envoyé (${erreurMarque.message})`);
+      continue;
+    }
+    if (!marque || marque.length === 0) continue; // déjà rappelé entre-temps
     const res = await sendEmail({
       to: c.client_email!,
       subject: email.subject,
@@ -115,18 +134,12 @@ async function executerRappels({
       replyTo: profil.email_pro ?? undefined,
     });
     if (!res.ok) {
+      await service
+        .from("contrats_maintenance")
+        .update({ rappel_envoye_pour: c.rappel_envoye_pour ?? null })
+        .eq("id", c.id)
+        .eq("user_id", userId);
       echecs.push(`${objet(c)} : ${res.error}`);
-      continue;
-    }
-    // Un seul rappel par échéance : on mémorise la date rappelée. Si
-    // cette marque ne peut pas être posée, le job passe en erreur.
-    const { error: erreurMarque } = await service
-      .from("contrats_maintenance")
-      .update({ rappel_envoye_pour: c.prochaine_visite })
-      .eq("id", c.id)
-      .eq("user_id", userId);
-    if (erreurMarque) {
-      echecs.push(`${objet(c)} : rappel envoyé mais anti-doublon non enregistré (${erreurMarque.message})`);
       continue;
     }
     envoyes.push(
@@ -140,9 +153,10 @@ async function executerRappels({
     await sendEmail({
       to: profil.email_pro,
       subject: `${envoyes.length} rappel(s) d'entretien envoyé(s) — ${formatDateFr(today)}`,
+      // Noms de clients et intitulés échappés (contenu HTML).
       html: `<p>Bonjour,</p><p>Les rappels d'entretien suivants sont partis ce matin :</p><ul>${envoyes
-        .map((l) => `<li>${l}</li>`)
-        .join("")}</ul><p>Pensez à planifier ces visites dans votre agenda.</p>${penseBete}<p>— Facture AE</p>`,
+        .map((l) => `<li>${escapeHtml(l)}</li>`)
+        .join("")}</ul><p>Pensez à planifier ces visites dans votre agenda.</p>${penseBete}<p>— ${NOM_APPLICATION}</p>`,
     });
   }
 

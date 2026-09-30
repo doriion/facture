@@ -37,6 +37,7 @@ type Facture = Database["public"]["Tables"]["factures"]["Row"];
 // (jamais prix_achat_ttc_unitaire / fournisseur — cf. lib/pdf-payload).
 import type { LignePdf } from "@/lib/pdf-payload";
 import * as PALETTE from "@/lib/theme";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 type Ligne = LignePdf;
 type Client = Database["public"]["Tables"]["clients"]["Row"];
@@ -378,7 +379,7 @@ export function FacturePdf({
     <Document
       title={`${estAvoir ? "Avoir" : "Facture"} ${facture.numero}`}
       author={entrepriseNom}
-      creator="Facture AE"
+      creator={NOM_APPLICATION}
     >
       <Page size="A4" style={[styles.page, { paddingBottom: reservePied }]}>
         {/* Header : logo + entreprise / FACTURE + numéro */}

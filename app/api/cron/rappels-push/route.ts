@@ -104,6 +104,9 @@ export async function GET(request: Request) {
 
       const contenu = contenuRappel(i, delai);
       let joints = 0;
+      // Compteur PAR rendez-vous : le compteur global faisait réarmer un
+      // rendez-vous sans erreur propre après un rendez-vous en échec.
+      let erreursRdv = 0;
       for (const a of abonnements) {
         const r = await envoyerNotification(a, contenu);
         if (r.resultat === "ok") {
@@ -118,13 +121,14 @@ export async function GET(request: Request) {
           await service.from("push_abonnements").delete().eq("endpoint", a.endpoint);
         } else {
           erreurs += 1;
+          erreursRdv += 1;
           console.error("[cron:rappels-push]", r.erreur);
         }
       }
       // Aucun appareil joint (erreur réseau, service push indisponible) :
       // on réarme le rappel, le passage suivant réessaie tant que la
       // fenêtre de grâce n'est pas passée.
-      if (joints === 0 && erreurs > 0) {
+      if (joints === 0 && erreursRdv > 0) {
         await service
           .from("interventions")
           .update({ rappel_push_envoye_le: null })

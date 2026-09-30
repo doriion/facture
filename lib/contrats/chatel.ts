@@ -10,11 +10,19 @@
  * résilier gratuitement à tout moment à compter de la reconduction et
  * se faire rembourser les sommes versées après cette date.
  *
- * FENÊTRE RETENUE : envoi visé à 60 jours avant l'échéance, avec
- * rattrapage tant qu'il reste au moins 32 jours. Les deux bornes
- * gardent une marge de sécurité sur les bornes légales (90 et 30
- * jours) : le cron ne tourne qu'une fois par jour et peut sauter un
- * jour, il ne doit jamais envoyer un avis hors délai.
+ * FENÊTRE RETENUE : les délais légaux (« au plus tôt trois mois et au
+ * plus tard un mois avant le terme de la période autorisant le rejet
+ * de la reconduction ») se comptent par rapport à la DATE LIMITE DE
+ * DÉNONCIATION, c'est-à-dire l'échéance moins le préavis de deux mois
+ * de l'article 7 — pas par rapport à l'échéance elle-même. Une
+ * première version comptait depuis l'échéance : l'avis partait quand
+ * la date limite qu'il annonçait était déjà passée.
+ *
+ * Envoi visé à 60 jours avant la date limite, rattrapage tant qu'il
+ * reste au moins 32 jours avant elle (soit environ J-121 à J-93 avant
+ * l'échéance). Les deux bornes gardent une marge sur les bornes légales
+ * (90 et 30 jours) : le cron ne tourne qu'une fois par jour et peut
+ * sauter un jour, il ne doit jamais envoyer un avis hors délai.
  *
  * Un avis envoyé trop tôt ou trop tard ne vaut pas information : mieux
  * vaut ne rien envoyer et le signaler que sortir de la fenêtre.
@@ -77,7 +85,8 @@ export function dateLimiteDenonciation(echeanceIso: string): string {
  *  - contrat signé ou actif (un contrat résilié ou expiré ne se
  *    reconduit pas) ;
  *  - client particulier (la loi Chatel ne protège que le consommateur) ;
- *  - échéance renseignée, comprise dans la fenêtre [J-60, J-32] ;
+ *  - échéance renseignée, date limite de dénonciation (échéance − 2
+ *    mois) comprise dans la fenêtre [J-60, J-32] avant cette date ;
  *  - aucun avis déjà envoyé POUR CETTE échéance ;
  *  - adresse email du client connue.
  */
@@ -88,8 +97,8 @@ export function contratsAAviserChatel<T extends ContratAviseable>(
     joursCible = CHATEL_JOURS_CIBLE,
     joursMin = CHATEL_JOURS_MIN,
   }: OptionsChatel,
-): Array<T & { joursAvantEcheance: number }> {
-  const resultat: Array<T & { joursAvantEcheance: number }> = [];
+): Array<T & { joursAvantEcheance: number; joursAvantLimite: number }> {
+  const resultat: Array<T & { joursAvantEcheance: number; joursAvantLimite: number }> = [];
   for (const c of contrats) {
     if (!(STATUTS_AVISABLES as readonly string[]).includes(c.statut)) continue;
     if (c.qualite_client !== "particulier") continue;
@@ -100,10 +109,11 @@ export function contratsAAviserChatel<T extends ContratAviseable>(
     if (c.rappel_chatel_envoye_pour === c.date_echeance) continue;
 
     const joursAvantEcheance = joursEntre(today, c.date_echeance);
-    if (!Number.isFinite(joursAvantEcheance)) continue;
-    if (joursAvantEcheance > joursCible) continue; // trop tôt
-    if (joursAvantEcheance < joursMin) continue; // hors délai légal
-    resultat.push({ ...c, joursAvantEcheance });
+    const joursAvantLimite = joursEntre(today, dateLimiteDenonciation(c.date_echeance));
+    if (!Number.isFinite(joursAvantEcheance) || !Number.isFinite(joursAvantLimite)) continue;
+    if (joursAvantLimite > joursCible) continue; // trop tôt
+    if (joursAvantLimite < joursMin) continue; // hors délai légal (date limite trop proche ou passée)
+    resultat.push({ ...c, joursAvantEcheance, joursAvantLimite });
   }
   // Les échéances les plus proches d'abord
   resultat.sort((a, b) => a.joursAvantEcheance - b.joursAvantEcheance);

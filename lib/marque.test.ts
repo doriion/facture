@@ -39,25 +39,22 @@ describe("nom de l'application", () => {
  * GARDE-FOU : l'ancien nom traînait dans une trentaine d'endroits, il
  * était impossible de savoir à l'œil s'il en restait. Ce test le dit.
  *
- * Périmètre volontairement limité à l'interface. Sont HORS périmètre,
- * et le restent tant que l'utilisateur ne l'a pas demandé :
- *   - les documents PDF (métadonnée « creator »),
- *   - les e-mails envoyés aux clients et les récapitulatifs internes,
- *   - la documentation et le fichier README,
- *   - les noms techniques (paquet, routes, projet d'hébergement).
+ * Périmètre (30/09/2026) : l'interface, les e-mails (clients et
+ * récapitulatifs internes), les PDF (métadonnée « creator »), le flux
+ * ICS et le code de lib/. Restent hors périmètre les noms TECHNIQUES
+ * (paquet, routes, projet d'hébergement, `meta.app` de la sauvegarde
+ * et noms de fichiers « sauvegarde-facture-ae-… », qui sont des
+ * identifiants, pas des libellés).
  */
 describe("garde-fou : plus d'ancien nom dans l'interface", () => {
   const CIBLES = [
     ...fichiers(join(RACINE, "app"), [".tsx", ".ts"]),
     ...fichiers(join(RACINE, "components"), [".tsx"]),
-  ].filter(
-    (f) =>
-      // Les composants PDF portent le nom du logiciel dans la
-      // métadonnée du fichier produit : hors périmètre de ce lot.
-      !f.includes("-pdf") && !f.includes("cerfa"),
-  );
+    ...fichiers(join(RACINE, "lib"), [".ts"]),
+    ...fichiers(join(RACINE, "supabase", "functions"), [".ts"]),
+  ].filter((f) => !f.endsWith("marque.test.ts"));
 
-  it(`aucun « ${ANCIEN_NOM} » dans les pages et les composants d'interface`, () => {
+  it(`aucun « ${ANCIEN_NOM} » dans l'interface, les e-mails, les PDF, lib/ et le flux ICS`, () => {
     const fautifs = CIBLES.filter((f) =>
       readFileSync(f, "utf8").includes(ANCIEN_NOM),
     ).map((f) => f.replace(`${RACINE}/`, ""));

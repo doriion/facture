@@ -197,7 +197,7 @@ export function AutomatisationsCard({
         {switchRow(
           "auto_chatel_active",
           "Avis de reconduction (loi Chatel)",
-          "Chaque matin : contrats d'entretien signés de clients PARTICULIERS dont l'échéance annuelle approche (visé 60 jours avant, rattrapage jusqu'à 32 jours). Informe le client qu'il peut ne pas reconduire — c'est une obligation légale (art. L. 215-1 c. conso.), à défaut il peut résilier gratuitement après la reconduction. Un seul avis par échéance, copie pour vous.",
+          "Chaque matin : contrats d'entretien signés de clients PARTICULIERS dont l'échéance annuelle approche (visé 60 jours avant la date limite de dénonciation, c'est-à-dire l'échéance moins le préavis de 2 mois ; rattrapage jusqu'à 32 jours avant cette date). Informe le client qu'il peut ne pas reconduire — c'est une obligation légale (art. L. 215-1 c. conso.), à défaut il peut résilier gratuitement après la reconduction. Un seul avis par échéance, copie pour vous.",
         )}
 
         {switchRow(

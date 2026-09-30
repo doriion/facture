@@ -68,10 +68,10 @@ function buildIcs(events: AgendaRow[]): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Facture AE//Agenda pro//FR",
+    "PRODID:-//NG Gestion//Agenda pro//FR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Facture AE — Agenda",
+    "X-WR-CALNAME:NG Gestion — Agenda",
     "X-WR-TIMEZONE:Europe/Paris",
     "X-PUBLISHED-TTL:PT15M",
     "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
