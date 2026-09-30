@@ -28,6 +28,9 @@ describe("choix du formulaire ↔ règle", () => {
   it("fin par défaut : un an, cinq ans pour l'annuel", () => {
     expect(finParDefaut("2026-09-16", "hebdomadaire")).toBe("2027-09-16");
     expect(finParDefaut("2026-09-16", "mensuelle")).toBe("2027-09-16");
+    // 29 février : rogné au 28, pas glissé au 1er mars
+    expect(finParDefaut("2028-02-29", "hebdomadaire")).toBe("2029-02-28");
+    expect(finParDefaut("2028-02-29", "annuelle")).toBe("2033-02-28");
     expect(finParDefaut("2026-09-16", "annuelle")).toBe("2031-09-16");
   });
 });

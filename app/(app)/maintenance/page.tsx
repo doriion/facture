@@ -16,6 +16,7 @@ import {
 import { ContratsTable } from "@/components/maintenance/contrats-table";
 import { MobileActionBar } from "@/components/mobile-action-bar";
 import { formatDateFr } from "@/lib/format";
+import { aujourdhuiParis } from "@/lib/dates";
 
 export const metadata = { title: "Échéancier des visites — NG Gestion" };
 
@@ -25,7 +26,8 @@ export default async function MaintenancePage() {
     prochainesVisites(60),
   ]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Heure de Paris : entre 0 h et 2 h, la date UTC est encore la veille.
+  const today = aujourdhuiParis();
   const enRetard = prochaines.filter(
     (v) => v.prochaine_visite && v.prochaine_visite < today,
   );

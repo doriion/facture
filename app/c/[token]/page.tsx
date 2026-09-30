@@ -125,7 +125,7 @@ export default async function SignatureContratPage({
             Lisez le contrat ci-dessous, complétez vos informations en bas de
             page, puis signez au doigt. Validité du lien :{" "}
             {contrat.token_expires_at
-              ? `jusqu'au ${formatDateFr(contrat.token_expires_at.slice(0, 10))}`
+              ? `jusqu'au ${formatDateFr(dateParis(contrat.token_expires_at))}`
               : "30 jours"}
             .
           </p>

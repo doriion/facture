@@ -10,6 +10,7 @@ import {
 
 import { formatDateFr } from "@/lib/format";
 import * as PALETTE from "@/lib/theme";
+import { dateParis } from "@/lib/dates";
 
 /**
  * Bon d'intervention : récapitulatif remis au client à la fin des
@@ -356,7 +357,7 @@ export function BonInterventionPdf({
                     {signatureOperateur.qualite ? ` — ${signatureOperateur.qualite}` : ""}
                   </Text>
                   <Text style={styles.signatureMeta}>
-                    Signé le {formatDateFr(signatureOperateur.date.slice(0, 10))}
+                    Signé le {formatDateFr(dateParis(signatureOperateur.date))}
                   </Text>
                 </>
               ) : (
@@ -375,7 +376,7 @@ export function BonInterventionPdf({
                     {signatureClient.qualite ? ` — ${signatureClient.qualite}` : ""}
                   </Text>
                   <Text style={styles.signatureMeta}>
-                    Signé le {formatDateFr(signatureClient.date.slice(0, 10))}
+                    Signé le {formatDateFr(dateParis(signatureClient.date))}
                   </Text>
                 </>
               ) : (

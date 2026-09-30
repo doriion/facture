@@ -48,6 +48,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { aujourdhuiParis } from "@/lib/dates";
 
 export function FacturePaiements({
   factureId,
@@ -63,7 +64,8 @@ export function FacturePaiements({
   const [submitting, setSubmitting] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Heure de Paris : entre 0 h et 2 h, la date UTC est encore la veille.
+  const today = aujourdhuiParis();
   const [datePaiement, setDatePaiement] = useState(today);
   const [montant, setMontant] = useState(
     summary.reste_du > 0 ? summary.reste_du.toFixed(2).replace(".", ",") : "",

@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatDateFr, formatEuros } from "@/lib/format";
+import { dateParis } from "@/lib/dates";
 
 type Props = {
   /** Tâches planifiées (sauvegarde, relances, rappels) sans exécution depuis ≥ 2 jours. */
@@ -128,7 +129,7 @@ export function AlertesSection({
                   </Link>
                   <p className="truncate text-xs text-muted-foreground">
                     {c.client_nom ?? "—"} · signé le{" "}
-                    {formatDateFr(c.signed_at.slice(0, 10))}
+                    {formatDateFr(dateParis(c.signed_at))}
                   </p>
                 </div>
                 <RegenererPdfButton
