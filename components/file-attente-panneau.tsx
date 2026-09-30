@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloudOff, CloudUpload, Loader2, RotateCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,12 +37,33 @@ export function FileAttentePanneau() {
     }
   }, []);
 
+  // Nouvel essai différé (réseau « en ligne » mais qui ne répond pas :
+  // wifi sans internet, 4G qui rame — l'évènement `online` ne viendra
+  // jamais). Délai croissant : 10 s, 30 s, 2 min, puis toutes les 5 min.
+  const minuteur = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const echecs = useRef(0);
+  const envoyerRef = useRef<() => Promise<void>>(async () => {});
+  const programmer = useCallback((ms: number) => {
+    if (minuteur.current) clearTimeout(minuteur.current);
+    minuteur.current = setTimeout(() => {
+      minuteur.current = null;
+      void envoyerRef.current();
+    }, ms);
+  }, []);
+
   const envoyer = useCallback(async () => {
     if (typeof navigator !== "undefined" && navigator.onLine === false) return;
     setEnvoi(true);
     const r = await rejouerFile();
     setEnvoi(false);
     await recharger();
+    if (r.reseauCoupe) {
+      echecs.current += 1;
+      const delais = [10_000, 30_000, 120_000];
+      programmer(delais[Math.min(echecs.current - 1, delais.length - 1)] ?? 300_000);
+    } else {
+      echecs.current = 0;
+    }
     if (r.envoyees > 0) {
       toast.success(
         r.envoyees > 1 ? `${r.envoyees} modifications envoyées` : "Modification envoyée",
@@ -58,19 +79,38 @@ export function FileAttentePanneau() {
         { description: "Ouvrez « En attente » dans le bandeau pour décider." },
       );
     }
-  }, [recharger, router]);
+  }, [recharger, router, programmer]);
+  envoyerRef.current = envoyer;
 
   useEffect(() => {
     void recharger().then(() => envoyer());
-    const surChangement = () => void recharger();
-    const surRetour = () => void envoyer();
+    // Une entrée ajoutée alors que le téléphone se croit en ligne : on
+    // réessaie peu après, sans attendre la prochaine ouverture.
+    const surChangement = () => {
+      void recharger();
+      if (navigator.onLine !== false && !minuteur.current) programmer(10_000);
+    };
+    const surRetour = () => {
+      echecs.current = 0;
+      void envoyer();
+    };
+    // Retour au premier plan (l'app était en arrière-plan sur iOS) :
+    // on rejoue ce qui attend.
+    const surVisible = () => {
+      if (document.visibilityState === "visible") void envoyer();
+    };
     window.addEventListener(EVENEMENT, surChangement);
     window.addEventListener("online", surRetour);
+    window.addEventListener("focus", surRetour);
+    document.addEventListener("visibilitychange", surVisible);
     return () => {
       window.removeEventListener(EVENEMENT, surChangement);
       window.removeEventListener("online", surRetour);
+      window.removeEventListener("focus", surRetour);
+      document.removeEventListener("visibilitychange", surVisible);
+      if (minuteur.current) clearTimeout(minuteur.current);
     };
-  }, [recharger, envoyer]);
+  }, [recharger, envoyer, programmer]);
 
   const resume = resumerFile(entrees);
   if (resume.total === 0) return null;

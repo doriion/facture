@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { appelerAction } from "@/lib/appel-action";
+import { useBrouillonFormulaire } from "@/lib/brouillon-formulaire";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -144,6 +146,7 @@ export function DevisForm({
     control,
     watch,
     setValue,
+    reset,
     formState: { errors, dirtyFields, isDirty },
   } = useForm<DevisFormInput, unknown, DevisFormValues>({
     resolver: zodResolver(devisSchema),
@@ -246,26 +249,43 @@ export function DevisForm({
     nombreOuNull(acompteMontantSaisi),
   );
 
+  // Brouillon local : un devis saisi ligne à ligne ne se perd plus sur
+  // un retour arrière ou un rechargement. Pas de brouillon quand la
+  // saisie part d'un modèle ou d'une copie (intention fraîche).
+  const brouillon = useBrouillonFormulaire<DevisFormInput>({
+    cle: `devis:${devis?.id ?? "nouveau"}`,
+    actif: isEdit || !prefill,
+    watch,
+    reset,
+    libelle: "Devis",
+  });
+
   async function onSubmit(values: DevisFormValues) {
     setSubmitting(true);
-    if (isEdit) {
-      const result = await updateDevisAction(devis!.id, values);
-      setSubmitting(false);
-      if (result.ok) {
-        toast.success("Devis enregistré");
-        router.refresh();
+    try {
+      if (isEdit) {
+        // appelerAction : un réseau qui tombe pendant l'envoi devient un
+        // message clair, pas un bouton figé sur son spinner.
+        const result = await appelerAction(() => updateDevisAction(devis!.id, values));
+        if (result.ok) {
+          brouillon.effacer();
+          toast.success("Devis enregistré");
+          router.refresh();
+        } else {
+          toast.error("Erreur", { description: result.error });
+        }
       } else {
-        toast.error("Erreur", { description: result.error });
+        const result = await appelerAction(() => createDevisAction(values));
+        if (result.ok) {
+          brouillon.effacer();
+          toast.success(`Devis ${result.data.numero} créé`);
+          router.push(`/devis/${result.data.id}`);
+        } else {
+          toast.error("Erreur", { description: result.error });
+        }
       }
-    } else {
-      const result = await createDevisAction(values);
+    } finally {
       setSubmitting(false);
-      if (result.ok) {
-        toast.success(`Devis ${result.data.numero} créé`);
-        router.push(`/devis/${result.data.id}`);
-      } else {
-        toast.error("Erreur", { description: result.error });
-      }
     }
   }
 

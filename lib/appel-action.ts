@@ -6,6 +6,11 @@
  * optimiste et prévenir, au lieu de laisser croire que c'est enregistré.
  */
 import type { TypeEntree } from "@/lib/file-attente-helpers";
+// Import STATIQUE : avec un import() dynamique, le module de la file
+// n'était téléchargé qu'au premier échec réseau — donc jamais disponible
+// hors ligne sur un téléphone « propre » ou après un déploiement, et la
+// première écriture sans réseau échouait au lieu d'être mise en file.
+import { ajouterAFile } from "@/lib/file-attente";
 
 export type ResultatAction<T = void> =
   | { ok: true; data: T }
@@ -31,7 +36,6 @@ export async function appelerOuMettreEnAttente<T>(
     if (res.ok || res.error !== MESSAGE_HORS_LIGNE) return res;
   }
   try {
-    const { ajouterAFile } = await import("@/lib/file-attente");
     await ajouterAFile(entree.type, entree.payload, entree.id);
     return { ok: true, enAttente: true };
   } catch {

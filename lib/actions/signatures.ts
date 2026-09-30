@@ -36,6 +36,11 @@ export async function uploadInterventionSignatureAction(
   const role = formData.get("role") as string;
   const nom = ((formData.get("nom") as string) || "").trim();
   const qualite = ((formData.get("qualite") as string) || "").trim();
+  // Identifiant choisi par le téléphone (file d'attente hors ligne) :
+  // rejouer la même signature n'en crée pas deux.
+  const idBrut = formData.get("id");
+  const id =
+    typeof idBrut === "string" && /^[0-9a-f-]{36}$/i.test(idBrut) ? idBrut : undefined;
 
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: "Signature vide." };
@@ -66,6 +71,15 @@ export async function uploadInterventionSignatureAction(
     .maybeSingle();
   if (!itv) return { ok: false, error: "Intervention introuvable." };
 
+  if (id) {
+    const { data: existante } = await supabase
+      .from("intervention_signatures")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+    if (existante) return { ok: true, data: { id: existante.id } };
+  }
+
   const path = `${user.id}/${interventionId}/signature-${role}-${Date.now()}.png`;
   const { error: uploadErr } = await supabase.storage
     .from("signatures")
@@ -75,6 +89,7 @@ export async function uploadInterventionSignatureAction(
   const { data, error: dbErr } = await supabase
     .from("intervention_signatures")
     .insert({
+      ...(id ? { id } : {}),
       user_id: user.id,
       intervention_id: interventionId,
       role,
@@ -85,6 +100,8 @@ export async function uploadInterventionSignatureAction(
     .select("id")
     .single();
   if (dbErr || !data) {
+    // Rejeu concurrent de la même entrée : déjà enregistrée.
+    if (id && dbErr?.code === "23505") return { ok: true, data: { id } };
     // L'image orpheline restera dans le bucket (pas de policy delete —
     // choix assumé pour l'immuabilité) ; l'entrée base fait foi.
     return { ok: false, error: dbErr?.message ?? "Erreur enregistrement." };
