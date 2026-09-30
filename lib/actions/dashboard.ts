@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { aujourdhuiParis, composantesYmd } from "@/lib/dates";
 import { ajouterJours } from "@/lib/agenda-vues";
 import { LABELS_TYPE_ACTIVITE } from "@/lib/legal-text";
-import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
+import { totauxEncaissesUrssaf } from "@/lib/actions/export-urssaf";
 import { idsParentsVentiles } from "@/lib/actions/factures";
 import { getBaremeCotisations } from "@/lib/actions/cotisations";
 import { computeTauxConversionDevis } from "@/lib/devis-stats";
@@ -164,9 +164,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const [
     facturesAnneeRes,
-    exportUrssafAnnee,
-    exportUrssafTrimestre,
-    exportUrssafMois,
+    encaisses,
     bareme,
     facturesEnvoyeesRes,
     devisEnvoyesRes,
@@ -187,15 +185,18 @@ export async function getDashboardData(): Promise<DashboardData> {
       .lt("date_emission", startOfNextYear)
       .neq("statut", "annulee")
       .neq("statut", "brouillon"),
-    // CA ENCAISSÉ de l'année pour les jauges de seuils micro — on
-    // réutilise le calcul de l'export URSSAF (somme des paiements,
-    // factures annulées exclues) pour avoir exactement le même chiffre
-    // que la page Exports.
-    buildExportUrssaf(startOfYear, startOfNextYear),
-    // Encaissé du trimestre en cours + barème → provision de cotisations
-    buildExportUrssaf(trimestre.start, trimestre.end),
-    // Encaissé du mois courant (carte KPI trésorerie)
-    buildExportUrssaf(startOfMonth, startOfNextMonth),
+    // CA ENCAISSÉ (base URSSAF : somme des paiements, factures annulées
+    // exclues) de l'année (jauges de seuils micro), du trimestre en
+    // cours (provision de cotisations) et du mois courant (carte
+    // trésorerie), en UNE lecture des paiements — même calcul que la
+    // page Exports, pour afficher exactement le même chiffre. (Trois
+    // exports complets, avec jointure lignes/clients, tournaient ici.)
+    totauxEncaissesUrssaf([
+      { start: startOfYear, end: startOfNextYear },
+      { start: trimestre.start, end: trimestre.end },
+      { start: startOfMonth, end: startOfNextMonth },
+    ]),
+    // Barème → provision de cotisations
     getBaremeCotisations(),
     // Factures envoyées (= impayées) tous statuts
     supabase
@@ -290,15 +291,16 @@ export async function getDashboardData(): Promise<DashboardData> {
     .reduce((sum, f) => sum + Number(f.total_ht), 0);
 
   // CA encaissé de l'année (base URSSAF) pour les jauges de seuils micro.
-  const caEncaisseAnnee = exportUrssafAnnee.total_encaisse;
+  const [encaisseAnnee = 0, encaisseTrimestreCourant = 0, encaisseMois = 0] = encaisses;
+  const caEncaisseAnnee = encaisseAnnee;
   // Encaissé du mois courant — LE chiffre de trésorerie du quotidien
   // (même source que l'export URSSAF : somme des paiements datés du mois)
-  const caEncaisseMois = exportUrssafMois.total_encaisse;
+  const caEncaisseMois = encaisseMois;
 
   // Cotisations à provisionner sur l'encaissé du trimestre en cours,
   // au barème applicable aujourd'hui (table taux_cotisations, ACRE puis
   // taux plein). Avertissement si une hausse arrive dans les 6 mois.
-  const encaisseTrimestre = exportUrssafTrimestre.total_encaisse;
+  const encaisseTrimestre = encaisseTrimestreCourant;
   const provision = provisionCotisations(encaisseTrimestre, bareme, today);
   const basculeInfo = prochaineBascule(bareme, today);
   const cotisations: DashboardData["cotisations"] = {

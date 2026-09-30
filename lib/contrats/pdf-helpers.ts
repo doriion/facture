@@ -1,10 +1,9 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
-import { renderToBuffer } from "@react-pdf/renderer";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { ContratPdf, type PreuveSignature } from "@/components/contrats/contrat-pdf";
+import type { PreuveSignature } from "@/components/contrats/contrat-pdf";
 import type {
   ClientSnapshot,
   ContratRow,
@@ -99,6 +98,13 @@ export async function rendreContratSigne(args: {
   logoData: string | null;
   signatureData: string | null;
 }): Promise<{ pdf: Buffer; sha256: string }> {
+  // Moteur PDF et gabarit chargés ici seulement : importés en tête de
+  // fichier, ils suivaient regenererPdfContratAction jusque dans la
+  // fonction serveur du tableau de bord et des fiches contrat.
+  const [{ renderToBuffer }, { ContratPdf }] = await Promise.all([
+    import("@react-pdf/renderer"),
+    import("@/components/contrats/contrat-pdf"),
+  ]);
   const base = await renderToBuffer(
     ContratPdf({
       contrat: args.contrat,

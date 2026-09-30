@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { renderToBuffer } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -10,10 +9,7 @@ import {
   type CerfaOptions,
   type NatureIntervention,
 } from "@/lib/cerfa";
-import {
-  CerfaPdf,
-  type CerfaSignature,
-} from "@/components/interventions/cerfa-pdf";
+import type { CerfaSignature } from "@/components/interventions/cerfa-pdf";
 import type { Database, Json } from "@/types/database";
 
 type ActionResult<T = void> =
@@ -150,6 +146,11 @@ export async function genererCerfaAction(
 
   let buffer: Buffer;
   try {
+    // Moteur PDF et gabarit chargés au moment du rendu seulement.
+    const [{ renderToBuffer }, { CerfaPdf }] = await Promise.all([
+      import("@react-pdf/renderer"),
+      import("@/components/interventions/cerfa-pdf"),
+    ]);
     buffer = await renderToBuffer(
       CerfaPdf({ data, signatureOperateur, signatureDetenteur }),
     );

@@ -1,12 +1,13 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+
+import { signalerErreur } from "@/lib/sentry-navigateur";
 
 /**
  * Gestionnaire d'erreurs de rendu React global (App Router) : remonte
- * l'erreur à Sentry (déjà nettoyée par beforeSend) et affiche un écran
- * de repli minimal.
+ * l'erreur à Sentry si un DSN est configuré (SDK chargé à cet instant,
+ * évènement nettoyé par beforeSend) et affiche un écran de repli minimal.
  */
 export default function GlobalError({
   error,
@@ -14,7 +15,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    signalerErreur(error);
   }, [error]);
 
   return (

@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { renderToBuffer } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
 import { aujourdhuiParis } from "@/lib/dates";
@@ -9,11 +8,10 @@ import { buildBonInterventionEmail, sendEmail } from "@/lib/email";
 import { coordonneesEmetteur, enseigneEmetteur, ligneePiedDePage } from "@/lib/devis-modele";
 import { logoApplication } from "@/lib/logo-app";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
-import {
-  BonInterventionPdf,
-  type BonInterventionData,
-  type BonPhoto,
-  type BonSignature,
+import type {
+  BonInterventionData,
+  BonPhoto,
+  BonSignature,
 } from "@/components/interventions/bon-intervention-pdf";
 import type { Database, Json } from "@/types/database";
 
@@ -231,6 +229,12 @@ export async function genererBonInterventionAction(
 
   let buffer: Buffer;
   try {
+    // Moteur PDF et gabarit chargés au moment du rendu seulement (poids
+    // de la fonction serveur des pages qui importent cette action).
+    const [{ renderToBuffer }, { BonInterventionPdf }] = await Promise.all([
+      import("@react-pdf/renderer"),
+      import("@/components/interventions/bon-intervention-pdf"),
+    ]);
     buffer = await renderToBuffer(
       BonInterventionPdf({ data: donnees, photos, signatureOperateur, signatureClient, logoData }),
     );

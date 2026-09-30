@@ -2,16 +2,17 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { signalerErreur } from "@/lib/sentry-navigateur";
 
 /**
  * Erreur de rendu dans une page de l'application : la coque (menu,
  * barre du bas) reste en place, seul le contenu est remplacé — on
  * peut réessayer ou changer d'écran sans recharger toute la PWA.
- * L'erreur est remontée à Sentry (nettoyée par beforeSend).
+ * L'erreur est remontée à Sentry si un DSN est configuré (SDK chargé à
+ * cet instant seulement, évènement nettoyé par beforeSend).
  */
 export default function ErreurPage({
   error,
@@ -39,7 +40,7 @@ export default function ErreurPage({
         return;
       }
     }
-    Sentry.captureException(error);
+    signalerErreur(error);
   }, [error]);
 
   return (

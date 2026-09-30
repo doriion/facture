@@ -5,13 +5,15 @@ import { idsParentsVentiles } from "@/lib/actions/factures";
 import { VENTILATION_VIDE } from "@/lib/fiscal";
 import {
   summarizeEncaissements,
+  totalEncaissePeriode,
   totalFacturesEmises,
   type ExportSummary,
+  type PaiementEncaisse,
   type PaiementExportInput,
 } from "@/lib/exports/urssaf-helpers";
 
-// Ce fichier "use server" n'expose QUE la server action async
-// buildExportUrssaf. Les types et les helpers sync (getExportPeriodes,
+// Ce fichier "use server" n'expose QUE des server actions async
+// (buildExportUrssaf, totauxEncaissesUrssaf). Les types et les helpers sync (getExportPeriodes,
 // buildCsv, summarizeEncaissements…) sont dans
 // lib/exports/urssaf-helpers.ts et doivent y être importés directement.
 
@@ -84,4 +86,38 @@ export async function buildExportUrssaf(
     nb_factures,
     rows,
   };
+}
+
+/**
+ * Encaissé (base URSSAF) de plusieurs périodes en UNE lecture : les
+ * paiements de l'enveloppe [début le plus tôt, fin la plus tardive) sont
+ * lus une fois puis répartis. Même règle que l'export
+ * (totalEncaissePeriode) : le tableau de bord affiche exactement le
+ * chiffre de la page Exports, sans refaire trois fois la jointure
+ * paiements → factures → lignes → clients.
+ */
+export async function totauxEncaissesUrssaf(
+  periodes: Array<{ start: string; end: string }>,
+): Promise<number[]> {
+  if (periodes.length === 0) return [];
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return periodes.map(() => 0);
+
+  const debut = periodes.reduce((min, p) => (p.start < min ? p.start : min), periodes[0]!.start);
+  const fin = periodes.reduce((max, p) => (p.end > max ? p.end : max), periodes[0]!.end);
+  const { data } = await supabase
+    .from("paiements")
+    .select("date_paiement, montant, facture:factures(statut, type_facture)")
+    .gte("date_paiement", debut)
+    .lt("date_paiement", fin);
+  const paiements = (data ?? []) as unknown as Array<PaiementEncaisse & { date_paiement: string }>;
+
+  return periodes.map((p) =>
+    totalEncaissePeriode(
+      paiements.filter((x) => x.date_paiement >= p.start && x.date_paiement < p.end),
+    ),
+  );
 }

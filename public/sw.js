@@ -46,17 +46,13 @@ const PAGE_HORS_LIGNE = "/hors-ligne";
  * lentes mais vivantes.
  */
 const DELAI_RESEAU_MS = 8000;
-/** Écrans mis en cache d'avance après connexion. */
-const PAGES_A_PRECHAUFFER = [
-  "/agenda",
-  "/taches",
-  "/factures",
-  "/devis",
-  "/clients",
-  "/interventions",
-  "/maintenance",
-  "/dashboard",
-];
+/**
+ * Écrans mis en cache d'avance après connexion : ceux qu'on consulte
+ * vraiment sans réseau sur le chantier. Chaque entrée coûte un rendu
+ * serveur complet ; huit écrans en série ralentissaient la navigation
+ * qui suivait l'ouverture.
+ */
+const PAGES_A_PRECHAUFFER = ["/agenda", "/taches", "/interventions", "/clients"];
 /** Pages jamais gardées en cache (sans intérêt hors ligne, ou sensibles). */
 const PAGES_SANS_CACHE = ["/login", "/exports", "/parametres"];
 /** Nombre maximal de pages conservées (les plus anciennes sont évincées). */
