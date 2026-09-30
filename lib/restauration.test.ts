@@ -6,6 +6,7 @@ import { TABLES_SAUVEGARDE } from "./sauvegarde-helpers";
 import {
   COLONNES_DIFFEREES,
   misesAJourDifferees,
+  ordonnerParentsDabord,
   ORDRE_RESTAURATION,
   planifierRestauration,
   preparerLignes,
@@ -93,8 +94,29 @@ describe("ordre de restauration", () => {
     for (const [table, ref] of dependances) {
       expect(avant(ref, table), `${ref} doit précéder ${table}`).toBe(true);
     }
-    // Les références circulaires sont différées
-    expect(COLONNES_DIFFEREES.factures).toEqual(["devis_id", "facture_parent_id"]);
+    // La référence circulaire facture ↔ devis est différée ; la facture
+    // d'origine (acompte, solde, AVOIR) est posée à l'insertion, parents
+    // d'abord, car la contrainte des avoirs l'exige.
+    expect(COLONNES_DIFFEREES.factures).toEqual(["devis_id"]);
+  });
+
+  it("insère les factures parents avant leurs acomptes, soldes et avoirs", () => {
+    const rows = [
+      { id: "avoir", facture_parent_id: "f1", type_facture: "avoir" },
+      { id: "solde", facture_parent_id: "f1", type_facture: "solde" },
+      { id: "f1", facture_parent_id: null, type_facture: "normale" },
+      { id: "f2", facture_parent_id: "absente", type_facture: "acompte" },
+      { id: "f3", facture_parent_id: null, type_facture: "normale" },
+    ];
+    expect(ordonnerParentsDabord(rows, "facture_parent_id").map((r) => r.id)).toEqual([
+      "f1", "avoir", "solde", "f2", "f3",
+    ]);
+    // Cycle (ne devrait pas exister) : pas de boucle infinie, tout est inséré
+    const cycle = [
+      { id: "a", facture_parent_id: "b" },
+      { id: "b", facture_parent_id: "a" },
+    ];
+    expect(ordonnerParentsDabord(cycle, "facture_parent_id").map((r) => r.id).sort()).toEqual(["a", "b"]);
   });
 });
 
@@ -120,15 +142,17 @@ describe("verifierSauvegarde", () => {
 describe("préparation des lignes", () => {
   it("remplace user_id et diffère les liens circulaires des factures", () => {
     const rows = [
-      { id: "f1", user_id: ORIGINE, numero: "F-2026-0001", devis_id: "d1", facture_parent_id: null },
-      { id: "f2", user_id: ORIGINE, numero: "F-2026-0002", devis_id: null, facture_parent_id: "f1" },
+      { id: "f2", user_id: ORIGINE, numero: "A-2026-0001", devis_id: null, facture_parent_id: "f1", type_facture: "avoir" },
+      { id: "f1", user_id: ORIGINE, numero: "F-2026-0001", devis_id: "d1", facture_parent_id: null, type_facture: "normale" },
     ];
     const prepares = preparerLignes("factures", rows, CIBLE) as Array<Record<string, unknown>>;
     expect(prepares.every((r) => r.user_id === CIBLE)).toBe(true);
-    expect(prepares.every((r) => r.devis_id === null && r.facture_parent_id === null)).toBe(true);
+    expect(prepares.every((r) => r.devis_id === null)).toBe(true);
+    // parent d'abord, facture d'origine conservée dès l'insertion
+    expect(prepares.map((r) => r.id)).toEqual(["f1", "f2"]);
+    expect(prepares[1]!.facture_parent_id).toBe("f1");
     expect(misesAJourDifferees("factures", rows)).toEqual([
       { id: "f1", valeurs: { devis_id: "d1" } },
-      { id: "f2", valeurs: { facture_parent_id: "f1" } },
     ]);
     expect(misesAJourDifferees("clients", rows)).toEqual([]);
   });

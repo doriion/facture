@@ -55,8 +55,19 @@ export async function GET(request: Request) {
   for (const profil of profils ?? []) {
     const userId = profil.user_id;
     for (const job of JOBS) {
-      if (!job.doitTournerAujourdhui(today)) continue;
       if (!job.estActive(profil)) continue;
+      // Cadence : peut lire le journal (rattrapage) — une lecture en
+      // panne ne doit pas faire sauter le job silencieusement.
+      let due: boolean;
+      try {
+        due = await job.doitTournerAujourdhui(today, { service, userId });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        Sentry.captureException(e, { tags: { tache: job.tache, etape: "cadence" } });
+        compteRendu.push({ user: userId, tache: job.tache, statut: "erreur", details: message });
+        continue;
+      }
+      if (!due) continue;
       // Journal illisible : on n'exécute RIEN pour cette tâche (on ne
       // rejoue pas des envois sur une panne de lecture).
       let dejaFaite: boolean;

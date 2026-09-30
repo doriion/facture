@@ -16,7 +16,8 @@
  * vide) — RIEN n'est écrit. Avec `--executer` : insertion dans l'ordre
  * des dépendances, identifiants conservés, `user_id` remplacé par le
  * compte cible. Les fichiers du Storage (logo, photos, signatures, PDF
- * archivés) ne sont PAS dans la sauvegarde : seuls leurs chemins le sont.
+ * archivés) sont dans l'archive « -fichiers.zip » produite avec la
+ * sauvegarde : ils se restaurent à part (docs/restauration.md).
  *
  * Le script REFUSE d'écrire si le compte cible possède déjà des lignes
  * dans l'une des tables : on restaure dans le vide, jamais par-dessus.
@@ -68,10 +69,43 @@ export const ORDRE_RESTAURATION = [
   "taches_photos",
 ];
 
-/** Colonnes insérées à NULL puis renseignées une fois toutes les lignes en place. */
+/**
+ * Colonnes insérées à NULL puis renseignées une fois toutes les lignes
+ * en place. `facture_parent_id` n'en fait PAS partie : un avoir doit
+ * être inséré avec sa facture d'origine (contrainte
+ * factures_avoir_coherence_check), les factures sont donc triées
+ * parents d'abord (voir ordonnerParentsDabord).
+ */
 export const COLONNES_DIFFEREES = {
-  factures: ["devis_id", "facture_parent_id"],
+  factures: ["devis_id"],
 };
+
+/**
+ * Trie des lignes qui se référencent entre elles (colonne `colonneParent`
+ * → `id` d'une autre ligne) pour insérer chaque parent avant ses
+ * enfants (acomptes, soldes et avoirs après leur facture d'origine).
+ * Un parent absent de la sauvegarde ne bloque pas : la ligne garde sa
+ * place et la base tranchera.
+ */
+export function ordonnerParentsDabord(rows, colonneParent) {
+  const parId = new Map(rows.map((r) => [r.id, r]));
+  const places = new Set();
+  const resultat = [];
+  const visiter = (row, pile) => {
+    if (places.has(row.id)) return;
+    const parentId = row[colonneParent];
+    if (parentId && parId.has(parentId) && !pile.has(row.id)) {
+      pile.add(row.id);
+      visiter(parId.get(parentId), pile);
+    }
+    if (!places.has(row.id)) {
+      places.add(row.id);
+      resultat.push(row);
+    }
+  };
+  for (const row of rows) visiter(row, new Set());
+  return resultat;
+}
 
 const TAILLE_LOT = 200;
 
@@ -118,7 +152,8 @@ export function planifierRestauration(payload) {
 /** Prépare les lignes d'une table : user_id remplacé, colonnes différées mises à NULL. */
 export function preparerLignes(table, rows, nouveauUserId) {
   const differees = COLONNES_DIFFEREES[table] ?? [];
-  return rows.map((row) => {
+  const ordonnees = table === "factures" ? ordonnerParentsDabord(rows, "facture_parent_id") : rows;
+  return ordonnees.map((row) => {
     const copie = { ...row, user_id: nouveauUserId };
     for (const col of differees) copie[col] = null;
     return copie;
@@ -148,9 +183,12 @@ export function misesAJourDifferees(table, rows) {
 export async function tablesNonVides(client, userId) {
   const occupees = [];
   for (const table of ORDRE_RESTAURATION) {
+    // `select("*")` et non `select("id")` : numerotation et
+    // bareme_entretien_reglages n'ont pas de colonne id (le script
+    // échouait avant toute écriture, même à blanc).
     const { count, error } = await client
       .from(table)
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .eq("user_id", userId);
     if (error) throw new Error(`Lecture ${table} : ${error.message}`);
     if ((count ?? 0) > 0) occupees.push(`${table} (${count})`);
@@ -245,7 +283,7 @@ async function main() {
   for (const p of resultat.plan) if (p.lignes > 0) console.log(`  plan · ${p.table} : ${p.lignes}`);
   if (args.executer) {
     console.log(`Terminé : ${resultat.inseres} lignes insérées, ${resultat.misesAJour} liens différés.`);
-    console.log("Pensez aux fichiers du Storage (logo, photos, signatures, PDF) : ils ne sont pas dans la sauvegarde.");
+    console.log("Fichiers du Storage : restaurez l'archive « -fichiers.zip » (voir docs/restauration.md, section Fichiers).");
   }
 }
 
