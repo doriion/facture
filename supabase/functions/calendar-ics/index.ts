@@ -57,7 +57,9 @@ Deno.serve(async (req: Request) => {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Cache-Control": "public, max-age=300, s-maxage=300",
+      // private : le flux contient des noms de clients et des numéros
+      // de documents, aucun cache intermédiaire ne doit le conserver.
+      "Cache-Control": "private, max-age=300",
       "Content-Disposition": 'inline; filename="facture-ae-agenda.ics"',
     },
   });

@@ -4,12 +4,15 @@
  * ou sauvegarde mensuelle reçue par email) dans un projet Supabase
  * VIERGE dont le schéma a été créé par `supabase/migrations`.
  *
+ *   SUPABASE_SERVICE_ROLE_KEY=<clé service role du projet cible> \
  *   node scripts/restaurer-sauvegarde.mjs \
  *     --fichier sauvegarde-facture-ae-2026-09-01.json \
  *     --url https://xxxx.supabase.co \
- *     --service-role <clé service role du projet cible> \
  *     --utilisateur <uuid du compte cible (Authentication → Users)> \
  *     [--executer]
+ *
+ * La clé service role se passe par la variable d'environnement (pas en
+ * argument : elle finirait dans l'historique du shell et dans `ps`).
  *
  * Sans `--executer` : répétition à blanc (lecture du fichier, contrôle
  * du format, plan table par table, vérification que le compte cible est
@@ -261,14 +264,22 @@ function lireArguments(argv) {
 
 async function main() {
   const args = lireArguments(process.argv.slice(2));
-  const manquants = ["fichier", "url", "service-role", "utilisateur"].filter((k) => !args[k]);
+  const manquants = ["fichier", "url", "utilisateur"].filter((k) => !args[k]);
   if (manquants.length > 0) {
     console.error(`Arguments manquants : ${manquants.map((k) => "--" + k).join(", ")}`);
     console.error("Voir l'en-tête du script ou docs/restauration.md.");
     process.exit(2);
   }
+  const cleService = process.env.SUPABASE_SERVICE_ROLE_KEY || args["service-role"];
+  if (!cleService) {
+    console.error("Clé service role absente : définissez SUPABASE_SERVICE_ROLE_KEY dans l'environnement.");
+    process.exit(2);
+  }
+  if (args["service-role"]) {
+    console.warn("Avertissement : préférez SUPABASE_SERVICE_ROLE_KEY à --service-role (la clé reste dans l'historique du shell).");
+  }
   const { createClient } = await import("@supabase/supabase-js");
-  const client = createClient(args.url, args["service-role"], {
+  const client = createClient(args.url, cleService, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const payload = JSON.parse(readFileSync(args.fichier, "utf8"));

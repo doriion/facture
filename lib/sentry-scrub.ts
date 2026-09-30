@@ -19,11 +19,19 @@ const TELEPHONE = /(?:\+33|0)\s*[1-9](?:[\s.-]*\d{2}){4}/g;
 const IBAN = /\bFR\d{2}(?:\s?[\dA-Z]){11,30}\b/g;
 
 export function masquerPII(texte: string): string {
-  return texte
+  return masquerJetons(texte)
     .replace(IBAN, "[iban]")
     .replace(EMAIL, "[email]")
     .replace(TELEPHONE, "[tel]")
     .replace(MONTANT, "[montant]");
+}
+
+// Jetons de lien public (signature de contrat) : dans le CHEMIN de
+// l'URL, donc dans request.url et les noms de transactions.
+const CHEMIN_JETON = /(\/(?:c|api\/public\/contrats)\/)[A-Za-z0-9_-]{16,}/g;
+
+export function masquerJetons(texte: string): string {
+  return texte.replace(CHEMIN_JETON, "$1[token]");
 }
 
 /**
@@ -46,10 +54,13 @@ export function nettoyerEvenementSentry<
 >(event: E): E {
   delete event.user;
   if (event.request) {
-    // On ne garde que l'URL (chemin utile au debug, sans query string)
+    // On ne garde que l'URL (chemin utile au debug, sans query string,
+    // jeton de lien public masqué)
     const url = event.request.url?.split("?")[0];
-    event.request = url ? ({ url } as E["request"]) : undefined;
+    event.request = url ? ({ url: masquerJetons(url) } as E["request"]) : undefined;
   }
+  const t = event as { transaction?: string };
+  if (typeof t.transaction === "string") t.transaction = masquerJetons(t.transaction);
   if (event.message) {
     event.message = masquerPII(event.message);
   }

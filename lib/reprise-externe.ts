@@ -39,7 +39,8 @@ export function interventionDepuisRdv(e: RdvExterne): InterventionReprise {
     heure_fin: e.heure_fin ?? (e.heure_debut ? plusUneHeure(e.heure_debut) : null),
     type: "autre",
     description: (e.title || "Rendez-vous").slice(0, 2000),
-    notes: notes || null,
+    // Même limite que la saisie dans l'application (schéma Zod).
+    notes: notes ? notes.slice(0, 2000) : null,
   };
 }
 

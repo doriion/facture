@@ -148,3 +148,16 @@ describe("hors ligne (service worker)", () => {
     await contexte.close();
   });
 });
+
+describe("en-têtes de sécurité", () => {
+  it("chaque réponse interdit l'affichage en iframe et ne révèle pas le serveur", async () => {
+    for (const chemin of ["/login", "/hors-ligne", "/robots.txt"]) {
+      const res = await reponse(chemin);
+      expect(res.headers.get("x-frame-options")).toBe("DENY");
+      expect(res.headers.get("content-security-policy")).toMatch(/frame-ancestors 'none'/);
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(res.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+      expect(res.headers.get("x-powered-by")).toBeNull();
+    }
+  });
+});

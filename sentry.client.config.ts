@@ -17,4 +17,9 @@ Sentry.init({
   beforeSend(event) {
     return nettoyerEvenementSentry(event);
   },
+  // Les transactions (traces) ne passent pas par beforeSend : même
+  // nettoyage (URL, jeton de lien public).
+  beforeSendTransaction(event) {
+    return nettoyerEvenementSentry(event);
+  },
 });

@@ -59,3 +59,21 @@ describe("nettoyerEvenementSentry", () => {
     );
   });
 });
+
+describe("masquerJetons", () => {
+  it("masque le jeton d'un lien public dans une URL ou un nom de transaction", async () => {
+    const { masquerJetons, nettoyerEvenementSentry } = await import("./sentry-scrub");
+    expect(masquerJetons("https://x.fr/c/AbCdEfGhIjKlMnOpQrStUvWxYz0123456789")).toBe(
+      "https://x.fr/c/[token]",
+    );
+    expect(masquerJetons("/api/public/contrats/AbCdEfGhIjKlMnOpQrStUvWxYz/signer")).toBe(
+      "/api/public/contrats/[token]/signer",
+    );
+    const ev = nettoyerEvenementSentry({
+      request: { url: "https://x.fr/c/AbCdEfGhIjKlMnOpQrStUvWxYz?x=1" },
+      transaction: "GET /c/AbCdEfGhIjKlMnOpQrStUvWxYz",
+    } as { request?: { url?: string }; transaction?: string });
+    expect(ev.request?.url).toBe("https://x.fr/c/[token]");
+    expect((ev as { transaction?: string }).transaction).toBe("GET /c/[token]");
+  });
+});

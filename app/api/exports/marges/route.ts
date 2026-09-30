@@ -127,6 +127,8 @@ export async function GET(req: NextRequest) {
 }
 
 function escapeCsv(s: string): string {
-  if (/[;"\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
+  // Neutralise les formules (= + - @, tabulation) sauf pour un nombre nu.
+  const v = /^[=+\-@\t\r]/.test(s) && !/^-?\d+(?:[.,]\d+)?$/.test(s) ? `'${s}` : s;
+  if (/[;"\r\n]/.test(v) || v !== s) return `"${v.replace(/"/g, '""')}"`;
+  return v;
 }

@@ -246,10 +246,11 @@ export async function saveExternalCalendarUrlAction(
     // webcal://... → https://...
     if (u.startsWith("webcal://")) u = "https://" + u.slice(9);
     if (u.startsWith("webcals://")) u = "https://" + u.slice(10);
-    if (!/^https?:\/\//i.test(u)) {
+    // https uniquement : le flux contient les rendez-vous du téléphone.
+    if (!/^https:\/\//i.test(u)) {
       return {
         ok: false,
-        error: "L'URL doit commencer par https:// ou webcal://",
+        error: "L'URL doit commencer par https:// ou webcal:// (pas de http:// en clair).",
       };
     }
     normalized = u;
