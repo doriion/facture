@@ -67,7 +67,10 @@ export async function marquerDeclareeAction(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Non authentifié." };
 
-  if (!Number.isFinite(input.montant) || input.montant < 0) {
+  // Un net négatif est possible (remboursement d'avoir supérieur aux
+  // encaissements du trimestre) : on le fige tel quel, la déclaration
+  // URSSAF portera 0 et le reliquat se reporte.
+  if (!Number.isFinite(input.montant)) {
     return { ok: false, error: "Montant invalide." };
   }
   // Cohérence ventilation ↔ montant (au centime près)

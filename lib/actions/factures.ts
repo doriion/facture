@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
+import { formatEuros } from "@/lib/format";
 import {
   estFactureVentilee,
   estModeAvoir,
@@ -779,24 +780,64 @@ export async function createAcompteAction(
       error: "Un acompte ne peut être créé que depuis une facture normale.",
     };
   }
+  if (parent.statut === "annulee") {
+    return { ok: false, error: "La facture d'origine est annulée." };
+  }
 
+  // Toutes les vérifications AVANT de consommer un numéro : une valeur
+  // non numérique (« 33,5 » lu avec Number, champ vide) passait les
+  // gardes et brûlait un numéro sur un insert qui échouait ensuite.
   let montant: number;
   let pct: number | null = null;
   if (options.pourcentage !== undefined) {
-    if (options.pourcentage <= 0 || options.pourcentage > 100) {
-      return { ok: false, error: "Pourcentage entre 0 et 100." };
+    if (
+      !Number.isFinite(options.pourcentage) ||
+      options.pourcentage <= 0 ||
+      options.pourcentage > 100
+    ) {
+      return { ok: false, error: "Pourcentage invalide : entre 0 et 100." };
     }
     pct = options.pourcentage;
     montant =
       Math.round(Number(parent.total_ht) * (options.pourcentage / 100) * 100) /
       100;
   } else if (options.montant !== undefined) {
-    if (options.montant <= 0 || options.montant >= Number(parent.total_ht)) {
+    if (
+      !Number.isFinite(options.montant) ||
+      options.montant <= 0 ||
+      options.montant >= Number(parent.total_ht)
+    ) {
       return { ok: false, error: "Montant invalide (doit être < total parent)." };
     }
     montant = Math.round(options.montant * 100) / 100;
   } else {
     return { ok: false, error: "Pourcentage ou montant requis." };
+  }
+
+  // Acomptes déjà émis : le cumul ne dépasse pas le total, et plus
+  // d'acompte une fois le solde facturé.
+  const [{ data: enfants }, { data: lignesParent }] = await Promise.all([
+    supabase
+      .from("factures")
+      .select("total_ht, type_facture")
+      .eq("facture_parent_id", parentId)
+      .neq("statut", "annulee"),
+    supabase
+      .from("factures_lignes")
+      .select("total_ht, nature_fiscale")
+      .eq("facture_id", parentId),
+  ]);
+  if ((enfants ?? []).some((e) => e.type_facture === "solde")) {
+    return { ok: false, error: "Le solde est déjà facturé : plus d'acompte possible." };
+  }
+  const totalAcomptes = (enfants ?? [])
+    .filter((e) => e.type_facture === "acompte")
+    .reduce((s, e) => s + Number(e.total_ht), 0);
+  if (totalAcomptes + montant > Number(parent.total_ht) + 0.005) {
+    return {
+      ok: false,
+      error: `Les acomptes dépasseraient le total : ${formatEuros(totalAcomptes)} déjà facturés sur ${formatEuros(Number(parent.total_ht))}.`,
+    };
   }
 
   // Numéro
@@ -841,15 +882,27 @@ export async function createAcompteAction(
   const designation = pct
     ? `Acompte de ${pct}% sur facture ${parent.numero}`
     : `Acompte sur facture ${parent.numero}`;
-  await supabase.from("factures_lignes").insert({
-    user_id: user.id,
-    facture_id: facture.id,
-    ordre: 0,
-    designation,
-    quantite: 1,
-    prix_unitaire_ht: montant,
-    total_ht: montant,
-  });
+  // Ligne posée par la RPC (transaction) et contrôlée : un échec ne
+  // laisse plus une facture numérotée sans ligne. Nature fiscale
+  // majoritaire du parent : un acompte sur une vente de matériel n'est
+  // pas déclaré à l'URSSAF comme une prestation.
+  const remplacement = await remplacerLignesDocument(supabase, "facture", facture.id, user.id, [
+    {
+      ordre: 0,
+      designation,
+      nature_fiscale: natureMajoritaire(lignesParent ?? []),
+      type: "ligne",
+      quantite: 1,
+      prix_unitaire_ht: montant,
+      prix_achat_ttc_unitaire: null,
+      fournisseur: null,
+      total_ht: montant,
+    },
+  ]);
+  if (!remplacement.ok) {
+    await supabase.from("factures").delete().eq("id", facture.id);
+    return { ok: false, error: remplacement.error };
+  }
 
   revalidatePath("/factures");
   revalidatePath(`/factures/${parentId}`);
@@ -883,12 +936,28 @@ export async function createSoldeAction(
     };
   }
 
-  // Acomptes existants (non annulés)
-  const { data: acomptes } = await supabase
-    .from("factures")
-    .select("total_ht, numero, statut, type_facture")
-    .eq("facture_parent_id", parentId)
-    .neq("statut", "annulee");
+  if (parent.statut === "annulee") {
+    return { ok: false, error: "La facture d'origine est annulée." };
+  }
+
+  // Acomptes existants (non annulés) — et un seul solde par facture :
+  // l'interface masquait le bouton, mais un double tap ou deux onglets
+  // en créaient deux.
+  const [{ data: acomptes }, { data: lignesParent }] = await Promise.all([
+    supabase
+      .from("factures")
+      .select("total_ht, numero, statut, type_facture")
+      .eq("facture_parent_id", parentId)
+      .neq("statut", "annulee"),
+    supabase
+      .from("factures_lignes")
+      .select("total_ht, nature_fiscale")
+      .eq("facture_id", parentId),
+  ]);
+  const soldeExistant = (acomptes ?? []).find((a) => a.type_facture === "solde");
+  if (soldeExistant) {
+    return { ok: false, error: `Le solde est déjà facturé (${soldeExistant.numero}).` };
+  }
   const totalAcomptes = (acomptes ?? [])
     .filter((a) => a.type_facture === "acompte")
     .reduce((s, a) => s + Number(a.total_ht), 0);
@@ -939,15 +1008,23 @@ export async function createSoldeAction(
     return { ok: false, error: insertErr?.message ?? "Échec création." };
   }
 
-  await supabase.from("factures_lignes").insert({
-    user_id: user.id,
-    facture_id: facture.id,
-    ordre: 0,
-    designation: `Solde sur facture ${parent.numero} — déduction des acomptes`,
-    quantite: 1,
-    prix_unitaire_ht: reste,
-    total_ht: reste,
-  });
+  const remplacement = await remplacerLignesDocument(supabase, "facture", facture.id, user.id, [
+    {
+      ordre: 0,
+      designation: `Solde sur facture ${parent.numero} — déduction des acomptes`,
+      nature_fiscale: natureMajoritaire(lignesParent ?? []),
+      type: "ligne",
+      quantite: 1,
+      prix_unitaire_ht: reste,
+      prix_achat_ttc_unitaire: null,
+      fournisseur: null,
+      total_ht: reste,
+    },
+  ]);
+  if (!remplacement.ok) {
+    await supabase.from("factures").delete().eq("id", facture.id);
+    return { ok: false, error: remplacement.error };
+  }
 
   revalidatePath("/factures");
   revalidatePath(`/factures/${parentId}`);

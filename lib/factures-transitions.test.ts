@@ -22,10 +22,16 @@ describe("transitionFactureAutorisee", () => {
     expect(transitionFactureAutorisee("envoyee", "payee").ok).toBe(false);
   });
 
-  it("payée → envoyée directe refusée (flux dédié), payée → annulée possible", () => {
+  it("payée → envoyée directe refusée (flux dédié), payée → annulée seulement sans encaissement", () => {
     expect(transitionFactureAutorisee("payee", "envoyee").ok).toBe(false);
     expect(transitionFactureAutorisee("payee", "brouillon").ok).toBe(false);
-    expect(transitionFactureAutorisee("payee", "annulee").ok).toBe(true);
+    // Soldée par un avoir d'imputation (aucun paiement) : annulable.
+    expect(transitionFactureAutorisee("payee", "annulee", { nbPaiements: 0 }).ok).toBe(true);
+    // Avec de l'argent encaissé : l'annulation ferait disparaître les
+    // encaissements de la base URSSAF → avoir de remboursement.
+    const r = transitionFactureAutorisee("payee", "annulee", { nbPaiements: 1 });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/avoir de remboursement/);
   });
 
   it("avec des paiements, pas de retour en brouillon", () => {

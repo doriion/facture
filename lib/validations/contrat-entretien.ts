@@ -55,6 +55,16 @@ export const contratEntretienSchema = z.object({
   date_effet: z.string().min(1, "La date d'effet est obligatoire."),
   qualite_client: z.enum(QUALITES_CLIENT),
   mode_conclusion: z.enum(MODES_CONCLUSION),
+}).superRefine((val, ctx) => {
+  // Une remise supérieure à la redevance donnait un net à 0 sans rien
+  // dire : le contrat pouvait partir et être signé ainsi.
+  if (val.remise > val.redevance) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["remise"],
+      message: "La remise ne peut pas dépasser la redevance.",
+    });
+  }
 });
 
 export type ContratEntretienFormInput = z.input<typeof contratEntretienSchema>;

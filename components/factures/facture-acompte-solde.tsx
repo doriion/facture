@@ -69,10 +69,14 @@ export function FactureAcompteSolde({
   const hasSolde = soldes.some((s) => s.statut !== "annulee");
 
   async function handleAddAcompte() {
-    const payload =
-      mode === "pct"
-        ? { pourcentage: Number(pct) }
-        : { montant: parseMoneyInput(montant) };
+    // parseMoneyInput : « 33,5 » est lisible (Number() donnait NaN, qui
+    // passait les gardes et brûlait un numéro de facture).
+    const valeur = parseMoneyInput(mode === "pct" ? pct : montant);
+    if (!Number.isFinite(valeur) || valeur <= 0) {
+      toast.error(mode === "pct" ? "Pourcentage invalide." : "Montant invalide.");
+      return;
+    }
+    const payload = mode === "pct" ? { pourcentage: valeur } : { montant: valeur };
     startTransition(async () => {
       const res = await createAcompteAction(factureId, payload);
       if (res.ok) {

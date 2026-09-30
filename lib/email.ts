@@ -138,7 +138,7 @@ ${signature}
   return { subject, html, text };
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -185,15 +185,21 @@ export function buildRelanceEmail(args: {
   clientNom: string;
   expediteurNom: string;
   totalText: string;
+  /** Reste à régler, s'il diffère du total (acompte encaissé, avoir imputé). */
+  resteText?: string;
   echeanceText: string;
   joursRetard: number;
 }): { subject: string; html: string; text: string } {
   const subject = `Relance — Facture ${args.numero} impayée depuis ${args.joursRetard} jours`;
+  const resteHtml = args.resteText
+    ? ` (reste à régler : <strong>${escapeHtml(args.resteText)}</strong>)`
+    : "";
+  const resteTexte = args.resteText ? ` (reste à régler : ${args.resteText})` : "";
 
   const html = `<!doctype html>
 <html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
 <p>Bonjour ${escapeHtml(args.clientNom)},</p>
-<p>Sauf erreur de ma part, la facture <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong> dont l'échéance était fixée au <strong>${escapeHtml(args.echeanceText)}</strong> n'a pas été réglée à ce jour (<strong>${args.joursRetard} jours de retard</strong>).</p>
+<p>Sauf erreur de ma part, la facture <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>${resteHtml} dont l'échéance était fixée au <strong>${escapeHtml(args.echeanceText)}</strong> n'a pas été réglée à ce jour (<strong>${args.joursRetard} jours de retard</strong>).</p>
 <p>Pourriez-vous procéder au règlement dans les meilleurs délais ?</p>
 <p>Si le paiement a été effectué entre temps, considérez ce mail comme nul et merci de me communiquer la date d'encaissement.</p>
 <p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
@@ -203,7 +209,7 @@ export function buildRelanceEmail(args: {
 
   const text = `Bonjour ${args.clientNom},
 
-Sauf erreur de ma part, la facture ${args.numero} d'un montant de ${args.totalText} dont l'échéance était fixée au ${args.echeanceText} n'a pas été réglée à ce jour (${args.joursRetard} jours de retard).
+Sauf erreur de ma part, la facture ${args.numero} d'un montant de ${args.totalText}${resteTexte} dont l'échéance était fixée au ${args.echeanceText} n'a pas été réglée à ce jour (${args.joursRetard} jours de retard).
 
 Pourriez-vous procéder au règlement dans les meilleurs délais ?
 

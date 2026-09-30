@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { parseMoneyInput } from "@/lib/format";
 import { aujourdhuiParis } from "@/lib/dates";
-import { ligneFactureSchema } from "@/lib/validations/facture";
+import { computeTotalHt, ligneFactureSchema } from "@/lib/validations/facture";
 
 const moneyInputOrNull = (v: unknown) =>
   v === "" || v === null || v === undefined ? null : parseMoneyInput(v);
@@ -148,6 +148,18 @@ export const devisSchema = z.object({
     cee: null,
     eco_ptz: null,
   }),
+}).superRefine((val, ctx) => {
+  // Acompte fixe borné par le total du devis (le PDF l'imprimait tel quel).
+  if (val.acompte_montant !== null && val.acompte_montant !== undefined) {
+    const total = computeTotalHt(val.lignes);
+    if (val.acompte_montant > total + 0.005) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["acompte_montant"],
+        message: "L'acompte ne peut pas dépasser le total du devis.",
+      });
+    }
+  }
 });
 
 export type DevisFormInput = z.input<typeof devisSchema>;

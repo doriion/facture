@@ -99,6 +99,13 @@ export function transitionFactureAutorisee(
         "Un avoir émis ne revient pas en brouillon : il a déjà modifié le reste dû de la facture d'origine. Annulez-le (motif conservé) et créez-en un autre.",
     };
   }
+  if (statutActuel === "payee" && cible === "annulee" && (ctx.nbPaiements ?? 0) > 0) {
+    return {
+      ok: false,
+      error:
+        "Cette facture porte des encaissements : l'annuler les ferait disparaître de la base URSSAF. Créez un avoir de remboursement ; si un paiement a été saisi par erreur, supprimez-le d'abord.",
+    };
+  }
   if (cible === "brouillon" && (ctx.nbPaiements ?? 0) > 0) {
     return {
       ok: false,
