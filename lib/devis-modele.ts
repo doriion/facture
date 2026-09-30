@@ -20,13 +20,21 @@ import {
 
 /** Modèle d'origine — rend tous les devis émis avant la migration. */
 export const MODELE_DEVIS_HISTORIQUE = 1;
-/** Modèle simple, posé sur les devis créés depuis la migration. */
+/** Modèle simple, posé sur les devis créés du 16/09 au 30/09/2026. */
 export const MODELE_DEVIS_SIMPLE = 2;
+/**
+ * Modèle simple COMPLÉTÉ (30/09/2026) : même mise en page, plus le
+ * délai d'exécution (début prévu, durée) et les conditions quand ils
+ * sont saisis — informations précontractuelles attendues d'un devis de
+ * travaux (art. L111-1 c. conso.). Posé sur les devis créés désormais.
+ */
+export const MODELE_DEVIS_COMPLET = 3;
 
-export function versionModeleDevis(valeur: unknown): 1 | 2 {
-  return Number(valeur) === MODELE_DEVIS_SIMPLE
-    ? MODELE_DEVIS_SIMPLE
-    : MODELE_DEVIS_HISTORIQUE;
+export function versionModeleDevis(valeur: unknown): 1 | 2 | 3 {
+  const n = Number(valeur);
+  if (n === MODELE_DEVIS_COMPLET) return MODELE_DEVIS_COMPLET;
+  if (n === MODELE_DEVIS_SIMPLE) return MODELE_DEVIS_SIMPLE;
+  return MODELE_DEVIS_HISTORIQUE;
 }
 
 type ProfilEntete = {

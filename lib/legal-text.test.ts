@@ -54,6 +54,13 @@ describe("mentions ajoutées le 19/09/2026", () => {
     expect(mentionPenalitesRetard(null, "particulier")).toBe(MENTION_PENALITES_RETARD_PARTICULIER);
     expect(mentionPenalitesRetard(null, "particulier")).not.toMatch(/40 €/);
     expect(mentionPenalitesRetard("Mon texte", "particulier")).toBe("Mon texte");
+    // Règle v3 : le texte du profil (rédigé pour les pros) ne s'applique
+    // plus aux particuliers ; les pros le gardent.
+    expect(mentionPenalitesRetard("Mon texte", "particulier", true)).toBe(
+      MENTION_PENALITES_RETARD_PARTICULIER,
+    );
+    expect(mentionPenalitesRetard("Mon texte", "professionnel", true)).toBe("Mon texte");
+    expect(MENTION_PENALITES_RETARD_PARTICULIER).toMatch(/1231-6/);
   });
 
   it("rétractation : hors établissement et à distance, rien en établissement", async () => {
@@ -80,5 +87,17 @@ describe("mentions ajoutées le 19/09/2026", () => {
     const { mentionFluidesFrigo } = await import("./legal-text");
     expect(mentionFluidesFrigo("F-1", { valideJusquau: "2026-01-01", dateDocument: "2026-09-19" })).toBeNull();
     expect(mentionFluidesFrigo("F-1", { valideJusquau: "2027-01-01", dateDocument: "2026-09-19" })).toMatch(/F-1/);
+  });
+});
+
+describe("mentionEscompte", () => {
+  it("imprime la phrase du profil, et remplace une valeur absurde (« 30 ») en règle v3 seulement", async () => {
+    const { mentionEscompte, escompteValide, MENTION_ESCOMPTE_DEFAULT } = await import("./legal-text");
+    expect(mentionEscompte("", false)).toBe(MENTION_ESCOMPTE_DEFAULT);
+    expect(mentionEscompte("Escompte de 2 % sous 8 jours.", true)).toBe("Escompte de 2 % sous 8 jours.");
+    expect(mentionEscompte("30", false)).toBe("30");
+    expect(mentionEscompte("30", true)).toBe(MENTION_ESCOMPTE_DEFAULT);
+    expect(escompteValide("30 %")).toBe(false);
+    expect(escompteValide("Pas d'escompte")).toBe(true);
   });
 });

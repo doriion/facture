@@ -17,7 +17,7 @@ import {
 
 describe("versionModeleDevis (les devis déjà émis ne bougent pas)", () => {
   it("NULL, undefined ou valeur inconnue → modèle historique", () => {
-    for (const v of [null, undefined, 0, 1, "1", 3, "zzz", NaN]) {
+    for (const v of [null, undefined, 0, 1, "1", 4, "zzz", NaN]) {
       expect(versionModeleDevis(v)).toBe(MODELE_DEVIS_HISTORIQUE);
     }
   });
@@ -25,6 +25,8 @@ describe("versionModeleDevis (les devis déjà émis ne bougent pas)", () => {
   it("2 (nombre ou texte) → modèle simple", () => {
     expect(versionModeleDevis(2)).toBe(MODELE_DEVIS_SIMPLE);
     expect(versionModeleDevis("2")).toBe(MODELE_DEVIS_SIMPLE);
+    expect(versionModeleDevis(3)).toBe(3);
+    expect(versionModeleDevis(4)).toBe(MODELE_DEVIS_HISTORIQUE);
   });
 });
 

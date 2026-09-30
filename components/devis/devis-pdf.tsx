@@ -10,6 +10,7 @@ import {
 import {
   formatDateFr,
   formatEuros,
+  formatQuantite,
   formatIban,
   formatSiret,
   siretToSiren,
@@ -303,7 +304,9 @@ export function DevisPdf(props: {
   const version = versionModeleDevis(
     (props.devis as { pdf_template_version?: unknown }).pdf_template_version,
   );
-  return version === MODELE_DEVIS_SIMPLE
+  // v2 et v3 partagent le modèle simple ; le composant lit la version
+  // figée pour savoir s'il imprime délai et conditions.
+  return version >= MODELE_DEVIS_SIMPLE
     ? DevisPdfSimple(props)
     : DevisPdfHistorique(props);
 }
@@ -549,11 +552,7 @@ export function DevisPdfHistorique({
               {section.lignes.map((l) => (
                 <View key={l.id} style={styles.tableRow} wrap={false}>
                   <Text style={styles.colDesignation}>{l.designation}</Text>
-                  <Text style={styles.colQte}>
-                    {Number(l.quantite).toLocaleString("fr-FR", {
-                      maximumFractionDigits: 3,
-                    })}
-                  </Text>
+                  <Text style={styles.colQte}>{formatQuantite(l.quantite)}</Text>
                   <Text style={styles.colPu}>
                     {formatEuros(Number(l.prix_unitaire_ht))}
                   </Text>

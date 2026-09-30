@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { MODELE_DEVIS_COMPLET } from "@/lib/devis-modele";
 import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
@@ -269,6 +270,9 @@ export async function createDevisAction(
     .insert({
       user_id: user.id,
       numero,
+      // Modèle figé à la création (lib/devis-modele) : v3 = simple +
+      // délai d'exécution et conditions.
+      pdf_template_version: MODELE_DEVIS_COMPLET,
       client_id: v.client_id,
       date_emission: v.date_emission,
       date_validite: v.date_validite,

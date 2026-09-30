@@ -140,7 +140,15 @@ export const profilSchema = z.object({
     ),
   conditions_paiement_default: z.string().trim().max(500).optional().or(z.literal("")),
   penalites_retard_text: z.string().trim().max(1000).optional().or(z.literal("")),
-  escompte_text: z.string().trim().max(500).optional().or(z.literal("")),
+  escompte_text: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === "" || /[A-Za-zÀ-ÿ]{3,}/.test(v), {
+      message: "Écrivez une phrase, par exemple « Pas d'escompte pour règlement anticipé. »",
+    })
+    .optional()
+    .or(z.literal("")),
 });
 
 export type ProfilFormValues = z.infer<typeof profilSchema>;

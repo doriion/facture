@@ -20,6 +20,7 @@ import { FacturePdf } from "@/components/factures/facture-pdf";
 import { DevisPdf } from "@/components/devis/devis-pdf";
 import { getFacture, setFactureStatutAction } from "@/lib/actions/factures";
 import { getFacturePaiements } from "@/lib/actions/paiements";
+import { detailSolde } from "@/lib/actions/facture-solde";
 import {
   estFactureVentilee,
   MOTIF_FACTURE_VENTILEE,
@@ -125,6 +126,7 @@ export async function envoyerFactureParEmailAction(
       logoData: logoUrl,
       devisSource: await devisSourceDe(supabase, facture.devis_id),
       factureParent,
+      solde: await detailSolde(supabase, facture),
     }),
   );
 
@@ -371,6 +373,7 @@ export async function envoyerRelanceFactureAction(
       profil,
       logoData: logoUrl,
       devisSource: await devisSourceDe(supabase, facture.devis_id),
+      solde: await detailSolde(supabase, facture),
     }),
   );
 

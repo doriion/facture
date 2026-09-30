@@ -149,6 +149,13 @@ export const devisSchema = z.object({
     eco_ptz: null,
   }),
 }).superRefine((val, ctx) => {
+  if (val.date_validite && val.date_emission && val.date_validite < val.date_emission) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["date_validite"],
+      message: "La date de validité doit être postérieure à la date d'émission.",
+    });
+  }
   // Acompte fixe borné par le total du devis (le PDF l'imprimait tel quel).
   if (val.acompte_montant !== null && val.acompte_montant !== undefined) {
     const total = computeTotalHt(val.lignes);

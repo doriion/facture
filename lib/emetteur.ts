@@ -64,7 +64,35 @@ export const CHAMPS_EMETTEUR_V2 = [
   "fluides_valide_jusquau",
 ] as const;
 
-export const VERSION_SNAPSHOT_EMETTEUR = 2;
+/** Version à partir de laquelle les champs de pied de page / RIB font autorité. */
+export const VERSION_CHAMPS_V2 = 2;
+
+/**
+ * Version 3 (30/09/2026) : aucun champ nouveau, mais des RÈGLES DE
+ * RENDU nouvelles pour les documents émis à partir de maintenant —
+ * pénalités selon le type de client (l'indemnité de 40 € ne s'applique
+ * qu'entre professionnels), mention d'escompte contrôlée, détail des
+ * acomptes sur une facture de solde. Un document émis avec un snapshot
+ * antérieur se réimprime EXACTEMENT comme avant.
+ */
+export const VERSION_SNAPSHOT_EMETTEUR = 3;
+
+/** Version du snapshot d'un document, null s'il n'en a pas (brouillon). */
+export function versionEmetteur(emetteur: unknown): number | null {
+  if (!emetteur || typeof emetteur !== "object") return null;
+  const v = (emetteur as { _version?: unknown })._version;
+  return typeof v === "number" ? v : 1;
+}
+
+/**
+ * Le document suit-il les règles de rendu de la version 3 ? Oui pour
+ * un brouillon (pas encore figé) et pour tout document figé en v3 ou
+ * plus ; non pour les documents émis avant (intangibles).
+ */
+export function regleDocumentV3(emetteur: unknown): boolean {
+  const v = versionEmetteur(emetteur);
+  return v === null || v >= 3;
+}
 
 export type EmetteurSnapshot = Partial<
   Pick<Profil, (typeof CHAMPS_EMETTEUR)[number] | (typeof CHAMPS_EMETTEUR_V2)[number]>
@@ -105,7 +133,7 @@ export function profilEffectif(
   // Champs de la version 2 : autorité du snapshot seulement s'il a été
   // pris avec eux ; un snapshot plus ancien laisse le profil courant
   // (sinon le RIB disparaîtrait des factures déjà émises).
-  if ((snapshot._version ?? 1) >= VERSION_SNAPSHOT_EMETTEUR) {
+  if ((snapshot._version ?? 1) >= VERSION_CHAMPS_V2) {
     for (const champ of CHAMPS_EMETTEUR_V2) {
       merged[champ] = (snapshot[champ] as unknown) ?? null;
     }

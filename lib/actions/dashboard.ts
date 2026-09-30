@@ -114,6 +114,8 @@ export type DashboardData = {
     dateFin: string;
     alerte: AlerteValidite;
   }>;
+  /** Médiateur de la consommation non renseigné (obligatoire envers les particuliers). */
+  mediateurManquant: boolean;
 };
 
 /**
@@ -239,7 +241,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     // Échéances des attestations (décennale, capacité fluides)
     supabase
       .from("profil_entreprise")
-      .select("decennale_valide_jusquau, fluides_valide_jusquau")
+      .select("decennale_valide_jusquau, fluides_valide_jusquau, mediateur_nom")
       .maybeSingle(),
     // Factures d'origine ventilées en acomptes/solde : exclues du facturé
     // et de l'impayé, sinon le montant est compté deux fois.
@@ -607,5 +609,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     prochainesVisitesMaintenance,
     contratsPdfManquant,
     attestations,
+    mediateurManquant: !(profilEcheances?.mediateur_nom ?? "").trim(),
   };
 }

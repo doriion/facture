@@ -10,6 +10,7 @@ import {
 import {
   formatDateFr,
   formatEuros,
+  formatQuantite,
   formatIban,
   formatSiret,
   siretToSiren,
@@ -17,7 +18,7 @@ import {
 import {
   LABELS_TYPE_ACTIVITE,
   MENTION_AUTO_ENTREPRENEUR,
-  MENTION_ESCOMPTE_DEFAULT,
+  mentionEscompte,
   mentionPenalitesRetard,
   mentionTvaFranchise,
   mentionDecennale,
@@ -26,7 +27,7 @@ import {
   mentionRgeQualipac,
   mentionRm,
 } from "@/lib/legal-text";
-import { profilEffectif } from "@/lib/emetteur";
+import { profilEffectif, regleDocumentV3 } from "@/lib/emetteur";
 import { enseigneEmetteur } from "@/lib/devis-modele";
 import { computeSections } from "@/lib/sections";
 import type { Database } from "@/types/database";
@@ -263,6 +264,11 @@ const styles = StyleSheet.create({
  * Document PDF complet d'une facture, conforme aux exigences légales
  * auto-entrepreneur BTP françaises.
  */
+export type SoldeDetail = {
+  totalTravaux: number;
+  acomptes: Array<{ numero: string; date_emission: string | null; montant: number }>;
+};
+
 export function FacturePdf({
   facture,
   lignes,
@@ -271,6 +277,7 @@ export function FacturePdf({
   logoData,
   devisSource = null,
   factureParent = null,
+  solde = null,
 }: {
   facture: Facture;
   lignes: Ligne[];
@@ -281,6 +288,8 @@ export function FacturePdf({
   devisSource?: { numero: string; date_emission: string | null } | null;
   /** Avoir : facture d'origine corrigée (mention obligatoire). */
   factureParent?: { numero: string; date_emission: string | null } | null;
+  /** Facture de solde : total des travaux et acomptes déduits (règle v3). */
+  solde?: SoldeDetail | null;
 }) {
   // Facture émise : mentions émetteur FIGÉES au moment de l'émission
   // (SIRET historisé) ; brouillon : profil courant.
@@ -338,10 +347,14 @@ export function FacturePdf({
   const estAvoir = typeFacture === "avoir";
   const modeAvoir = (facture as { mode_avoir?: string | null }).mode_avoir ?? null;
   const motifAvoir = (facture as { motif_avoir?: string | null }).motif_avoir ?? null;
+  // Règles de rendu v3 (brouillons et documents émis depuis la v3) :
+  // pénalités selon le type de client, escompte contrôlé, détail des
+  // acomptes sur un solde. Les documents émis avant ne bougent pas.
+  const v3 = regleDocumentV3(facture.emetteur);
   const lignesPied = [
     // Un avoir n'a ni échéance ni pénalités ni escompte.
-    estAvoir ? null : mentionPenalitesRetard(profil?.penalites_retard_text, client?.type),
-    estAvoir ? null : profil?.escompte_text || MENTION_ESCOMPTE_DEFAULT,
+    estAvoir ? null : mentionPenalitesRetard(profil?.penalites_retard_text, client?.type, v3),
+    estAvoir ? null : mentionEscompte(profil?.escompte_text, v3),
     mentions.rm,
     mentions.decennale,
     mentions.fluides,
@@ -513,7 +526,7 @@ export function FacturePdf({
 
         {/* Tableau des lignes */}
         <View style={styles.table}>
-          <View style={styles.tableHeader}>
+          <View style={styles.tableHeader} fixed>
             <Text style={styles.colDesignation}>Désignation</Text>
             <Text style={styles.colQte}>Qté</Text>
             <Text style={styles.colPu}>
@@ -533,11 +546,7 @@ export function FacturePdf({
               {section.lignes.map((l) => (
                 <View key={l.id} style={styles.tableRow} wrap={false}>
                   <Text style={styles.colDesignation}>{l.designation}</Text>
-                  <Text style={styles.colQte}>
-                    {Number(l.quantite).toLocaleString("fr-FR", {
-                      maximumFractionDigits: 3,
-                    })}
-                  </Text>
+                  <Text style={styles.colQte}>{formatQuantite(l.quantite)}</Text>
                   <Text style={styles.colPu}>
                     {formatEuros(Number(l.prix_unitaire_ht))}
                   </Text>
@@ -560,9 +569,26 @@ export function FacturePdf({
           ))}
         </View>
 
-        {/* Totaux */}
-        <View style={styles.totalsBlock}>
+        {/* Totaux (bloc insécable : jamais coupé entre deux pages) */}
+        <View style={styles.totalsBlock} wrap={false}>
           <View style={styles.totalsTable}>
+            {typeFacture === "solde" && solde && v3 && (
+              <>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total des travaux</Text>
+                  <Text style={styles.totalValue}>{formatEuros(solde.totalTravaux)}</Text>
+                </View>
+                {solde.acomptes.map((a) => (
+                  <View key={a.numero} style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>
+                      Acompte {a.numero}
+                      {a.date_emission ? ` du ${formatDateFr(a.date_emission)}` : ""}
+                    </Text>
+                    <Text style={styles.totalValue}>- {formatEuros(a.montant)}</Text>
+                  </View>
+                ))}
+              </>
+            )}
             {assujettiTva && (
               <>
                 <View style={styles.totalRow}>
@@ -590,7 +616,7 @@ export function FacturePdf({
 
         {/* Équipement (clim/PAC) */}
         {isClimPac && Object.keys(equip).length > 0 && (
-          <View style={styles.equipementBox}>
+          <View style={styles.equipementBox} wrap={false}>
             <Text style={styles.equipementTitle}>Équipement installé</Text>
             <View style={styles.equipementGrid}>
               {(equip.marque as string) && (
@@ -642,7 +668,7 @@ export function FacturePdf({
 
         {/* Aides financières */}
         {aidesEntries.length > 0 && (
-          <View style={styles.aidesBox}>
+          <View style={styles.aidesBox} wrap={false}>
             <Text style={styles.equipementTitle}>Aides financières</Text>
             {aidesEntries.map(([k, v]) => (
               <Text key={k}>
@@ -662,7 +688,7 @@ export function FacturePdf({
 
         {/* Coordonnées bancaires (sans objet sur un avoir) */}
         {!estAvoir && (profil?.iban || profil?.bic) && (
-          <View style={styles.banqueBlock}>
+          <View style={styles.banqueBlock} wrap={false}>
             <Text style={[styles.equipementTitle, { marginBottom: 4 }]}>
               Règlement par virement
             </Text>

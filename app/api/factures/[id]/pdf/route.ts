@@ -6,6 +6,7 @@ import { payloadLignesPdf } from "@/lib/pdf-payload";
 import { estErreurMoteurTva, verifierMoteurTva } from "@/lib/tva-garde";
 import { FacturePdf } from "@/components/factures/facture-pdf";
 import { logoApplication } from "@/lib/logo-app";
+import { detailSolde } from "@/lib/actions/facture-solde";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -119,6 +120,9 @@ export async function GET(
   // portant le logo générique.
   logoData = logoData ?? (await logoApplication());
 
+  // Facture de solde : total des travaux et acomptes déduits (règle v3).
+  const solde = await detailSolde(supabase, factureRaw);
+
   // Nettoyage : retire la propriété "client" imbriquée pour passer le strict typage
   const { client: _client, ...factureClean } = factureRaw;
 
@@ -132,6 +136,7 @@ export async function GET(
       logoData,
       devisSource,
       factureParent,
+      solde,
     }),
   );
 
