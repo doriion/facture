@@ -21,8 +21,14 @@ export type JobDef = {
   tache: string;
   /** Interrupteur dans les réglages de l'utilisateur */
   estActive: (profil: Profil) => boolean;
-  /** Cadence propre au job (ex. sauvegarde : le 1er du mois seulement) */
-  doitTournerAujourdhui: (today: string) => boolean;
+  /**
+   * Cadence propre au job (ex. sauvegarde : le 1er du mois, avec
+   * rattrapage). Peut consulter la base (journal) : async accepté.
+   */
+  doitTournerAujourdhui: (
+    today: string,
+    ctx: { service: ServiceClient; userId: string },
+  ) => boolean | Promise<boolean>;
   /** Ce job envoie-t-il des emails aux CLIENTS ? (soumis au dry-run) */
   concerneLesClients: boolean;
   executer: (ctx: ContexteJob) => Promise<ResultatTache>;

@@ -14,16 +14,28 @@ reçue par email (`sauvegarde-facture-ae-AAAA-MM-JJ.json`).
   numérotation, agenda, barème, séries, RDV importés, abonnements push.
 - Les **identifiants** (UUID) sont conservés : les liens entre documents
   restent valides après restauration.
-- Elle **ne contient pas** les fichiers du Storage (logo, photos,
-  signatures manuscrites, PDF archivés) — seulement leurs chemins.
-  Téléchargez les PDF archivés depuis les fiches si vous voulez les
-  conserver hors de l'application.
+- Les fichiers du Storage (PDF de contrats signés, signatures
+  manuscrites, CERFA, bons d'intervention, logo, photos) sont dans une
+  **archive à part**, `sauvegarde-facture-ae-AAAA-MM-JJ-fichiers.zip`,
+  produite avec le JSON (sauvegarde automatique, « Sauvegarder
+  maintenant », ou Paramètres → « Exporter mes fichiers (ZIP) »). Chaque
+  entrée `fichiers/<bucket>/<chemin>` porte le chemin stocké en base
+  (`storage_path`, `pdf_path`, `signature_path`…). L'archive est bornée à
+  40 Mo : les pièces à valeur probante passent d'abord, les photos en
+  dernier ; les fichiers laissés de côté sont listés dans `index.json`
+  (et la sauvegarde est alors marquée en erreur pour le signaler).
+- Chaque table est lue **par pages** et comptée : une sauvegarde
+  tronquée est refusée plutôt que produite.
 
 ## Procédure (projet vierge)
 
 1. Créer un nouveau projet Supabase et y appliquer **toutes** les
    migrations, dans l'ordre : `supabase db push` (CLI) ou copie de chaque
-   fichier de `supabase/migrations` dans l'éditeur SQL.
+   fichier de `supabase/migrations` dans l'éditeur SQL. Le test
+   `lib/sauvegarde-colonnes.test.ts` vérifie à chaque CI que chaque
+   colonne de `types/database.ts` est bien créée par une migration du
+   dépôt (les colonnes ajoutées à la main sur le projet ont été
+   rattrapées par la migration `20261004000000`).
 2. Créer le compte utilisateur (Authentication → Users → Add user, ou
    inscription depuis l'application pointée sur ce projet). Relever son
    UUID.
@@ -43,15 +55,23 @@ reçue par email (`sauvegarde-facture-ae-AAAA-MM-JJ.json`).
    par-dessus des données.
 
 4. Exécution réelle : même commande avec `--executer`. Les tables sont
-   insérées dans l'ordre des clés étrangères ; les liens circulaires
-   (facture ↔ devis, facture d'origine d'un acompte) sont posés en fin de
+   insérées dans l'ordre des clés étrangères ; les factures sont triées
+   parents d'abord (une facture d'origine avant ses acomptes, soldes et
+   avoirs) et le lien circulaire facture ↔ devis est posé en fin de
    restauration.
 5. Pointer l'application sur le nouveau projet (`NEXT_PUBLIC_SUPABASE_URL`,
    `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) et
    vérifier : liste des factures, une facture avec ses lignes et
    paiements, le tableau de bord, la numérotation (Paramètres).
-6. Recréer le logo dans Paramètres. Les photos et signatures d'origine ne
-   sont pas restaurables sans les fichiers du Storage.
+6. Fichiers : décompresser l'archive `-fichiers.zip` et déposer chaque
+   fichier de `fichiers/<bucket>/<chemin>` dans le bucket `<bucket>` du
+   nouveau projet, au même `<chemin>` (Dashboard → Storage, ou CLI
+   `supabase storage cp`). Les chemins commencent par l'identifiant du
+   compte d'ORIGINE : si le compte cible a un autre identifiant, remplacer
+   ce premier segment (et mettre à jour les colonnes `storage_path`,
+   `pdf_path`, `signature_path`, `logo_url` en conséquence, ou recréer le
+   compte avec le même identifiant). Sans cette étape, l'application
+   fonctionne mais les photos, signatures et PDF archivés manquent.
 
 ## Exercice périodique
 

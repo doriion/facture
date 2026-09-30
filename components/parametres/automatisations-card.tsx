@@ -144,7 +144,7 @@ export function AutomatisationsCard({
         {switchRow(
           "auto_sauvegarde_active",
           "Sauvegarde mensuelle automatique",
-          "Le 1er du mois : export complet par email + dépôt dans le stockage privé (12 conservées). Activée par défaut — aucun envoi client.",
+          "Le 1er du mois (rattrapée les jours suivants si elle a échoué) : export complet + archive de vos fichiers, par email et dans le stockage privé (12 mensuelles et 6 manuelles conservées). Activée par défaut — aucun envoi client.",
         )}
 
         <div className="space-y-2">
