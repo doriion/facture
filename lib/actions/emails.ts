@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { renderToBuffer } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
 import { aujourdhuiParis } from "@/lib/dates";
@@ -16,8 +15,6 @@ import {
 } from "@/lib/email";
 import { formatDateFr, formatEuros } from "@/lib/format";
 import { joursDeRetard } from "@/lib/relances-helpers";
-import { FacturePdf } from "@/components/factures/facture-pdf";
-import { DevisPdf } from "@/components/devis/devis-pdf";
 import { getFacture, setFactureStatutAction } from "@/lib/actions/factures";
 import { getFacturePaiements } from "@/lib/actions/paiements";
 import { detailSolde } from "@/lib/actions/facture-solde";
@@ -116,7 +113,14 @@ export async function envoyerFactureParEmailAction(
         ).data
       : null;
 
-  // Génère le PDF
+  // Génère le PDF. Le moteur (@react-pdf/renderer : fontkit, pdfkit…)
+  // et le gabarit ne sont chargés qu'ici : importés en tête de fichier,
+  // ils étaient embarqués dans la fonction serveur de chaque page dont
+  // un bouton importe ce fichier, et en ralentissaient le démarrage à froid.
+  const [{ renderToBuffer }, { FacturePdf }] = await Promise.all([
+    import("@react-pdf/renderer"),
+    import("@/components/factures/facture-pdf"),
+  ]);
   const pdfBuffer = await renderToBuffer(
     FacturePdf({
       facture,
@@ -246,6 +250,10 @@ export async function envoyerDevisParEmailAction(
     return { ok: false, error: e.explication };
   }
 
+  const [{ renderToBuffer }, { DevisPdf }] = await Promise.all([
+    import("@react-pdf/renderer"),
+    import("@/components/devis/devis-pdf"),
+  ]);
   const pdfBuffer = await renderToBuffer(
     DevisPdf({ devis, lignes: payloadLignesPdf(lignes), client, profil, logoData: logoUrl }),
   );
@@ -365,6 +373,10 @@ export async function envoyerRelanceFactureAction(
     if (!estErreurMoteurTva(e)) throw e;
     return { ok: false, error: e.explication };
   }
+  const [{ renderToBuffer }, { FacturePdf }] = await Promise.all([
+    import("@react-pdf/renderer"),
+    import("@/components/factures/facture-pdf"),
+  ]);
   const pdfBuffer = await renderToBuffer(
     FacturePdf({
       facture,

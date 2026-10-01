@@ -50,13 +50,20 @@ const nextConfig = {
   },
 };
 
-// withSentryConfig injecte sentry.client.config.ts côté navigateur.
-// Pas d'upload de source maps (pas de SENTRY_AUTH_TOKEN nécessaire) :
-// l'intégration reste 100 % inactive tant que NEXT_PUBLIC_SENTRY_DSN
-// n'est pas définie.
-export default withSentryConfig(nextConfig, {
-  silent: true,
-  sourcemaps: { disable: true },
-  telemetry: false,
-  disableLogger: true,
-});
+// withSentryConfig injecte sentry.client.config.ts côté navigateur : le
+// SDK pesait 104 ko gzip (65 % du JS commun à toutes les pages) alors
+// qu'il reste inactif sans NEXT_PUBLIC_SENTRY_DSN. Sans DSN au moment
+// du build, la config n'est donc pas enveloppée : le téléphone ne
+// télécharge rien, seule l'instrumentation serveur (instrumentation.ts)
+// subsiste. Avec un DSN : intégration complète, sans upload de source
+// maps (pas de SENTRY_AUTH_TOKEN nécessaire).
+const sentryNavigateur = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
+
+export default sentryNavigateur
+  ? withSentryConfig(nextConfig, {
+      silent: true,
+      sourcemaps: { disable: true },
+      telemetry: false,
+      disableLogger: true,
+    })
+  : nextConfig;

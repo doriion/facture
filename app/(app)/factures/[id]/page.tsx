@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -15,15 +16,14 @@ import {
   TYPE_AVOIR,
   type ModeAvoir,
 } from "@/lib/factures-transitions";
-import {
-  getAvailableEventsForFacture,
-  getFactureCoveredEvents,
-} from "@/lib/actions/facture-events-couverts";
 import { AjouterTacheButton } from "@/components/taches/ajouter-tache-button";
 import { FactureForm } from "@/components/factures/facture-form";
 import { FacturePaiements } from "@/components/factures/facture-paiements";
 import { FactureAcompteSolde } from "@/components/factures/facture-acompte-solde";
-import { FactureEventsCouverts } from "@/components/factures/facture-events-couverts";
+import {
+  FactureEventsCouvertsAttente,
+  FactureEventsCouvertsSection,
+} from "@/components/factures/facture-events-couverts-section";
 import { FactureActions } from "@/components/factures/facture-actions";
 import { CreerAvoirDialog } from "@/components/factures/creer-avoir-dialog";
 import { ActionsFiche } from "@/components/actions-fiche";
@@ -47,28 +47,20 @@ export default async function EditFacturePage({
 }: {
   params: { id: string };
 }) {
-  const { facture, lignes, client } = await getFacture(params.id);
-  if (!facture) notFound();
-
-  const [
-    clients,
-    produits,
-    profil,
-    paiementsSummary,
-    enfants,
-    available,
-    coveredCurrent,
-  ] = await Promise.all([
+  // Les listes (clients, produits, profil) ne dépendent pas de la
+  // facture : lancées en même temps qu'elle. Paiements et enfants
+  // attendent de savoir qu'elle existe (ils lèvent une erreur sinon).
+  const [{ facture, lignes, client }, clients, produits, profil] = await Promise.all([
+    getFacture(params.id),
     listClients(),
     listProduits({ inclureInactifs: false }),
     getProfil(),
+  ]);
+  if (!facture) notFound();
+
+  const [paiementsSummary, enfants] = await Promise.all([
     getFacturePaiements(params.id),
     listFactureEnfants(params.id),
-    getAvailableEventsForFacture({
-      factureId: params.id,
-      centerDate: facture.date_emission,
-    }),
-    getFactureCoveredEvents(params.id),
   ]);
 
   const isLocked = facture.statut === "annulee";
@@ -249,14 +241,15 @@ export default async function EditFacturePage({
           />
         )}
 
+      {/* RDV iPhone et interventions couverts : chargés après le reste
+          de la fiche (téléchargement du calendrier externe côté serveur). */}
       {!isLocked && !avoir && (
-        <FactureEventsCouverts
-          factureId={facture.id}
-          interventions={available.interventions}
-          externals={available.externals}
-          initialInterventionIds={coveredCurrent.interventionIds}
-          initialExternalUids={coveredCurrent.externalUids}
-        />
+        <Suspense fallback={<FactureEventsCouvertsAttente />}>
+          <FactureEventsCouvertsSection
+            factureId={facture.id}
+            centerDate={facture.date_emission}
+          />
+        </Suspense>
       )}
     </div>
   );

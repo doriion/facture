@@ -86,6 +86,27 @@ export type PaiementExportInput = {
  * remboursement (paiement enregistré sur un AVOIR) vient en moins des
  * recettes, à sa date, ventilé comme l'avoir.
  */
+/** Paiement réduit à ce qui décide de son entrée dans la base URSSAF. */
+export type PaiementEncaisse = {
+  montant: number;
+  facture: { statut: string; type_facture?: string | null } | null;
+};
+
+/**
+ * Encaissé d'une période (base URSSAF) : somme des paiements, factures
+ * annulées et paiements orphelins exclus, remboursements (paiements
+ * enregistrés sur un avoir) en moins. LA règle, partagée par l'export et
+ * le tableau de bord — les deux affichent le même chiffre.
+ */
+export function totalEncaissePeriode(paiements: PaiementEncaisse[]): number {
+  let total = 0;
+  for (const p of paiements) {
+    if (!p.facture || p.facture.statut === "annulee") continue;
+    total += (p.facture.type_facture === "avoir" ? -1 : 1) * Number(p.montant);
+  }
+  return Math.round(total * 100) / 100;
+}
+
 export function summarizeEncaissements(paiements: PaiementExportInput[]): {
   rows: ExportRow[];
   total_encaisse: number;
@@ -94,7 +115,6 @@ export function summarizeEncaissements(paiements: PaiementExportInput[]): {
 } {
   const facturesAffected = new Set<string>();
   const rows: ExportRow[] = [];
-  let totalEncaisse = 0;
   let ventilation: Ventilation = { ...VENTILATION_VIDE };
 
   for (const p of paiements) {
@@ -103,7 +123,6 @@ export function summarizeEncaissements(paiements: PaiementExportInput[]): {
     facturesAffected.add(p.facture.id);
     const signe = p.facture.type_facture === "avoir" ? -1 : 1;
     const montant = signe * Number(p.montant);
-    totalEncaisse += montant;
     const vAbs = ventilerMontant(Number(p.montant), p.facture.lignes ?? []);
     const v: Ventilation =
       signe < 0
@@ -126,7 +145,7 @@ export function summarizeEncaissements(paiements: PaiementExportInput[]): {
 
   return {
     rows,
-    total_encaisse: Math.round(totalEncaisse * 100) / 100,
+    total_encaisse: totalEncaissePeriode(paiements),
     ventilation,
     nb_factures: facturesAffected.size,
   };

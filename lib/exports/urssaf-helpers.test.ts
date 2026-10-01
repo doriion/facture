@@ -5,6 +5,7 @@ import {
   buildCsv,
   getExportPeriodes,
   summarizeEncaissements,
+  totalEncaissePeriode,
   totalFacturesEmises,
   type ExportSummary,
   type PaiementExportInput,
@@ -219,6 +220,28 @@ describe("remboursements (avoirs)", () => {
     expect(res.total_encaisse).toBe(900);
     expect(res.rows[1]!.montant_encaisse).toBe(-100);
     expect(res.ventilation).toEqual({ bic_prestations: 800, bic_ventes: 100, bnc: 0 });
+  });
+});
+
+describe("totalEncaissePeriode", () => {
+  it("exclut annulées et orphelins, déduit les remboursements, arrondit", () => {
+    const paiements = [
+      paiement({ montant: 100.1 }),
+      paiement({ montant: 50.25, facture: { id: "f2", type_facture: "avoir" } }),
+      paiement({ montant: 999, facture: { id: "f3", statut: "annulee" } }),
+      paiement({ montant: 12, facture: null }),
+    ];
+    expect(totalEncaissePeriode(paiements)).toBe(49.85);
+  });
+
+  it("donne le même encaissé que l'export (tableau de bord = page Exports)", () => {
+    const paiements = [
+      paiement({ montant: 0.1 }),
+      paiement({ montant: 0.2, facture: { id: "f2" } }),
+      paiement({ montant: 0.3, facture: { id: "f3", type_facture: "avoir" } }),
+    ];
+    expect(totalEncaissePeriode(paiements)).toBe(summarizeEncaissements(paiements).total_encaisse);
+    expect(totalEncaissePeriode([])).toBe(0);
   });
 });
 
