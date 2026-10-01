@@ -118,10 +118,8 @@ describe("signatureDevisAutorisee", () => {
     expect(signatureDevisAutorisee("expire").ok).toBe(true);
   });
 
-  it("refuse un brouillon jamais transmis au client", () => {
-    const res = signatureDevisAutorisee("brouillon");
-    expect(res.ok).toBe(false);
-    expect(res).toMatchObject({ error: expect.stringContaining("brouillon") });
+  it("autorise un brouillon (signé sur place : la signature vaut remise au client)", () => {
+    expect(signatureDevisAutorisee("brouillon").ok).toBe(true);
   });
 
   it("refuse un devis refusé, déjà accepté, déjà signé, converti ou modèle", () => {

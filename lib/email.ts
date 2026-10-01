@@ -88,6 +88,8 @@ export function buildDocumentEmail(args: {
   totalText: string;
   echeanceText?: string;
   messagePerso?: string;
+  /** Devis déjà signé « bon pour accord » (date) : copie pour le client, rien à retourner. */
+  signeLe?: string;
 }): { subject: string; html: string; text: string } {
   const titre =
     args.type === "facture" ? "Votre facture" : args.type === "avoir" ? "Votre avoir" : "Votre devis";
@@ -100,6 +102,9 @@ export function buildDocumentEmail(args: {
       : args.type === "facture"
       ? `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
          <p>Veuillez trouver ci-joint la facture <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>${args.echeanceText ? `, à régler avant le <strong>${escapeHtml(args.echeanceText)}</strong>` : ""}.</p>`
+      : args.signeLe
+      ? `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
+         <p>Veuillez trouver ci-joint votre exemplaire du devis <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>, signé « bon pour accord » le ${escapeHtml(args.signeLe)}. Merci pour votre confiance.</p>`
       : `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
          <p>Veuillez trouver ci-joint le devis <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>.</p>
          <p>Merci de me retourner ce devis daté, signé et avec la mention « bon pour accord » pour validation.</p>`;
@@ -127,6 +132,8 @@ ${signature}
       ? `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint l'avoir ${args.numero} d'un montant de ${args.totalText}${args.echeanceText ? ` ${args.echeanceText}` : ""}.\n\n`
       : args.type === "facture"
       ? `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint la facture ${args.numero} d'un montant de ${args.totalText}${args.echeanceText ? `, à régler avant le ${args.echeanceText}` : ""}.\n\n`
+      : args.signeLe
+      ? `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint votre exemplaire du devis ${args.numero} d'un montant de ${args.totalText}, signé « bon pour accord » le ${args.signeLe}. Merci pour votre confiance.\n\n`
       : `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint le devis ${args.numero} d'un montant de ${args.totalText}.\nMerci de me retourner ce devis signé pour validation.\n\n`;
 
   const text =
@@ -134,7 +141,7 @@ ${signature}
     (args.messagePerso?.trim() ? args.messagePerso + "\n\n" : "") +
     "Pour toute question, je reste à votre disposition.\n\n" +
     (args.expediteurNom ? `Cordialement,\n${args.expediteurNom}\n` : "") +
-    "\n— Envoyé via ${NOM_APPLICATION}";
+    `\n— Envoyé via ${NOM_APPLICATION}`;
 
   return { subject, html, text };
 }

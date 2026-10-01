@@ -41,6 +41,7 @@ export async function signerDevisAction(
   if (file.size > MAX_SIGNATURE_BYTES) {
     return { ok: false, error: "Signature trop volumineuse." };
   }
+  const signataireNom = String(formData.get("signataire_nom") ?? "").trim().slice(0, 120) || null;
 
   const { data: devis } = await supabase
     .from("devis")
@@ -75,6 +76,7 @@ export async function signerDevisAction(
     .from("devis")
     .update({
       signature_client_url: path,
+      signataire_nom: signataireNom,
       date_signature: today,
       statut: "accepte",
     })

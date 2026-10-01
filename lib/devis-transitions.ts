@@ -127,13 +127,9 @@ export function signatureDevisAutorisee(
   }
   if (ctx.convertie) return { ok: false, error: MOTIF_DEVIS_CONVERTI };
 
-  if (statutActuel === "brouillon") {
-    return {
-      ok: false,
-      error:
-        "Ce devis est encore en brouillon — marquez-le envoyé avant de le faire signer.",
-    };
-  }
+  // Un brouillon PEUT être signé : sur le chantier, le devis est
+  // rédigé sur le téléphone et signé dans la foulée — la signature vaut
+  // remise au client, et l'action fige les mentions émetteur.
   if (statutActuel === "refuse") {
     return {
       ok: false,
