@@ -92,6 +92,7 @@ export async function upsertProfil(
     mediateur_nom: v.mediateur_nom || null,
     mediateur_site_web: v.mediateur_site_web || null,
     mediateur_adresse: v.mediateur_adresse || null,
+    urssaf_periodicite: v.urssaf_periodicite,
     duree_validite_devis_jours: dureeValiditeSure(v.duree_validite_devis_jours),
     conditions_paiement_default: v.conditions_paiement_default || null,
     penalites_retard_text: v.penalites_retard_text || null,

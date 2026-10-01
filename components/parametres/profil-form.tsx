@@ -23,6 +23,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+import {
+  LABELS_PERIODICITE_URSSAF,
+  PERIODICITES_URSSAF,
+  periodiciteSure,
+} from "@/lib/declarations-urssaf";
 import type { Database } from "@/types/database";
 
 type Profil = Database["public"]["Tables"]["profil_entreprise"]["Row"];
@@ -72,6 +77,7 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
       mediateur_nom: profil?.mediateur_nom ?? "",
       mediateur_site_web: profil?.mediateur_site_web ?? "",
       mediateur_adresse: profil?.mediateur_adresse ?? "",
+      urssaf_periodicite: periodiciteSure(profil?.urssaf_periodicite),
       duree_validite_devis_jours: String(profil?.duree_validite_devis_jours ?? 30),
       conditions_paiement_default: profil?.conditions_paiement_default ?? "",
       penalites_retard_text: profil?.penalites_retard_text ?? "",
@@ -450,6 +456,37 @@ export function ProfilForm({ profil }: { profil: Profil | null }) {
               rows={2}
               {...register("mediateur_adresse")}
             />
+          </Field>
+        </CardContent>
+      </Card>
+
+      {/* Déclarations URSSAF */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Déclaration de chiffre d&apos;affaires (URSSAF)</CardTitle>
+          <CardDescription>
+            Le tableau de bord vous rappelle la déclaration à faire, avec le
+            montant encaissé et la date limite (fin du mois qui suit la période).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <Field
+            label="Périodicité choisie auprès de l'URSSAF"
+            id="urssaf_periodicite"
+            error={errors.urssaf_periodicite?.message}
+            help="Celle de votre option de versement libératoire / déclaration (mensuelle ou trimestrielle)."
+          >
+            <select
+              id="urssaf_periodicite"
+              className="flex h-11 w-full max-w-xs rounded-md border border-input bg-background px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-10 sm:text-sm"
+              {...register("urssaf_periodicite")}
+            >
+              {PERIODICITES_URSSAF.map((p) => (
+                <option key={p} value={p}>
+                  {LABELS_PERIODICITE_URSSAF[p]}
+                </option>
+              ))}
+            </select>
           </Field>
         </CardContent>
       </Card>
