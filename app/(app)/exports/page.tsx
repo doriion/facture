@@ -1,5 +1,7 @@
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
 import { getDeclaration } from "@/lib/actions/declarations";
+import { getFacturesARapprocher } from "@/lib/actions/rapprochement";
+import { RapprochementBancaire } from "@/components/exports/rapprochement-bancaire";
 import { getExportPeriodes } from "@/lib/exports/urssaf-helpers";
 import { DeclarationUrssafCard } from "@/components/exports/declaration-urssaf-card";
 import { ExportUrssafTable } from "@/components/exports/export-urssaf-table";
@@ -41,9 +43,10 @@ export default async function ExportsPage(
     return defaultPeriode;
   })();
 
-  const [summary, declaration] = await Promise.all([
+  const [summary, declaration, facturesARapprocher] = await Promise.all([
     buildExportUrssaf(selected.start, selected.end),
     getDeclaration(selected.start, selected.end),
+    getFacturesARapprocher(),
   ]);
 
   return (
@@ -76,6 +79,21 @@ export default async function ExportsPage(
             ventilation={summary.ventilation}
             declaration={declaration}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Rapprochement bancaire</CardTitle>
+          <CardDescription>
+            Importez le relevé CSV de votre banque : les virements reçus sont
+            rattachés aux factures impayées (numéro, nom du client, montant),
+            vous vérifiez, puis les paiements sont enregistrés d&apos;un coup. Le
+            fichier reste dans votre navigateur.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RapprochementBancaire factures={facturesARapprocher} />
         </CardContent>
       </Card>
 
