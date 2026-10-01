@@ -25,6 +25,7 @@ import {
   updateInterventionAction,
 } from "@/lib/actions/interventions";
 import { ClientPicker } from "@/components/clients/client-picker";
+import { LirePlaqueButton, type ChampsPlaque } from "@/components/interventions/lire-plaque-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -165,6 +166,18 @@ export function InterventionForm({
       annule = true;
     };
   }, [clientId]);
+
+  /** Plaque lue par OCR : remplit marque / modèle / série (et le fluide si vide). */
+  function appliquerPlaque(c: ChampsPlaque) {
+    if (c.marque) setValue("equipement_marque", c.marque, { shouldDirty: true });
+    if (c.modele) setValue("equipement_modele", c.modele, { shouldDirty: true });
+    if (c.numSerie) setValue("equipement_num_serie", c.numSerie, { shouldDirty: true });
+    if (c.fluide && !watch("fluide_frigo_type")) setValue("fluide_frigo_type", c.fluide, { shouldDirty: true });
+    if (c.chargeKg && !watch("fluide_charge_totale_kg")) {
+      setValue("fluide_charge_totale_kg", c.chargeKg as never, { shouldDirty: true });
+    }
+    toast.success("Plaque appliquée", { description: [c.marque, c.modele, c.numSerie].filter(Boolean).join(" · ") || "Rien de lisible" });
+  }
 
   function reprendreEquipement(e: EquipementClient) {
     setValue("equipement_marque", e.marque ?? "", { shouldDirty: true });
@@ -425,6 +438,10 @@ export function InterventionForm({
               </div>
             </div>
           )}
+          <div className="md:col-span-2">
+            {/* Photo de la plaque signalétique → marque, modèle, n° de série. */}
+            <LirePlaqueButton onAppliquer={appliquerPlaque} />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="marque">Marque</Label>
             <Input
