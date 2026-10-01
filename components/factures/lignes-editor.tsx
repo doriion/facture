@@ -448,7 +448,7 @@ export function LignesEditor<T extends FieldValues>({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-xs text-muted-foreground"
+                        className="h-11 px-3 text-xs text-muted-foreground sm:h-7 sm:px-2"
                         disabled={ajoutEnCours === index}
                         onClick={() => ajouterAuCatalogue(index)}
                         title="Enregistrer cette prestation dans votre catalogue"

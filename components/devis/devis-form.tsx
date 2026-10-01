@@ -282,7 +282,8 @@ export function DevisForm({
         if (result.ok) {
           brouillon.effacer();
           toast.success(`Devis ${result.data.numero} créé`);
-          router.push(`/devis/${result.data.id}`);
+          // replace : « Retour » ramène à l'écran d'origine, pas au formulaire vierge.
+          router.replace(`/devis/${result.data.id}`);
         } else {
           toast.error("Erreur", { description: result.error });
         }

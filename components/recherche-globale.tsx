@@ -123,7 +123,7 @@ export function RechercheGlobale() {
         variant="outline"
         size="sm"
         onClick={() => setOpen(true)}
-        className="gap-2 text-muted-foreground max-sm:h-10 max-sm:w-10 max-sm:px-0"
+        className="gap-2 text-muted-foreground max-sm:h-11 max-sm:w-11 max-sm:px-0"
         aria-label="Rechercher (Ctrl K)"
         title="Rechercher — Ctrl K"
       >

@@ -232,7 +232,7 @@ export function FacturePaiements({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                      className="size-11 shrink-0 text-muted-foreground hover:text-destructive sm:size-7"
                       disabled={pending}
                       title="Supprimer ce paiement"
                     >

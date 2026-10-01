@@ -205,7 +205,7 @@ export function TacheItem({
         type="button"
         aria-label="Modifier la tâche"
         onClick={() => setEditOuvert(true)}
-        className="mt-1 rounded p-2 text-muted-foreground/50 transition-colors hover:text-foreground"
+        className="mt-1 inline-flex size-11 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:text-foreground"
       >
         <Pencil className="size-4" />
       </button>
@@ -215,7 +215,7 @@ export function TacheItem({
           <button
             type="button"
             aria-label="Supprimer la tâche"
-            className="mt-1 -ml-1 rounded p-2 text-muted-foreground/50 transition-colors hover:text-destructive"
+            className="mt-1 inline-flex size-11 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:text-destructive"
           >
             <Trash2 className="size-4" />
           </button>

@@ -63,13 +63,3 @@ export function getFrenchHolidays(year: number): Record<string, string> {
   };
   return result;
 }
-
-/**
- * Renvoie le nom du jour férié pour une date donnée, ou null.
- */
-export function getHolidayName(date: string): string | null {
-  const year = parseInt(date.slice(0, 4), 10);
-  if (Number.isNaN(year)) return null;
-  const map = getFrenchHolidays(year);
-  return map[date] ?? null;
-}

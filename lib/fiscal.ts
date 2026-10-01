@@ -1,3 +1,5 @@
+import { round2 } from "@/lib/format";
+
 /**
  * Nature fiscale URSSAF des recettes et ventilation des encaissements
  * dans les 3 cases du formulaire de déclaration micro-entrepreneur
@@ -45,10 +47,6 @@ export const VENTILATION_VIDE: Ventilation = {
   bic_ventes: 0,
   bnc: 0,
 };
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 /**
  * Répartit un montant ENCAISSÉ dans les 3 cases URSSAF au prorata des

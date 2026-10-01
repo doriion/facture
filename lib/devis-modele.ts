@@ -8,7 +8,7 @@
  * un devis déjà émis se réimprime donc à l'identique, indéfiniment.
  */
 
-import { formatEuros, formatSiret } from "@/lib/format";
+import { formatEuros, formatSiret, round2 } from "@/lib/format";
 import {
   MENTION_AUTO_ENTREPRENEUR,
   mentionDecennale,
@@ -208,7 +208,6 @@ export function ligneAcompte(
   const total = Number(totalHt);
   if (!Number.isFinite(total) || total <= 0) return null;
 
-  const round2 = (n: number) => Math.round(n * 100) / 100;
   let montant: number | null = null;
   let pct: number | null = null;
 

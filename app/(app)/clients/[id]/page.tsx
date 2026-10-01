@@ -8,6 +8,7 @@ import {
   FileText,
   Mail,
   MapPin,
+  MessageSquare,
   Phone,
   ScrollText,
   Wrench,
@@ -24,7 +25,7 @@ import { StatutBadge } from "@/components/factures/statut-badge";
 import { StatutBadgeDevis } from "@/components/devis/statut-badge";
 import { Button } from "@/components/ui/button";
 import { ActionsFiche } from "@/components/actions-fiche";
-import { adresseClient, lienAppel, lienItineraire } from "@/lib/agenda-contact";
+import { adresseClient, lienAppel, lienItineraire, lienSms } from "@/lib/agenda-contact";
 import { equipementsDepuisInterventions } from "@/lib/equipements-client";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
 import {
@@ -128,12 +129,20 @@ export default async function ClientDetailPage({
       {(client.telephone || adresseClient(client)) && (
         <div className="flex gap-2 md:hidden">
           {client.telephone && (
-            <Button asChild variant="outline" size="lg" className="flex-1">
-              <a href={lienAppel(client.telephone)}>
-                <Phone className="size-4" />
-                Appeler
-              </a>
-            </Button>
+            <>
+              <Button asChild variant="outline" size="lg" className="flex-1">
+                <a href={lienAppel(client.telephone)}>
+                  <Phone className="size-4" />
+                  Appeler
+                </a>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="flex-1">
+                <a href={lienSms(client.telephone)}>
+                  <MessageSquare className="size-4" />
+                  SMS
+                </a>
+              </Button>
+            </>
           )}
           {adresseClient(client) && (
             <Button asChild variant="outline" size="lg" className="flex-1">

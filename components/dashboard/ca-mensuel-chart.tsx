@@ -85,7 +85,7 @@ export function CaMensuelChart({ data }: { data: Bucket[] }) {
                 width={40}
               />
               <Tooltip
-                cursor={{ fill: "rgba(42, 125, 91, 0.06)" }}
+                cursor={{ fill: "hsl(var(--primary) / 0.08)" }}
                 formatter={(value, name) => [
                   formatEuros(Number(value ?? 0)),
                   String(name),
@@ -93,8 +93,12 @@ export function CaMensuelChart({ data }: { data: Bucket[] }) {
                 contentStyle={{
                   borderRadius: 8,
                   border: "1px solid hsl(var(--border))",
+                  backgroundColor: "hsl(var(--popover))",
+                  color: "hsl(var(--popover-foreground))",
                   fontSize: 12,
                 }}
+                labelStyle={{ color: "hsl(var(--popover-foreground))", fontWeight: 600 }}
+                itemStyle={{ color: "hsl(var(--popover-foreground))" }}
               />
               <Legend
                 wrapperStyle={{ fontSize: 11, paddingTop: 8 }}

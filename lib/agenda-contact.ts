@@ -58,9 +58,18 @@ export function lienAppel(tel: string): string {
   return `tel:${telephoneNormalise(tel)}`;
 }
 
-/** Ouvre Plans / Google Maps / Waze selon le réglage du téléphone. */
+/** Ouvre Messages avec le numéro du client (prévenir d'un retard, confirmer). */
+export function lienSms(tel: string): string {
+  return `sms:${telephoneNormalise(tel)}`;
+}
+
+/**
+ * Itinéraire vers l'adresse : sur iPhone, Plans s'ouvre directement
+ * (guidage en un geste) ; ailleurs, maps.apple.com affiche une carte web.
+ * L'ancien lien Google Maps ouvrait une page web dans Safari.
+ */
 export function lienItineraire(adresse: string): string {
-  return `https://maps.google.com/?q=${encodeURIComponent(adresse.trim())}`;
+  return `https://maps.apple.com/?daddr=${encodeURIComponent(adresse.trim())}`;
 }
 
 const VOIES =

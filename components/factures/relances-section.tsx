@@ -115,13 +115,17 @@ export function RelancesSection({
               type="button"
               variant="outline"
               size="sm"
-              disabled={sendingId === f.id || !f.client_email}
-              title={
+              disabled={sendingId === f.id}
+              aria-disabled={!f.client_email || undefined}
+              className={f.client_email ? undefined : "opacity-70"}
+              title={f.client_email ? `Envoyer une relance à ${f.client_email}` : undefined}
+              onClick={() =>
                 f.client_email
-                  ? `Envoyer une relance à ${f.client_email}`
-                  : "Le client n'a pas d'adresse email — renseignez-la sur sa fiche."
+                  ? setConfirmFacture(f)
+                  : toast.info("Pas d'e-mail pour ce client", {
+                      description: "Renseignez-le sur la fiche client pour envoyer la relance.",
+                    })
               }
-              onClick={() => setConfirmFacture(f)}
             >
               {sendingId === f.id ? (
                 <Loader2 className="size-3.5 animate-spin" />

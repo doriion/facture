@@ -192,34 +192,3 @@ export async function deleteInterventionPhotoAction(
   revalidatePath(`/interventions/${photo.intervention_id}`);
   return { ok: true, data: undefined };
 }
-
-/**
- * Met à jour légende ou moment d'une photo.
- */
-export async function updateInterventionPhotoAction(
-  photoId: string,
-  patch: { legende?: string; moment?: string },
-): Promise<ActionResult> {
-  const supabase = createClient();
-  const update: { legende?: string | null; moment?: string } = {};
-  if (patch.legende !== undefined) {
-    update.legende = patch.legende.trim() || null;
-  }
-  if (patch.moment !== undefined) {
-    if (!["avant", "pendant", "apres", "autre"].includes(patch.moment)) {
-      return { ok: false, error: "Moment invalide." };
-    }
-    update.moment = patch.moment;
-  }
-  const { data: photo, error } = await supabase
-    .from("intervention_photos")
-    .update(update)
-    .eq("id", photoId)
-    .select("intervention_id")
-    .single();
-  if (error || !photo) {
-    return { ok: false, error: error?.message ?? "Erreur." };
-  }
-  revalidatePath(`/interventions/${photo.intervention_id}`);
-  return { ok: true, data: undefined };
-}

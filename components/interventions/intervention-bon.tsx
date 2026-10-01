@@ -133,10 +133,16 @@ export function InterventionBon({
             Générer le PDF
           </Button>
           <Button
-            onClick={() => setEnvoiOpen(true)}
-            disabled={pending !== null || !clientEmail}
-            title={!clientEmail ? "Renseignez l'email du client sur sa fiche" : undefined}
-            className="max-sm:w-full"
+            onClick={() =>
+              clientEmail
+                ? setEnvoiOpen(true)
+                : toast.info("Pas d'e-mail pour ce client", {
+                    description: "Renseignez-le sur la fiche client pour envoyer le bon.",
+                  })
+            }
+            disabled={pending !== null}
+            aria-disabled={!clientEmail || undefined}
+            className={!clientEmail ? "opacity-70 max-sm:w-full" : "max-sm:w-full"}
           >
             <Mail className="size-4" />
             Envoyer au client

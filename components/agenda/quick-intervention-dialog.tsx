@@ -425,7 +425,7 @@ export function QuickInterventionDialog({
     }
   }
 
-  const formattedDate = formatDateFr(currentStart || date);
+  const formattedDate = formatDateLongueFr(currentStart || date);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -875,7 +875,8 @@ function makeDefaultsFromIntervention(
   };
 }
 
-function formatDateFr(ymd: string): string {
+/** « lundi 5 mai 2026 » (lib/format.formatDateFr donne la forme courte 05/05/2026). */
+function formatDateLongueFr(ymd: string): string {
   const [y, m, d] = ymd.split("-").map(Number);
   if (!y || !m || !d) return ymd;
   return new Date(y, m - 1, d).toLocaleDateString("fr-FR", {

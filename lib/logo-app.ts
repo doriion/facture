@@ -30,8 +30,3 @@ export async function logoApplication(): Promise<string | null> {
   }
   return cache;
 }
-
-/** Réinitialise le cache — utile aux tests uniquement. */
-export function oublierLogoApplication(): void {
-  cache = undefined;
-}

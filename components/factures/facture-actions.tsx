@@ -25,6 +25,7 @@ import {
 import { formatEuros } from "@/lib/format";
 import { MarquerPayeeButton } from "@/components/factures/marquer-payee-button";
 import { Button } from "@/components/ui/button";
+import { PartagerPdfButton } from "@/components/partager-pdf-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -219,6 +220,13 @@ export function FactureActions({
             Télécharger PDF
           </a>
         </Button>
+      )}
+      {!pdfBloqueMotif && (
+        <PartagerPdfButton
+          url={`/api/factures/${factureId}/pdf`}
+          nomFichier={`${numero}.pdf`}
+          titre={`${avoir ? "Avoir" : "Facture"} ${numero}`}
+        />
       )}
 
       {/* Une facture ventilée en acomptes/solde ne s'envoie pas : ce

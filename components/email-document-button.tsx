@@ -70,11 +70,18 @@ export function EmailDocumentButton({
     <>
       <Button
         variant={variant}
-        onClick={() => setOpen(true)}
-        disabled={disabled || !destinataireEmail}
-        title={
-          !destinataireEmail ? "Renseignez l'email du client" : undefined
+        // Sans e-mail : le bouton reste actif et EXPLIQUE (un bouton grisé
+        // avec une infobulle ne dit rien au doigt).
+        onClick={() =>
+          destinataireEmail
+            ? setOpen(true)
+            : toast.info("Pas d'e-mail pour ce client", {
+                description: "Renseignez-le sur la fiche client, ou utilisez « Partager… ».",
+              })
         }
+        disabled={disabled}
+        aria-disabled={!destinataireEmail || undefined}
+        className={!destinataireEmail ? "opacity-70" : undefined}
       >
         <Mail className="size-4" />
         Envoyer par email

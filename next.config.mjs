@@ -1,4 +1,4 @@
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 /**
  * Hôte Supabase du projet, pour n'autoriser l'optimiseur d'images que
@@ -48,6 +48,17 @@ const nextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: ENTETES_SECURITE }];
   },
+  webpack(config) {
+    // Avertissement « Critical dependency » de require-in-the-middle
+    // (OpenTelemetry, chargé par @sentry/nextjs côté serveur) : sans
+    // effet, et withSentryConfig le masquait déjà quand il enveloppait
+    // la config. Même silence sans DSN.
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      { module: /require-in-the-middle/ },
+    ];
+    return config;
+  },
 };
 
 // withSentryConfig injecte sentry.client.config.ts côté navigateur : le
@@ -64,6 +75,6 @@ export default sentryNavigateur
       silent: true,
       sourcemaps: { disable: true },
       telemetry: false,
-      disableLogger: true,
+      webpack: { treeshake: { removeDebugLogging: true } },
     })
   : nextConfig;

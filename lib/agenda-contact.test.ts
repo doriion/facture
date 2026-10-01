@@ -7,6 +7,7 @@ import {
   extraireTelephone,
   lienAppel,
   lienItineraire,
+  lienSms,
   telephoneNormalise,
 } from "./agenda-contact";
 
@@ -52,10 +53,14 @@ describe("extraireAdresse", () => {
     expect(extraireAdresse(undefined)).toBeNull();
   });
 
-  it("lien d'itinéraire encodé", () => {
+  it("lien d'itinéraire encodé (Plans sur iPhone)", () => {
     expect(lienItineraire("1 Av. du Centenaire, Valgelon-La Rochette")).toBe(
-      "https://maps.google.com/?q=1%20Av.%20du%20Centenaire%2C%20Valgelon-La%20Rochette",
+      "https://maps.apple.com/?daddr=1%20Av.%20du%20Centenaire%2C%20Valgelon-La%20Rochette",
     );
+  });
+
+  it("lien SMS normalisé", () => {
+    expect(lienSms("06 12 34 56 78")).toBe("sms:+33612345678");
   });
 });
 
