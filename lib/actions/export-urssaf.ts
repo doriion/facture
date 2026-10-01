@@ -27,7 +27,7 @@ export async function buildExportUrssaf(
   start: string,
   end: string,
 ): Promise<ExportSummary> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Garde d'auth explicite : la RLS protège déjà les données (requêtes
   // vides si non connecté), mais on court-circuite proprement plutôt
@@ -100,7 +100,7 @@ export async function totauxEncaissesUrssaf(
   periodes: Array<{ start: string; end: string }>,
 ): Promise<number[]> {
   if (periodes.length === 0) return [];
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -11,6 +11,7 @@ import {
   type InterventionPhoto,
 } from "@/lib/actions/intervention-photos";
 import { compressImage } from "@/lib/image-compress";
+import { TAILLE_VIGNETTE } from "@/lib/photos-vignettes";
 import { appelerOuMettreEnAttente } from "@/lib/appel-action";
 import { genererId } from "@/lib/file-attente-helpers";
 import {
@@ -89,16 +90,20 @@ export function InterventionPhotos({
         // Compression côté client (max ~1600 px, JPEG) : une photo de
         // téléphone passe de plusieurs Mo à quelques centaines de Ko.
         const compressed = await compressImage(file);
+        // Vignette pour la grille (l'originale ne se charge qu'en plein écran).
+        const vignette = await compressImage(compressed, TAILLE_VIGNETTE);
+        const avecVignette = vignette.size < compressed.size ? vignette : null;
         const photoId = genererId();
         const fd = new FormData();
         fd.append("id", photoId);
         fd.append("file", compressed);
+        if (avecVignette) fd.append("vignette", avecVignette);
         fd.append("moment", moment);
         fd.append("legende", legende);
         // Sans réseau : la photo (déjà compressée) attend sur le
         // téléphone et part au retour du réseau.
         const res = await appelerOuMettreEnAttente(
-          { id: photoId, type: "photo_intervention", payload: { interventionId, file: compressed, moment, legende } },
+          { id: photoId, type: "photo_intervention", payload: { interventionId, file: compressed, vignette: avecVignette, moment, legende } },
           () => uploadInterventionPhotoAction(interventionId, fd),
         );
         if (res.ok && "enAttente" in res) enAttente++;
@@ -260,7 +265,7 @@ export function InterventionPhotos({
                 {photo.url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={photo.url}
+                    src={photo.urlMin ?? photo.url}
                     alt={photo.legende ?? "Photo intervention"}
                     className="size-full cursor-pointer object-cover transition-opacity hover:opacity-90"
                     loading="lazy"

@@ -14,7 +14,7 @@ import type { FactureARapprocher } from "@/lib/releve-bancaire";
  * leurs enfants qui s'encaissent).
  */
 export async function getFacturesARapprocher(): Promise<FactureARapprocher[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -40,7 +40,7 @@ export async function getFactureCoveredEvents(factureId: string): Promise<{
   interventionIds: string[];
   externalUids: string[];
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const [interventionsRes, externalsRes] = await Promise.all([
     supabase
       .from("interventions")
@@ -73,7 +73,7 @@ export async function setFactureCoveredEventsAction(
     externalEvents: ExternalEventLink[];
   },
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -206,7 +206,7 @@ export async function getAvailableEventsForFacture(args: {
     already_linked_here: boolean;
   }>;
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

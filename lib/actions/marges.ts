@@ -23,7 +23,7 @@ export type MargesAnnee = {
  * chiffres ne figurent sur aucun document client ni lien public.
  */
 export async function getMargesAnnee(annee?: number): Promise<MargesAnnee> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const an = annee ?? Number(aujourdhuiParis().slice(0, 4));
   const { data } = await supabase
     .from("factures_lignes")

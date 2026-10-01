@@ -22,7 +22,7 @@ export type FactureOuverte = {
  * brouillons et les factures envoyées, les plus récentes d'abord.
  */
 export async function listFacturesOuvertesAction(): Promise<FactureOuverte[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("factures")
     .select("id, numero, statut, date_emission, client:clients(nom)")
@@ -58,7 +58,7 @@ export async function rattacherRdvAFactureAction(
   factureId: string,
   evenement: { uid: string; title: string; date_start: string; date_end?: string },
 ): Promise<ActionResult<{ numero: string }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

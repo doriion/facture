@@ -16,7 +16,7 @@
 
 import type { createClient } from "@/lib/supabase/server";
 
-type Supabase = ReturnType<typeof createClient>;
+type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 export type LignePayload = {
   ordre: number;

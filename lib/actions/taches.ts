@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { cheminVignette, urlsPhotos } from "@/lib/photos-vignettes";
 import { formatDateFr } from "@/lib/format";
 import { aujourdhuiParis, classerTaches } from "@/lib/taches-logic";
 import { tacheSchema, type TacheFormInput } from "@/lib/validations/tache";
@@ -15,6 +16,8 @@ export type TachePhoto = {
   id: string;
   storage_path: string;
   url: string; // URL signée 1 h
+  /** Vignette (≈ 400 px) signée, null pour les photos d'avant les vignettes. */
+  urlMin: string | null;
 };
 
 export type LienTache = {
@@ -96,7 +99,7 @@ function construireLien(t: LigneJointe): LienTache | null {
  * le libellé du document lié et les photos (URLs signées en un lot).
  */
 export async function getTaches(): Promise<TacheAvecDetails[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("taches")
     .select(
@@ -117,15 +120,13 @@ export async function getTaches(): Promise<TacheAvecDetails[]> {
     )
     .order("ordre", { ascending: true });
 
-  const urlByPath = new Map<string, string>();
   const paths = (photos ?? []).map((p) => p.storage_path);
+  let urls = new Map<string, { url: string; urlMin: string | null }>();
   if (paths.length > 0) {
     const { data: signed } = await supabase.storage
       .from("taches-photos")
-      .createSignedUrls(paths, 3600);
-    for (const s of signed ?? []) {
-      if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
-    }
+      .createSignedUrls([...paths, ...paths.map(cheminVignette)], 3600);
+    urls = urlsPhotos(paths, signed ?? []);
   }
 
   const photosParTache = new Map<string, TachePhoto[]>();
@@ -134,7 +135,8 @@ export async function getTaches(): Promise<TacheAvecDetails[]> {
     liste.push({
       id: p.id,
       storage_path: p.storage_path,
-      url: urlByPath.get(p.storage_path) ?? "",
+      url: urls.get(p.storage_path)?.url ?? "",
+      urlMin: urls.get(p.storage_path)?.urlMin ?? null,
     });
     photosParTache.set(p.tache_id, liste);
   }
@@ -160,7 +162,7 @@ export async function getTaches(): Promise<TacheAvecDetails[]> {
  * requête count head — appelée par le layout à chaque navigation.
  */
 export async function getCompteurBadgeTaches(): Promise<number> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { count } = await supabase
     .from("taches")
     .select("id", { count: "exact", head: true })
@@ -184,7 +186,7 @@ export type TacheDuJour = {
  * aujourd'hui » du dashboard (léger : pas de photos ni de liens).
  */
 export async function getTachesDuJour(): Promise<TacheDuJour[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("taches")
     .select("id, titre, date_echeance, heure, priorite, fait, fait_le")
@@ -227,7 +229,7 @@ export async function createTacheAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -284,7 +286,7 @@ export async function updateTacheAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("taches")
     .update({
@@ -309,7 +311,7 @@ export async function setTacheFaitAction(
   id: string,
   fait: boolean,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("taches")
     .update({
@@ -327,7 +329,7 @@ export async function setTacheFaitAction(
 
 /** Supprime une tâche et ses photos (storage + base, cascade). */
 export async function deleteTacheAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: photos } = await supabase
     .from("taches_photos")
@@ -336,7 +338,7 @@ export async function deleteTacheAction(id: string): Promise<ActionResult> {
   if (photos && photos.length > 0) {
     await supabase.storage
       .from("taches-photos")
-      .remove(photos.map((p) => p.storage_path));
+      .remove(photos.flatMap((p) => [p.storage_path, cheminVignette(p.storage_path)]));
   }
 
   const { error } = await supabase.from("taches").delete().eq("id", id);
@@ -365,6 +367,7 @@ export async function uploadTachePhotoAction(
   formData: FormData,
 ): Promise<ActionResult<{ id: string }>> {
   const file = formData.get("file");
+  const vignette = formData.get("vignette");
   const idClient = idPhotoClient(formData.get("id"));
   if (!(file instanceof File)) {
     return { ok: false, error: "Aucun fichier fourni." };
@@ -377,7 +380,7 @@ export async function uploadTachePhotoAction(
     return { ok: false, error: "Format non supporté (JPG, PNG, WebP, HEIC)." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -417,6 +420,11 @@ export async function uploadTachePhotoAction(
     .from("taches-photos")
     .upload(path, file, { contentType: file.type, upsert: false });
   if (uploadErr) return { ok: false, error: uploadErr.message };
+  if (vignette instanceof File && vignette.size > 0 && vignette.size <= 2 * 1024 * 1024) {
+    await supabase.storage
+      .from("taches-photos")
+      .upload(cheminVignette(path), vignette, { contentType: "image/jpeg", upsert: true });
+  }
 
   const { data, error: dbErr } = await supabase
     .from("taches_photos")
@@ -447,7 +455,7 @@ function idPhotoClient(v: FormDataEntryValue | null): string | null {
 export async function deleteTachePhotoAction(
   photoId: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: photo } = await supabase
     .from("taches_photos")
     .select("storage_path")
@@ -455,7 +463,7 @@ export async function deleteTachePhotoAction(
     .maybeSingle();
   if (!photo) return { ok: false, error: "Photo introuvable." };
 
-  await supabase.storage.from("taches-photos").remove([photo.storage_path]);
+  await supabase.storage.from("taches-photos").remove([photo.storage_path, cheminVignette(photo.storage_path)]);
 
   const { error } = await supabase
     .from("taches_photos")

@@ -31,7 +31,7 @@ export async function signInAction(
   password: string,
   next?: string,
 ): Promise<SignInResult | void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
@@ -55,7 +55,7 @@ export async function signInAction(
  * Déconnexion via Server Action — efface les cookies côté serveur.
  */
 export async function signOutAction() {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/login");

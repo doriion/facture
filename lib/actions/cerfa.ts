@@ -65,7 +65,7 @@ function sanitizeOptions(raw: CerfaOptions): CerfaOptions {
  * embarquée dans le PDF (même approche que le logo des factures).
  */
 async function loadSignature(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   interventionId: string,
   role: "operateur" | "detenteur",
 ): Promise<CerfaSignature> {
@@ -110,7 +110,7 @@ export async function genererCerfaAction(
   interventionId: string,
   rawOptions: CerfaOptions,
 ): Promise<ActionResult<{ id: string; url: string }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -196,7 +196,7 @@ export async function genererCerfaAction(
 export async function listCerfaDocuments(
   interventionId: string,
 ): Promise<CerfaDocument[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("intervention_cerfa")
     .select("id, intervention_id, storage_path, created_at")
@@ -226,7 +226,7 @@ export async function listCerfaDocuments(
  * immuables — seul le PDF régénérable est géré ici.
  */
 export async function deleteCerfaAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: doc } = await supabase
     .from("intervention_cerfa")
     .select("storage_path, intervention_id")

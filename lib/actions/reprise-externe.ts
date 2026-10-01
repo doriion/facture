@@ -23,7 +23,7 @@ type ActionResult<T = void> =
 export async function reprendreRdvIphoneAction(
   rdv: RdvExterne,
 ): Promise<ActionResult<{ intervention_id: string; deja: boolean }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

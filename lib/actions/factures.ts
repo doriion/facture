@@ -44,7 +44,7 @@ export async function listFactures(params?: {
   type?: string;
   client_id?: string;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("factures")
     .select("*, client:clients(id, nom, type)")
@@ -81,7 +81,7 @@ export async function listFactures(params?: {
  * le facturé ni dans l'impayé (ce sont leurs enfants qui comptent).
  */
 export async function idsParentsVentiles(): Promise<Set<string>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("factures")
     .select("facture_parent_id")
@@ -104,7 +104,7 @@ export async function getFacture(id: string): Promise<{
   client: Database["public"]["Tables"]["clients"]["Row"] | null;
   profil: Database["public"]["Tables"]["profil_entreprise"]["Row"] | null;
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -171,7 +171,7 @@ export async function createFactureAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -291,7 +291,7 @@ export async function updateFactureAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -382,7 +382,7 @@ export async function setFactureStatutAction(
   statut: "brouillon" | "envoyee" | "payee" | "annulee",
   motif?: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -505,7 +505,7 @@ async function gardeMontantAvoir(
   if (!avoir.facture_parent_id || !estModeAvoir(avoir.mode_avoir)) {
     return { ok: false, error: "Avoir incomplet : facture d'origine ou mode manquant." };
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   let resume;
   try {
     resume = await getFacturePaiements(avoir.facture_parent_id);
@@ -549,7 +549,7 @@ export async function createAvoirAction(
   if (!estModeAvoir(options.mode)) return { ok: false, error: "Mode d'avoir invalide." };
   const mode = options.mode;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -685,7 +685,7 @@ export async function createAcompteAction(
   parentId: string,
   options: { pourcentage?: number; montant?: number },
 ): Promise<ActionResult<{ factureId: string; numero: string }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -840,7 +840,7 @@ export async function createAcompteAction(
 export async function createSoldeAction(
   parentId: string,
 ): Promise<ActionResult<{ factureId: string; numero: string }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -958,7 +958,7 @@ export async function createSoldeAction(
  * Liste les factures enfants (acomptes + solde) d'une facture donnée.
  */
 export async function listFactureEnfants(parentId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("factures")
     .select("id, numero, type_facture, statut, total_ht, date_emission, pourcentage_acompte, mode_avoir")
@@ -968,7 +968,7 @@ export async function listFactureEnfants(parentId: string) {
 }
 
 export async function deleteFactureAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: existing } = await supabase
     .from("factures")
     .select("statut")
@@ -1006,7 +1006,7 @@ export async function resetNumerotationAction(
   type: "facture" | "devis",
   annee: number,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -1087,7 +1087,7 @@ export async function bulkSetTypeActiviteAction(
     return { ok: false, error: "Aucune recatégorisation à appliquer." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   for (const u of valides) {
     const { error } = await supabase
       .from("factures")

@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  * Les factures annulées et les titres de section sont exclus.
  */
 export async function GET(req: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

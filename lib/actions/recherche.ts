@@ -28,7 +28,7 @@ export async function rechercheGlobaleAction(
   const requete = normaliserRequete(saisie);
   if (!requete) return { ok: true, data: { groupes: [] } };
   const s = motifIlike(requete);
-  const supabase = createClient();
+  const supabase = await createClient();
   const today = aujourdhuiParis();
 
   const [clients, factures, devis, interventions, contrats, entretiens, taches] =

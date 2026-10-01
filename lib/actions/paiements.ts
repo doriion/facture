@@ -31,7 +31,7 @@ type ActionResult<T = void> =
 export async function getFacturePaiements(
   factureId: string,
 ): Promise<FacturePaiementsSummary> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const [factureRes, paiementsRes, avoirsRes] = await Promise.all([
     supabase
       .from("factures")
@@ -108,7 +108,7 @@ export async function synchroniserStatutApresAvoir(factureId: string): Promise<v
   } catch {
     return;
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: facture } = await supabase
     .from("factures")
     .select("statut")
@@ -149,7 +149,7 @@ export async function addPaiementAction(
     return { ok: false, error: "Mode de paiement invalide." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -215,7 +215,7 @@ export async function addPaiementAction(
 export async function deletePaiementAction(
   paiementId: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: p } = await supabase
     .from("paiements")
     .select("facture_id")
@@ -275,7 +275,7 @@ export async function repasserEnvoyeeAction(
   factureId: string,
   supprimerPaiements: boolean,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -324,7 +324,7 @@ async function maybeMarkFacturePaid(factureId: string) {
     // sur une donnée manquante).
     return;
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: facture } = await supabase
     .from("factures")
     .select("statut")

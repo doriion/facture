@@ -32,7 +32,7 @@ export async function getDeclaration(
   start: string,
   end: string,
 ): Promise<DeclarationUrssaf | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("declarations_urssaf")
     .select("*")
@@ -67,7 +67,7 @@ export async function marquerDeclareeAction(input: {
   declare_le?: string;
   notes?: string;
 }): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -107,7 +107,7 @@ export async function marquerDeclareeAction(input: {
 export async function supprimerDeclarationAction(
   id: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("declarations_urssaf")
     .delete()
@@ -128,7 +128,7 @@ export type RappelDeclarationUrssaf = RappelDeclaration & {
  * déclarée, avec son montant et sa date limite. null sinon.
  */
 export async function getRappelDeclaration(): Promise<RappelDeclarationUrssaf | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

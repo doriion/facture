@@ -43,12 +43,14 @@ async function envoyer(e: EntreeFile): Promise<Resultat> {
       const fd = new FormData();
       fd.append("id", e.id);
       fd.append("file", p.file as File);
+      if (p.vignette instanceof File) fd.append("vignette", p.vignette);
       return uploadTachePhotoAction(String(p.tacheId), fd);
     }
     case "photo_intervention": {
       const fd = new FormData();
       fd.append("id", e.id);
       fd.append("file", p.file as File);
+      if (p.vignette instanceof File) fd.append("vignette", p.vignette);
       fd.append("moment", String(p.moment ?? "autre"));
       fd.append("legende", String(p.legende ?? ""));
       return uploadInterventionPhotoAction(String(p.interventionId), fd);

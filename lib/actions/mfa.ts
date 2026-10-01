@@ -29,7 +29,7 @@ export type EtatMfa = {
  * les tables de l'application.
  */
 export async function etatMfa(): Promise<EtatMfa> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const [{ data: facteurs }, { data: aal }] = await Promise.all([
     supabase.auth.mfa.listFactors(),
     supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
@@ -49,7 +49,7 @@ export async function etatMfa(): Promise<EtatMfa> {
 export async function demarrerEnrolementAction(): Promise<
   ActionResult<{ factorId: string; qrCodeSvg: string; secret: string; uri: string }>
 > {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -89,7 +89,7 @@ export async function confirmerEnrolementAction(
 ): Promise<ActionResult> {
   const code = normaliserCodeTotp(saisie);
   if (!code) return { ok: false, error: "Le code fait 6 chiffres." };
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
   if (error) {
     return {
@@ -108,7 +108,7 @@ export async function confirmerEnrolementAction(
 export async function desactiverMfaAction(saisie: string): Promise<ActionResult> {
   const code = normaliserCodeTotp(saisie);
   if (!code) return { ok: false, error: "Saisissez le code de votre application pour confirmer." };
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: facteurs } = await supabase.auth.mfa.listFactors();
   const actif = facteurTotpVerifie(facteurs?.totp ?? []);
   if (!actif) return { ok: false, error: "Aucune double authentification active." };
@@ -139,7 +139,7 @@ export async function verifierCodeConnexionAction(
 ): Promise<{ ok: false; error: string } | void> {
   const code = normaliserCodeTotp(saisie);
   if (!code) return { ok: false, error: "Le code fait 6 chiffres." };
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

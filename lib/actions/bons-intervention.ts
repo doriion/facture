@@ -28,7 +28,7 @@ export type BonIntervention = {
   url: string;
 };
 
-type Supabase = ReturnType<typeof createClient>;
+type Supabase = Awaited<ReturnType<typeof createClient>>;
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Intervention = Database["public"]["Tables"]["interventions"]["Row"];
 type Profil = Database["public"]["Tables"]["profil_entreprise"]["Row"];
@@ -178,7 +178,7 @@ export async function genererBonInterventionAction(
   interventionId: string,
   options: { envoyer: boolean; messagePerso?: string },
 ): Promise<ActionResult<{ id: string; url: string; envoyeA: string | null }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -315,7 +315,7 @@ function formatDateCourte(ymd: string): string {
 
 /** Bons archivés d'une intervention, avec URL signée (1 h). */
 export async function listBonsIntervention(interventionId: string): Promise<BonIntervention[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("intervention_bons")
     .select("id, intervention_id, storage_path, created_at, envoye_le, destinataire")
@@ -345,7 +345,7 @@ export async function listBonsIntervention(interventionId: string): Promise<BonI
 
 /** Supprime un bon archivé (storage + base). Un bon envoyé ne se supprime pas. */
 export async function deleteBonInterventionAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: doc } = await supabase
     .from("intervention_bons")
     .select("id, intervention_id, storage_path, envoye_le")

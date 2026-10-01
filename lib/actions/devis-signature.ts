@@ -28,7 +28,7 @@ export async function signerDevisAction(
   devisId: string,
   formData: FormData,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

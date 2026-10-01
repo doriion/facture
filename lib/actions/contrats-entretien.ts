@@ -48,7 +48,7 @@ export async function listContratsEntretien(params?: {
   search?: string;
   statut?: string;
 }): Promise<ContratEntretienListe[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("contrats")
     .select("*, client:clients(nom, email)")
@@ -76,7 +76,7 @@ export async function listContratsEntretien(params?: {
 export async function getContratEntretien(
   id: string,
 ): Promise<ContratEntretienListe | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("contrats")
     .select("*, client:clients(nom, email)")
@@ -97,7 +97,7 @@ export async function createContratEntretienAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -144,7 +144,7 @@ export async function updateContratEntretienAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: existant } = await supabase
     .from("contrats")
     .select("statut")
@@ -186,7 +186,7 @@ export async function updateContratEntretienAction(
 export async function deleteContratEntretienAction(
   id: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: existant } = await supabase
     .from("contrats")
     .select("statut")
@@ -230,7 +230,7 @@ export async function envoyerContratAction(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -377,7 +377,7 @@ export async function envoyerContratAction(
 export async function revoquerLienContratAction(
   id: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("contrats")
     .update({
@@ -408,7 +408,7 @@ export async function changerStatutContratAction(
   id: string,
   statut: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: existant } = await supabase
     .from("contrats")
     .select("statut")
@@ -450,7 +450,7 @@ export async function changerStatutContratAction(
 export async function regenererPdfContratAction(
   id: string,
 ): Promise<ActionResult<{ sha256: string }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -58,7 +58,7 @@ export async function uploadInterventionSignatureAction(
     return { ok: false, error: "Le nom du signataire est obligatoire." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -122,7 +122,7 @@ export async function listInterventionSignatures(
   operateur: InterventionSignature | null;
   detenteur: InterventionSignature | null;
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("intervention_signatures")
     .select("id, role, signataire_nom, signataire_qualite, storage_path, signe_le")

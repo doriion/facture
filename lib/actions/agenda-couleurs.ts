@@ -19,7 +19,7 @@ type ActionResult<T = void> =
  * Si la table n'existe pas encore (migration à appliquer) : vide.
  */
 export async function getCouleursEvenements(): Promise<CouleursEvenements> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("agenda_couleurs_evenements")
     .select("evenement_cle, couleur");
@@ -41,7 +41,7 @@ export async function setCouleursEvenementsAction(
   cles: string[],
   couleur: string | null,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -78,7 +78,7 @@ export async function setCouleurEvenementAction(
   cle: string,
   couleur: string | null,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

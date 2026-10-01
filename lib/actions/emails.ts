@@ -47,7 +47,7 @@ export async function envoyerFactureParEmailAction(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -211,7 +211,7 @@ export async function envoyerDevisParEmailAction(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -323,7 +323,7 @@ export async function envoyerRelanceFactureAction(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -432,7 +432,7 @@ export async function envoyerRelanceFactureAction(
 
 /** Devis d'origine d'une facture convertie (numéro + date), pour le PDF. */
 async function devisSourceDe(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   devisId: string | null,
 ): Promise<{ numero: string; date_emission: string | null } | null> {
   if (!devisId) return null;
