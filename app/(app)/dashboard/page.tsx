@@ -1,6 +1,10 @@
 import { getDashboardData } from "@/lib/actions/dashboard";
 import { getTachesDuJour } from "@/lib/actions/taches";
-import { TachesDuJourCard } from "@/components/dashboard/taches-du-jour-card";
+import { getFilDuJour } from "@/lib/actions/fil-du-jour";
+import { getFacturesEnRetard } from "@/lib/actions/relances";
+import { getRappelDeclaration } from "@/lib/actions/declarations";
+import { FilDuJourCard } from "@/components/dashboard/fil-du-jour-card";
+import { DeclarationRappelCard } from "@/components/dashboard/declaration-rappel-card";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { CotisationsCard } from "@/components/dashboard/cotisations-card";
 import { SeuilsMicroCard } from "@/components/dashboard/seuils-micro-card";
@@ -22,10 +26,13 @@ import {
 export const metadata = { title: "Tableau de bord — NG Gestion" };
 
 export default async function DashboardPage() {
-  const [data, tachesDuJour, journal] = await Promise.all([
+  const [data, tachesDuJour, journal, fil, enRetard, rappelDeclaration] = await Promise.all([
     getDashboardData(),
     getTachesDuJour(),
     getJournalTaches(),
+    getFilDuJour(),
+    getFacturesEnRetard(),
+    getRappelDeclaration(),
   ]);
 
   return (
@@ -37,7 +44,9 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <TachesDuJourCard taches={tachesDuJour} />
+      <FilDuJourCard fil={fil} taches={tachesDuJour} relances={enRetard.factures} />
+
+      <DeclarationRappelCard rappel={rappelDeclaration} />
 
       <AttestationsAlerte
         attestations={data.attestations}

@@ -1,3 +1,4 @@
+import { PERIODICITES_URSSAF } from "@/lib/declarations-urssaf";
 import { z } from "zod";
 
 import { REGEX } from "@/lib/format";
@@ -131,6 +132,7 @@ export const profilSchema = z.object({
 
   // Préférences
   // Saisi comme texte (formulaire tout-string) ; borné 1-365, vide = 30.
+  urssaf_periodicite: z.enum(PERIODICITES_URSSAF),
   duree_validite_devis_jours: z
     .string()
     .trim()

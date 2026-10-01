@@ -1564,6 +1564,7 @@ export type Database = {
           auto_chatel_active: boolean;
           automatisations_simulation: boolean;
           auto_email_taches_active: boolean;
+          urssaf_periodicite: string;
           auto_rappels_push_active: boolean;
           rappels_push_delai_minutes: number;
           duree_validite_devis_jours: number;
@@ -1619,6 +1620,7 @@ export type Database = {
           auto_chatel_active?: boolean;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
+          urssaf_periodicite?: string;
           auto_rappels_push_active?: boolean;
           rappels_push_delai_minutes?: number;
           duree_validite_devis_jours?: number;
@@ -1674,6 +1676,7 @@ export type Database = {
           auto_chatel_active?: boolean;
           automatisations_simulation?: boolean;
           auto_email_taches_active?: boolean;
+          urssaf_periodicite?: string;
           auto_rappels_push_active?: boolean;
           rappels_push_delai_minutes?: number;
           duree_validite_devis_jours?: number;
