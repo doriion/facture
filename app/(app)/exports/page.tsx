@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { buildExportUrssaf } from "@/lib/actions/export-urssaf";
 import { getDeclaration } from "@/lib/actions/declarations";
 import { getExportPeriodes } from "@/lib/exports/urssaf-helpers";
@@ -91,6 +92,12 @@ export default async function ExportsPage(
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
+          <Link
+            href="/marges"
+            className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Voir les marges par chantier et par mois
+          </Link>
           {[now.getFullYear(), now.getFullYear() - 1].map((annee) => (
             <a
               key={annee}

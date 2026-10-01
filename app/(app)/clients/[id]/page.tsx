@@ -26,7 +26,7 @@ import { StatutBadgeDevis } from "@/components/devis/statut-badge";
 import { Button } from "@/components/ui/button";
 import { ActionsFiche } from "@/components/actions-fiche";
 import { adresseClient, lienAppel, lienItineraire, lienSms } from "@/lib/agenda-contact";
-import { equipementsDepuisInterventions } from "@/lib/equipements-client";
+import { carnetEquipements } from "@/lib/equipements-client";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
 import {
   Card,
@@ -69,7 +69,7 @@ export default async function ClientDetailPage(
   if (!client) {
     notFound();
   }
-  const equipements = equipementsDepuisInterventions(interventions);
+  const equipements = carnetEquipements(interventions);
   const aujourdhui = aujourdhuiParis();
 
   return (
@@ -285,23 +285,60 @@ export default async function ClientDetailPage(
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Wrench className="size-5 text-primary" />
-                  Matériel chez ce client
+                  Carnet d&apos;entretien
                 </CardTitle>
-                <CardDescription>Déduit des interventions (marque, modèle, n° de série).</CardDescription>
+                <CardDescription>
+                  Un carnet par matériel (marque, modèle, n° de série), avec l&apos;historique des passages et des fluides.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="divide-y text-sm">
                   {equipements.map((e) => (
-                    <li key={e.cle} className="py-2">
-                      <p className="font-medium">
-                        {[e.marque, e.modele].filter(Boolean).join(" ") || "Matériel"}
-                        {e.fluide ? ` · ${e.fluide}` : ""}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {e.numSerie ? `N° de série ${e.numSerie} · ` : ""}
-                        {e.nbInterventions} intervention{e.nbInterventions > 1 ? "s" : ""}, dernière le{" "}
-                        {formatDateFr(e.derniereIntervention)}
-                      </p>
+                    <li key={e.cle} className="py-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">
+                            {[e.marque, e.modele].filter(Boolean).join(" ") || "Matériel"}
+                            {e.fluide ? ` · ${e.fluide}` : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {e.numSerie ? `N° de série ${e.numSerie} · ` : ""}
+                            {e.nbInterventions} passage{e.nbInterventions > 1 ? "s" : ""}
+                            {e.kgAjoute > 0 || e.kgRecupere > 0
+                              ? ` · fluide : ${e.kgAjoute} kg ajoutés, ${e.kgRecupere} kg récupérés`
+                              : ""}
+                          </p>
+                        </div>
+                        {/* Même client, même matériel, date à poser. */}
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/interventions/nouvelle?source=${e.interventions[0]!.id}`}>
+                            <CalendarPlus className="size-4" />
+                            Planifier
+                          </Link>
+                        </Button>
+                      </div>
+                      <ul className="mt-2 space-y-1 border-l-2 border-muted pl-3">
+                        {e.interventions.slice(0, 5).map((i) => (
+                          <li key={i.id} className="text-xs">
+                            <Link href={`/interventions/${i.id}`} className="hover:underline">
+                              <span className="font-medium text-foreground">{formatDateFr(i.date_intervention)}</span>
+                              <span className="text-muted-foreground">
+                                {" · "}
+                                {LABELS_TYPE_INTERVENTION[i.type as keyof typeof LABELS_TYPE_INTERVENTION] ?? i.type}
+                                {i.description ? ` — ${i.description}` : ""}
+                                {Number(i.fluide_frigo_kg_ajoute ?? 0) > 0 ? ` · +${i.fluide_frigo_kg_ajoute} kg` : ""}
+                                {Number(i.fluide_frigo_kg_recupere ?? 0) > 0 ? ` · −${i.fluide_frigo_kg_recupere} kg récupérés` : ""}
+                                {i.facture ? ` · ${i.facture.numero}` : ""}
+                              </span>
+                            </Link>
+                          </li>
+                        ))}
+                        {e.interventions.length > 5 && (
+                          <li className="text-xs text-muted-foreground">
+                            + {e.interventions.length - 5} passage{e.interventions.length - 5 > 1 ? "s" : ""} plus ancien{e.interventions.length - 5 > 1 ? "s" : ""}
+                          </li>
+                        )}
+                      </ul>
                     </li>
                   ))}
                 </ul>

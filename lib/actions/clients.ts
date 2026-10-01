@@ -62,6 +62,8 @@ export type InterventionClient = {
   equipement_modele: string | null;
   equipement_num_serie: string | null;
   fluide_frigo_type: string | null;
+  fluide_frigo_kg_ajoute: number | null;
+  fluide_frigo_kg_recupere: number | null;
   facture: { id: string; numero: string } | null;
 };
 
@@ -117,7 +119,7 @@ export async function getClient(id: string): Promise<{
     supabase
       .from("interventions")
       .select(
-        "id, date_intervention, date_fin, type, description, equipement_marque, equipement_modele, equipement_num_serie, fluide_frigo_type, facture:factures(id, numero)",
+        "id, date_intervention, date_fin, type, description, equipement_marque, equipement_modele, equipement_num_serie, fluide_frigo_type, fluide_frigo_kg_ajoute, fluide_frigo_kg_recupere, facture:factures(id, numero)",
       )
       .eq("client_id", id)
       .is("supprime_le", null)
