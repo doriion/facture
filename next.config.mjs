@@ -24,8 +24,10 @@ const ENTETES_SECURITE = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
+    // Micro autorisé pour la dictée des lignes de devis (Web Speech API),
+    // caméra pour les photos et la lecture de plaque.
     key: "Permissions-Policy",
-    value: "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
+    value: "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()",
   },
 ];
 
