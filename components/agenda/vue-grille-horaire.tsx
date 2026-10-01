@@ -327,7 +327,7 @@ export function VueGrilleHoraire({
             <button
               type="button"
               onClick={() => setDimanche((v) => !v)}
-              className="text-[10px] underline-offset-2 hover:underline"
+              className="flex min-h-11 w-full items-center justify-center text-[11px] underline-offset-2 hover:underline"
               title={dimanche ? "Masquer le dimanche" : "Afficher le dimanche"}
             >
               {dimanche ? "− dim." : "+ dim."}

@@ -2,9 +2,7 @@
 
 import {
   genererId,
-  resumerFile,
   type EntreeFile,
-  type ResumeFile,
   type TypeEntree,
 } from "@/lib/file-attente-helpers";
 
@@ -106,12 +104,4 @@ export async function supprimerDeFile(id: string): Promise<void> {
     db.close();
   }
   signaler();
-}
-
-export async function resumeFile(): Promise<ResumeFile> {
-  try {
-    return resumerFile(await listerFile());
-  } catch {
-    return { total: 0, enAttente: 0, enErreur: 0 };
-  }
 }

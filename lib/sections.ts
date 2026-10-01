@@ -1,3 +1,5 @@
+import { round2 } from "@/lib/format";
+
 /**
  * Sections et sous-totaux des lignes de devis/factures — helpers PURS.
  *
@@ -21,10 +23,6 @@ export type Section<L extends LigneSectionInput> = {
   lignes: L[];
   sousTotal: number;
 };
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 export function estTitre(l: { type?: string | null }): boolean {
   return l.type === "titre";

@@ -97,9 +97,9 @@ export default async function AgendaPage({
         <Link
           href="/parametres#calendar-sync"
           aria-label="Synchroniser avec mon téléphone"
-          className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-primary/40 bg-primary/5 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 sm:px-3"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-dashed border-primary/40 bg-primary/5 px-3 text-sm font-medium text-primary hover:bg-primary/10 sm:min-h-0 sm:py-1.5 sm:text-xs"
         >
-          <Smartphone className="size-3.5" />
+          <Smartphone className="size-4 sm:size-3.5" />
           <span className="hidden sm:inline">Synchroniser avec mon téléphone</span>
         </Link>
       </div>

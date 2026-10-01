@@ -73,8 +73,11 @@ export function RepartitionActiviteChart({
                     contentStyle={{
                       borderRadius: 8,
                       border: "1px solid hsl(var(--border))",
+                      backgroundColor: "hsl(var(--popover))",
+                      color: "hsl(var(--popover-foreground))",
                       fontSize: 12,
                     }}
+                    itemStyle={{ color: "hsl(var(--popover-foreground))" }}
                   />
                 </PieChart>
               </ResponsiveContainer>

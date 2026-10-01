@@ -2,11 +2,7 @@
  * Mentions calculées du devis — helpers PURS (testés).
  */
 
-import { formatEuros } from "@/lib/format";
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
+import { formatEuros, round2 } from "@/lib/format";
 
 // formatEuros remplace les espaces insécables par des espaces simples :
 // indispensable pour le PDF (Helvetica WinAnsi rend U+202F en « / »).

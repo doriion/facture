@@ -30,6 +30,7 @@ import {
 } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
 import { EmailDocumentButton } from "@/components/email-document-button";
+import { PartagerPdfButton } from "@/components/partager-pdf-button";
 import { NomModeleDialog } from "@/components/devis/nom-modele-dialog";
 import {
   AlertDialog,
@@ -103,6 +104,13 @@ export function DevisActions({
         Télécharger PDF
       </a>
     </Button>
+  );
+  const boutonPartager = pdfBloqueMotif ? null : (
+    <PartagerPdfButton
+      url={`/api/devis/${devisId}/pdf`}
+      nomFichier={`${numero}.pdf`}
+      titre={`Devis ${numero}`}
+    />
   );
 
   async function onRetirerDesModeles() {
@@ -186,6 +194,7 @@ export function DevisActions({
           messageSucces={(nom) => `Modèle renommé « ${nom} »`}
         />
         {boutonPdf}
+      {boutonPartager}
         <Button
           variant="outline"
           onClick={onRetirerDesModeles}
@@ -205,6 +214,7 @@ export function DevisActions({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {boutonPdf}
+      {boutonPartager}
 
       {statut !== "refuse" && (
         <EmailDocumentButton

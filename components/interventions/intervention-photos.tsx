@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Images, Loader2, ScanText, Trash2 } from "lucide-react";
+import { Camera, Images, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -164,7 +164,7 @@ export function InterventionPhotos({
               Moment
             </Label>
             <Select value={moment} onValueChange={setMoment}>
-              <SelectTrigger id="photo_moment" className="h-9">
+              <SelectTrigger id="photo_moment">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -185,7 +185,6 @@ export function InterventionPhotos({
               value={legende}
               onChange={(e) => setLegende(e.target.value)}
               placeholder="Ex : Tableau électrique avant pose"
-              className="h-9"
             />
           </div>
         </div>
@@ -241,17 +240,9 @@ export function InterventionPhotos({
             <Images className="size-4" />
             Galerie
           </Button>
-          {/* Emplacement réservé : lecture de la plaque signalétique
-              (OCR) — fonctionnalité à venir, volontairement inactive. */}
-          <Button
-            type="button"
-            variant="outline"
-            disabled
-            title="Bientôt : lire marque, modèle et n° de série depuis une photo de la plaque"
-          >
-            <ScanText className="size-4" />
-            Lire la plaque (bientôt)
-          </Button>
+          {/* Idée en réserve : lecture de la plaque signalétique (OCR :
+              marque, modèle, n° de série depuis une photo). Pas de bouton
+              tant que la fonction n'existe pas. */}
         </div>
 
         {/* Galerie */}

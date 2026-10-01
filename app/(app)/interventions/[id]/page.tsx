@@ -18,6 +18,7 @@ import { InterventionBon } from "@/components/interventions/intervention-bon";
 import { InterventionDeleteButton } from "@/components/interventions/intervention-delete-button";
 import { InterventionCorbeilleBanner } from "@/components/interventions/intervention-corbeille-banner";
 import { HistoriqueClientCard } from "@/components/interventions/historique-client-card";
+import { ActionsFiche } from "@/components/actions-fiche";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr } from "@/lib/format";
@@ -116,12 +117,11 @@ export default async function EditInterventionPage({
               </div>
             )}
           </div>
+          {/* Sur téléphone : l'action principale (facture) reste visible,
+              le reste passe dans le tiroir « Actions » comme sur les
+              autres fiches (quatre boutons s'empilaient avant les photos). */}
           {intervention.supprime_le ? null : (
           <div className="flex flex-wrap items-center gap-2">
-            <AjouterTacheButton
-              lienLabel={`Intervention du ${formatDateFr(intervention.date_intervention)}`}
-              interventionId={intervention.id}
-            />
             {facture ? (
               <Button variant="outline" asChild>
                 <Link href={`/factures/${facture.id}`}>
@@ -137,14 +137,20 @@ export default async function EditInterventionPage({
                 </Link>
               </Button>
             )}
-            {/* Prochaine visite : même client, même matériel, date à poser. */}
-            <Button variant="outline" asChild>
-              <Link href={`/interventions/nouvelle?source=${intervention.id}`}>
-                <CalendarPlus className="size-4" />
-                Planifier la prochaine visite
-              </Link>
-            </Button>
-            <InterventionDeleteButton id={intervention.id} />
+            <ActionsFiche>
+              <AjouterTacheButton
+                lienLabel={`Intervention du ${formatDateFr(intervention.date_intervention)}`}
+                interventionId={intervention.id}
+              />
+              {/* Prochaine visite : même client, même matériel, date à poser. */}
+              <Button variant="outline" asChild>
+                <Link href={`/interventions/nouvelle?source=${intervention.id}`}>
+                  <CalendarPlus className="size-4" />
+                  Planifier la prochaine visite
+                </Link>
+              </Button>
+              <InterventionDeleteButton id={intervention.id} />
+            </ActionsFiche>
           </div>
           )}
         </div>

@@ -251,7 +251,8 @@ export function FactureForm({
               onClick: () => window.open(`/api/factures/${id}/pdf`, "_blank", "noopener"),
             },
           });
-          router.push(`/factures/${id}`);
+          // replace : « Retour » ramène à l'écran d'origine, pas au formulaire vierge.
+          router.replace(`/factures/${id}`);
         } else {
           toast.error("Erreur", { description: result.error });
         }

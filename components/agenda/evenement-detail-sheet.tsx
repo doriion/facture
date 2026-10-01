@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Download, ExternalLink, Link2, Loader2, MapPin, Move, Navigation, Palette, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
+import { Copy, Download, ExternalLink, Link2, Loader2, MapPin, MessageSquare, Move, Navigation, Palette, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { appelerAction } from "@/lib/appel-action";
@@ -11,7 +11,7 @@ import { appelerAction } from "@/lib/appel-action";
 import type { AgendaEvent } from "@/lib/actions/agenda";
 import { deleteInterventionAction, restaurerInterventionAction, setInterventionAFacturerAction } from "@/lib/actions/interventions";
 import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
-import { contactEvenement, lienAppel, lienItineraire } from "@/lib/agenda-contact";
+import { contactEvenement, lienAppel, lienItineraire, lienSms } from "@/lib/agenda-contact";
 import { libelleRecurrence } from "@/lib/agenda-recurrence";
 import { heureCourte, libelleJourLong } from "@/lib/agenda-vues";
 import { Button } from "@/components/ui/button";
@@ -253,12 +253,20 @@ export function EvenementDetailSheet({
                 </Button>
               )}
               {contact.telephone && (
-                <Button asChild size="lg" variant={contact.adresse ? "outline" : "default"} className="col-span-2">
-                  <a href={lienAppel(contact.telephone)}>
-                    <Phone className="size-4" />
-                    Appeler {contact.telephone}
-                  </a>
-                </Button>
+                <>
+                  <Button asChild size="lg" variant={contact.adresse ? "outline" : "default"}>
+                    <a href={lienAppel(contact.telephone)}>
+                      <Phone className="size-4" />
+                      Appeler
+                    </a>
+                  </Button>
+                  <Button asChild size="lg" variant="outline">
+                    <a href={lienSms(contact.telephone)}>
+                      <MessageSquare className="size-4" />
+                      SMS
+                    </a>
+                  </Button>
+                </>
               )}
               {e.kind === "external" && onReprendre && (
                 <div className="col-span-2 space-y-2">

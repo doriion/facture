@@ -8,7 +8,14 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+# Un commit poussé sur une branche en PR ne déclenche plus deux runs
+# (push + pull_request) ; un nouveau commit annule le run précédent.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   ci:
@@ -18,7 +25,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Même version que le projet Vercel (Node 24).
+          node-version: 24
           cache: npm
 
       - name: Installer les dépendances

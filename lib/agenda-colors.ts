@@ -161,7 +161,7 @@ export function normalizeCouleurs(raw: unknown): AgendaCouleurs {
 export const TEXTE_SOMBRE = "#111827";
 export const TEXTE_CLAIR = "#ffffff";
 
-export function hexVersRgb(hex: string): { r: number; g: number; b: number } {
+function hexVersRgb(hex: string): { r: number; g: number; b: number } {
   const h = normaliserCouleur(hex) ?? "#000000";
   return {
     r: parseInt(h.slice(1, 3), 16),

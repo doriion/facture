@@ -230,7 +230,8 @@ export function InterventionForm({
         const result = await appelerAction(() => createInterventionAction(values));
         if (result.ok) {
           toast.success("Intervention créée");
-          router.push(`/interventions/${result.data.id}`);
+          // replace : « Retour » ramène à l'écran d'origine, pas au formulaire vierge.
+          router.replace(`/interventions/${result.data.id}`);
         } else {
           toast.error("Erreur", { description: result.error });
         }

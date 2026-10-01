@@ -1,3 +1,5 @@
+import { round2 } from "@/lib/format";
+
 /**
  * Estimation des cotisations micro-entrepreneur à provisionner,
  * calculée sur l'ENCAISSÉ (même base que la déclaration URSSAF).
@@ -41,10 +43,6 @@ export const BAREME_DEFAUT: TauxCotisations[] = [
     taux_vl: 1.7,
   },
 ];
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 export function tauxTotalPct(t: TauxCotisations): number {
   return round2(t.taux_social + t.taux_cfp + t.taux_vl);

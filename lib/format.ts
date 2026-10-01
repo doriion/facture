@@ -28,6 +28,11 @@ export function formatEuros(amount: number, options?: { withSymbol?: boolean }) 
  * que formatEuros : l'espace fine insécable (U+202F) du séparateur de
  * milliers n'existe pas dans Helvetica et s'imprimait « 1/000 ».
  */
+/** Arrondi monétaire à 2 décimales — l'unique définition de l'application. */
+export function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 export function formatQuantite(n: number | string | null | undefined): string {
   const v = Number(n);
   if (!Number.isFinite(v)) return "";
