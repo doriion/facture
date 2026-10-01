@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, type UnsafeUnwrappedCookies } from "next/headers";
 
 import type { Database } from "@/types/database";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/config";
@@ -21,7 +21,12 @@ import { memoriserGetUser } from "@/lib/supabase/memo-get-user";
  * coup dans la même requête (elles redirigent).
  */
 export const createClient = cache(() => {
-  const cookieStore = cookies();
+  // Next 15 : cookies() renvoie une promesse. createClient reste
+  // synchrone (157 appels `createClient()` dans les actions, mémoïsé
+  // par cache()) : l'accès synchrone est encore pris en charge en 15.x
+  // (avertissement en développement seulement). À rendre asynchrone
+  // avant Next 16, où cette forme disparaît.
+  const cookieStore = cookies() as unknown as UnsafeUnwrappedCookies;
 
   const client = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {

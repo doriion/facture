@@ -14,11 +14,12 @@ import { DevisForm } from "@/components/devis/devis-form";
 
 export const metadata = { title: "Nouveau devis — NG Gestion" };
 
-export default async function NouveauDevisPage({
-  searchParams,
-}: {
-  searchParams: { source?: string };
-}) {
+export default async function NouveauDevisPage(
+  props: {
+    searchParams: Promise<{ source?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const [clients, produits, profil, baremeEntretien] = await Promise.all([
     listClients(),
     listProduits({ inclureInactifs: false }),

@@ -18,11 +18,12 @@ export const metadata = { title: "Nouvelle facture — NG Gestion" };
 
 type Facture = Database["public"]["Tables"]["factures"]["Row"];
 
-export default async function NouvelleFacturePage({
-  searchParams,
-}: {
-  searchParams: { intervention?: string; source?: string };
-}) {
+export default async function NouvelleFacturePage(
+  props: {
+    searchParams: Promise<{ intervention?: string; source?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const [clients, produits, profil] = await Promise.all([
     listClients(),
     listProduits({ inclureInactifs: false }),

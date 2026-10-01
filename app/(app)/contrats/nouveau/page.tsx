@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Nouveau contrat — NG Gestion" };
 
-export default async function NouveauContratPage({
-  searchParams,
-}: {
-  searchParams: { client?: string };
-}) {
+export default async function NouveauContratPage(
+  props: {
+    searchParams: Promise<{ client?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const [clients, baremeEntretien] = await Promise.all([
     listClients(),
     getBaremeEntretien(),

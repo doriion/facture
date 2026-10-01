@@ -41,10 +41,6 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    // Requis par instrumentation.ts (Sentry) sur Next 14
-    instrumentationHook: true,
-  },
   async headers() {
     return [{ source: "/(.*)", headers: ENTETES_SECURITE }];
   },

@@ -14,21 +14,22 @@ export const metadata = { title: "À faire — NG Gestion" };
  * création — c'est ce qu'utilisent les boutons « Ajouter une tâche »
  * des fiches client / intervention / devis / facture.
  */
-export default async function TachesPage({
-  searchParams,
-}: {
-  searchParams: {
-    vue?: string;
-    search?: string;
-    ajouter?: string;
-    titre?: string;
-    lien_label?: string;
-    client_id?: string;
-    intervention_id?: string;
-    devis_id?: string;
-    facture_id?: string;
-  };
-}) {
+export default async function TachesPage(
+  props: {
+    searchParams: Promise<{
+      vue?: string;
+      search?: string;
+      ajouter?: string;
+      titre?: string;
+      lien_label?: string;
+      client_id?: string;
+      intervention_id?: string;
+      devis_id?: string;
+      facture_id?: string;
+    }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const taches = await getTaches();
   const vue: VueTaches =
     searchParams.vue === "avenir" || searchParams.vue === "faites"

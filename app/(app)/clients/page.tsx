@@ -11,11 +11,12 @@ export const metadata = { title: "Clients — NG Gestion" };
 /**
  * Liste des clients avec recherche, filtre par type, et création inline.
  */
-export default async function ClientsPage({
-  searchParams,
-}: {
-  searchParams: { search?: string; type?: string };
-}) {
+export default async function ClientsPage(
+  props: {
+    searchParams: Promise<{ search?: string; type?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const search = searchParams.search ?? "";
   const type = searchParams.type ?? "";
 

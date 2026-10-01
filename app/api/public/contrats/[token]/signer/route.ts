@@ -32,10 +32,8 @@ const MAX_SIGNATURE_BYTES = 500 * 1024;
  * passes avec empreinte SHA-256, archivage immuable, emails aux deux
  * parties.
  */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { token: string } },
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const token = params.token;
   if (!token || token.length < 16) {
     return NextResponse.json(

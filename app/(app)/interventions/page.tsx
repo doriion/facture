@@ -11,11 +11,12 @@ import { compterStatuts } from "@/lib/interventions-helpers";
 
 export const metadata = { title: "Interventions — NG Gestion" };
 
-export default async function InterventionsPage({
-  searchParams,
-}: {
-  searchParams: { search?: string; type?: string; statut?: string };
-}) {
+export default async function InterventionsPage(
+  props: {
+    searchParams: Promise<{ search?: string; type?: string; statut?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const search = searchParams.search ?? "";
   const type = searchParams.type ?? "";
   const statut = searchParams.statut ?? "";

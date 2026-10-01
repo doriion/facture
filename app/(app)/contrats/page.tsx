@@ -16,11 +16,12 @@ export const metadata = { title: "Contrats d'entretien — NG Gestion" };
  * recherche, création. Distinct de /maintenance (l'échéancier interne
  * des visites) — un contrat signé pourra y être relié.
  */
-export default async function ContratsPage({
-  searchParams,
-}: {
-  searchParams: { search?: string; statut?: string };
-}) {
+export default async function ContratsPage(
+  props: {
+    searchParams: Promise<{ search?: string; statut?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const search = searchParams.search ?? "";
   const statut = searchParams.statut ?? "tous";
   const contrats = await listContratsEntretien({ search, statut });

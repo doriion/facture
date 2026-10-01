@@ -22,11 +22,12 @@ export const metadata = { title: "Contrat d'entretien — NG Gestion" };
  * Fiche d'un contrat : aperçu complet (exactement le texte que verra
  * le client), actions selon le statut, et bloc de preuve une fois signé.
  */
-export default async function ContratDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ContratDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const [contrat, profil] = await Promise.all([
     getContratEntretien(params.id),
     getProfil(),

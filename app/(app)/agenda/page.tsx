@@ -32,11 +32,12 @@ function parseIntInRange(
   return n;
 }
 
-export default async function AgendaPage({
-  searchParams,
-}: {
-  searchParams: { year?: string; month?: string; vue?: string; date?: string };
-}) {
+export default async function AgendaPage(
+  props: {
+    searchParams: Promise<{ year?: string; month?: string; vue?: string; date?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const now = new Date();
   // Date du jour en heure de Paris (le serveur tourne en UTC : entre
   // minuit et 2 h, la date UTC est encore la veille).

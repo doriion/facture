@@ -11,10 +11,8 @@ export const dynamic = "force-dynamic";
  * token ne permet plus aucune modification). Sert le fichier archivé
  * tel quel — celui dont l'empreinte est enregistrée.
  */
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { token: string } },
-) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const token = params.token;
   if (!token || token.length < 16) {
     return new NextResponse("Lien invalide", { status: 404 });

@@ -18,10 +18,8 @@ export const dynamic = "force-dynamic";
  * la propriété (la RLS Supabase la garantit, mais on remonte un 404
  * propre si la facture n'est pas accessible à l'utilisateur).
  */
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const supabase = createClient();
 
   const {
