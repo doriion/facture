@@ -67,3 +67,57 @@ export function equipementsDepuisInterventions(
     a.derniereIntervention < b.derniereIntervention ? 1 : -1,
   );
 }
+
+export type InterventionCarnet = InterventionEquipement & {
+  id: string;
+  type: string;
+  description: string | null;
+  fluide_frigo_kg_ajoute?: number | null;
+  fluide_frigo_kg_recupere?: number | null;
+  facture?: { id: string; numero: string } | null;
+};
+
+export type CarnetEquipement = EquipementClient & {
+  /** Interventions sur ce matériel, les plus récentes d'abord. */
+  interventions: InterventionCarnet[];
+  /** Fluide ajouté / récupéré cumulé (kg), pour la traçabilité. */
+  kgAjoute: number;
+  kgRecupere: number;
+};
+
+/** Clé d'équipement d'une intervention (même règle que equipementsDepuisInterventions), null si aucun matériel. */
+export function cleEquipement(i: InterventionEquipement): string | null {
+  const marque = propre(i.equipement_marque);
+  const modele = propre(i.equipement_modele);
+  const numSerie = propre(i.equipement_num_serie);
+  if (!marque && !modele && !numSerie) return null;
+  return numSerie
+    ? `serie:${numSerie.toLowerCase()}`
+    : `modele:${(marque ?? "").toLowerCase()}|${(modele ?? "").toLowerCase()}`;
+}
+
+/**
+ * Carnet d'entretien : chaque équipement avec son historique complet
+ * (interventions, fluides). Les interventions sans matériel renseigné
+ * n'y figurent pas (elles restent dans la liste générale).
+ */
+export function carnetEquipements<T extends InterventionCarnet>(interventions: T[]): Array<CarnetEquipement & { interventions: T[] }> {
+  const equipements = equipementsDepuisInterventions(interventions);
+  const parCle = new Map(equipements.map((e) => [e.cle, { ...e, interventions: [] as T[], kgAjoute: 0, kgRecupere: 0 }]));
+  for (const i of interventions) {
+    const cle = cleEquipement(i);
+    if (!cle) continue;
+    const e = parCle.get(cle);
+    if (!e) continue;
+    e.interventions.push(i);
+    e.kgAjoute += Number(i.fluide_frigo_kg_ajoute ?? 0);
+    e.kgRecupere += Number(i.fluide_frigo_kg_recupere ?? 0);
+  }
+  return equipements.map((e) => {
+    const c = parCle.get(e.cle)!;
+    c.interventions.sort((a, b) => (a.date_intervention < b.date_intervention ? 1 : -1));
+    c.kgAjoute = Math.round(c.kgAjoute * 1000) / 1000;
+    c.kgRecupere = Math.round(c.kgRecupere * 1000) / 1000;
+    return c;
+  });
+}

@@ -16,6 +16,7 @@ import {
   ScrollText,
   FileSpreadsheet,
   Settings,
+  TrendingUp,
 } from "lucide-react";
 
 export type NavItem = {
@@ -91,6 +92,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Export URSSAF",
     icon: FileSpreadsheet,
     description: "CSV trimestriel pour déclaration",
+  },
+  {
+    href: "/marges",
+    label: "Marges",
+    icon: TrendingUp,
+    description: "Par chantier et par mois (interne)",
   },
   {
     href: "/parametres",
