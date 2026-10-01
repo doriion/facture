@@ -47,6 +47,8 @@ import {
 import { ajouterLigneAuCatalogueAction } from "@/lib/actions/produits";
 import { DesignationAutocomplete } from "@/components/factures/designation-autocomplete";
 import { CalculateurEntretienDialog } from "@/components/entretien/calculateur-entretien-dialog";
+import { DicterLignesDialog } from "@/components/factures/dicter-lignes-dialog";
+import type { LigneDictee } from "@/lib/dictee-lignes";
 import {
   lignesDocumentDepuisCalcul,
   type BaremeEntretien,
@@ -282,6 +284,28 @@ export function LignesEditor<T extends FieldValues>({
       nature_fiscale: "bic_prestations",
       type: "titre",
     } as unknown as FieldArray<T, ArrayPath<T>>);
+  }
+
+  /** Lignes dictées (ou collées) : ajoutées à la suite, modifiables ensuite. */
+  function ajouterDictees(lignes: LigneDictee[]) {
+    for (const l of lignes) {
+      append({
+        designation: l.designation,
+        quantite: l.quantite,
+        prix_unitaire_ht: l.prix_unitaire_ht,
+        prix_achat_ttc_unitaire: l.prix_achat_ttc_unitaire,
+        fournisseur: l.fournisseur,
+        nature_fiscale: l.nature_fiscale,
+        type: "ligne",
+      } as unknown as FieldArray<T, ArrayPath<T>>);
+    }
+    const nbCatalogue = lignes.filter((l) => l.prestation).length;
+    toast.success(`${lignes.length} ligne${lignes.length > 1 ? "s" : ""} ajoutée${lignes.length > 1 ? "s" : ""}`, {
+      description:
+        nbCatalogue < lignes.length
+          ? `${lignes.length - nbCatalogue} à chiffrer (hors catalogue).`
+          : "Toutes reconnues dans le catalogue.",
+    });
   }
 
   /**
@@ -711,6 +735,8 @@ export function LignesEditor<T extends FieldValues>({
           <Plus className="size-4" />
           Titre de section
         </Button>
+
+        <DicterLignesDialog catalogue={catalogue} onAjouter={ajouterDictees} />
 
         {/* Calculateur d'entretien (barème) : les postes cochés
             deviennent des lignes ordinaires, ajustables ensuite. */}
