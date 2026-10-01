@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * (pas factures émises). C'est ce que demande l'URSSAF.
  */
 export async function GET(req: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

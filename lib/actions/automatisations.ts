@@ -30,7 +30,7 @@ export type LigneJournal = {
 
 /** Dernières exécutions de tâches planifiées (RLS : celles de l'utilisateur). */
 export async function getJournalTaches(): Promise<LigneJournal[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("taches_journal")
     .select("id, tache, date_execution, statut, details, dry_run")
@@ -48,7 +48,7 @@ export async function getJournalTaches(): Promise<LigneJournal[]> {
 export async function saveReglagesAutomatisationsAction(
   input: ReglagesAutomatisations,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

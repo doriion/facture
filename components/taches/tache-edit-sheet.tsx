@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image-compress";
+import { TAILLE_VIGNETTE } from "@/lib/photos-vignettes";
 import {
   deleteTachePhotoAction,
   updateTacheAction,
@@ -75,8 +76,10 @@ export function TacheEditSheet({
     let echecs = 0;
     for (const file of Array.from(files)) {
       const compressed = await compressImage(file);
+      const vignette = await compressImage(compressed, TAILLE_VIGNETTE);
       const fd = new FormData();
       fd.append("file", compressed);
+      if (vignette.size < compressed.size) fd.append("vignette", vignette);
       const res = await uploadTachePhotoAction(tache.id, fd);
       if (!res.ok) echecs += 1;
     }

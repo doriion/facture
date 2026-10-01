@@ -18,7 +18,7 @@ export type TauxCotisationsRow = TauxCotisations & { id: string };
  * dans Paramètres.
  */
 export async function getBaremeCotisations(): Promise<TauxCotisationsRow[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -75,7 +75,7 @@ export async function saveTauxCotisationsAction(input: {
   taux_cfp: number | string;
   taux_vl: number | string;
 }): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -124,7 +124,7 @@ export async function saveTauxCotisationsAction(input: {
 export async function deleteTauxCotisationsAction(
   id: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("taux_cotisations")
     .delete()

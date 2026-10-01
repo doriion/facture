@@ -25,7 +25,7 @@ export async function listContrats(params?: {
   search?: string;
   statut?: string;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("contrats_maintenance")
     .select("*, client:clients(id, nom, type, ville)")
@@ -51,7 +51,7 @@ export async function listContrats(params?: {
  * dashboard ou page maintenance).
  */
 export async function prochainesVisites(joursAVenir = 60) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const today = aujourdhuiParis();
   const limite = new Date(Date.now() + joursAVenir * 24 * 3600 * 1000)
     .toISOString()
@@ -73,7 +73,7 @@ export async function getContrat(id: string): Promise<{
   contrat: Contrat | null;
   client: Database["public"]["Tables"]["clients"]["Row"] | null;
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("contrats_maintenance")
     .select("*, client:clients(*)")
@@ -101,7 +101,7 @@ export async function createContratAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -150,7 +150,7 @@ export async function updateContratAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("contrats_maintenance")
     .update({
@@ -175,7 +175,7 @@ export async function updateContratAction(
 }
 
 export async function deleteContratAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("contrats_maintenance")
     .delete()
@@ -196,7 +196,7 @@ export async function deleteContratAction(id: string): Promise<ActionResult> {
 export async function genererFactureVisiteAction(
   contratId: string,
 ): Promise<ActionResult<{ factureId: string; numero: string }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -19,7 +19,7 @@ type Client = Database["public"]["Tables"]["clients"]["Row"];
  */
 /** Id + nom seulement : pour les sélecteurs (agenda), sans charger les fiches. */
 export async function listClientsLegers(): Promise<Array<{ id: string; nom: string }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("clients")
     .select("id, nom")
@@ -28,7 +28,7 @@ export async function listClientsLegers(): Promise<Array<{ id: string; nom: stri
 }
 
 export async function listClients(params?: { search?: string; type?: string }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("clients")
     .select("*")
@@ -93,7 +93,7 @@ export async function getClient(id: string): Promise<{
   /** Contrats d'entretien signés en ligne. */
   contrats: ContratClient[];
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const [
     { data: client },
     { data: factures },
@@ -161,7 +161,7 @@ export async function createClientAction(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -211,7 +211,7 @@ export async function updateClientAction(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const v = parsed.data;
   const { error } = await supabase
     .from("clients")
@@ -244,7 +244,7 @@ export async function updateClientAction(
  * Supprime un client. Échouera (FK restrict) si le client a des factures ou devis.
  */
 export async function deleteClientAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("clients").delete().eq("id", id);
 
   if (error) {

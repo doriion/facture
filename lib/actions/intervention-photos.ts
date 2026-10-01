@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { cheminVignette, urlsPhotos } from "@/lib/photos-vignettes";
 
 type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -16,6 +17,8 @@ export type InterventionPhoto = {
   moment: string | null;
   ordre: number;
   url: string; // URL signée à utilisation
+  /** Vignette (≈ 400 px) signée, null pour les photos d'avant les vignettes. */
+  urlMin: string | null;
 };
 
 const ALLOWED_TYPES = [
@@ -36,6 +39,7 @@ export async function uploadInterventionPhotoAction(
   formData: FormData,
 ): Promise<ActionResult<{ id: string }>> {
   const file = formData.get("file");
+  const vignette = formData.get("vignette");
   const moment = (formData.get("moment") as string) || "autre";
   const legende = ((formData.get("legende") as string) || "").trim();
   const idBrut = formData.get("id");
@@ -55,7 +59,7 @@ export async function uploadInterventionPhotoAction(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -98,6 +102,13 @@ export async function uploadInterventionPhotoAction(
     .from("intervention-photos")
     .upload(path, file, { contentType: file.type, upsert: false });
   if (uploadErr) return { ok: false, error: uploadErr.message };
+  // Vignette (réduite sur le téléphone) : une commodité d'affichage,
+  // son échec n'empêche pas la photo.
+  if (vignette instanceof File && vignette.size > 0 && vignette.size <= 2 * 1024 * 1024) {
+    await supabase.storage
+      .from("intervention-photos")
+      .upload(cheminVignette(path), vignette, { contentType: "image/jpeg", upsert: true });
+  }
 
   const { data, error: dbErr } = await supabase
     .from("intervention_photos")
@@ -135,7 +146,7 @@ export async function uploadInterventionPhotoAction(
 export async function listInterventionPhotos(
   interventionId: string,
 ): Promise<InterventionPhoto[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("intervention_photos")
     .select("*")
@@ -145,14 +156,12 @@ export async function listInterventionPhotos(
   if (!data) return [];
 
   const paths = data.map((p) => p.storage_path);
+  // Originales et vignettes signées en un lot (une vignette absente
+  // n'est pas une erreur : photo d'avant les vignettes).
   const { data: signed } = await supabase.storage
     .from("intervention-photos")
-    .createSignedUrls(paths, 3600);
-
-  const urlByPath = new Map<string, string>();
-  for (const s of signed ?? []) {
-    if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
-  }
+    .createSignedUrls([...paths, ...paths.map(cheminVignette)], 3600);
+  const urls = urlsPhotos(paths, signed ?? []);
 
   return data.map((p) => ({
     id: p.id,
@@ -161,7 +170,8 @@ export async function listInterventionPhotos(
     legende: p.legende,
     moment: p.moment,
     ordre: p.ordre,
-    url: urlByPath.get(p.storage_path) ?? "",
+    url: urls.get(p.storage_path)?.url ?? "",
+    urlMin: urls.get(p.storage_path)?.urlMin ?? null,
   }));
 }
 
@@ -171,7 +181,7 @@ export async function listInterventionPhotos(
 export async function deleteInterventionPhotoAction(
   photoId: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: photo } = await supabase
     .from("intervention_photos")
     .select("storage_path, intervention_id")
@@ -181,7 +191,7 @@ export async function deleteInterventionPhotoAction(
 
   await supabase.storage
     .from("intervention-photos")
-    .remove([photo.storage_path]);
+    .remove([photo.storage_path, cheminVignette(photo.storage_path)]);
 
   const { error } = await supabase
     .from("intervention_photos")

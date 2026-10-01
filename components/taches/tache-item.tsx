@@ -190,7 +190,7 @@ export function TacheItem({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- URL signée Supabase */}
                 <img
-                  src={photo.url}
+                  src={photo.urlMin ?? photo.url}
                   alt=""
                   loading="lazy"
                   className="size-full object-cover"

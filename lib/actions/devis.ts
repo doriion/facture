@@ -41,7 +41,7 @@ export async function listDevis(params?: {
   type?: string;
   client_id?: string;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("devis")
     .select("*, client:clients(id, nom, type)")
@@ -88,7 +88,7 @@ export async function listDevis(params?: {
  * « Nouveau depuis un modèle ».
  */
 export async function listModelesDevis() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("devis")
     .select(
@@ -120,7 +120,7 @@ export async function setDevisModeleAction(
     nomModele = r.nom;
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: existant } = await supabase
     .from("devis")
     .select("signature_client_url, facture_id")
@@ -159,7 +159,7 @@ export async function renommerModeleDevisAction(
   const r = normaliserNomModele(nom);
   if (!r.ok) return { ok: false, error: r.error };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   // `.eq("est_modele", true)` + `.select` : le renommage n'atteint qu'un
   // modèle — un devis normal (ou retiré des modèles entre-temps) n'est
   // pas modifié et l'appelant en est informé.
@@ -188,7 +188,7 @@ export async function getDevis(id: string): Promise<{
   client: Database["public"]["Tables"]["clients"]["Row"] | null;
   profil: Database["public"]["Tables"]["profil_entreprise"]["Row"] | null;
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -247,7 +247,7 @@ export async function createDevisAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -349,7 +349,7 @@ export async function updateDevisAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -431,7 +431,7 @@ export async function setDevisStatutAction(
   id: string,
   statut: "brouillon" | "envoye" | "accepte" | "refuse",
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: existant } = await supabase
     .from("devis")
     .select(
@@ -488,7 +488,7 @@ export async function setDevisStatutAction(
  * Supprime un devis (uniquement les brouillons).
  */
 export async function deleteDevisAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: existing } = await supabase
     .from("devis")
     .select("statut, facture_id, signature_client_url")
@@ -525,7 +525,7 @@ export async function deleteDevisAction(id: string): Promise<ActionResult> {
 export async function convertirDevisEnFactureAction(
   devisId: string,
 ): Promise<ActionResult<{ factureId: string; numero: string }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

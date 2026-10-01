@@ -37,7 +37,7 @@ export async function listInterventions(params?: {
   type?: string;
   client_id?: string;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("interventions")
     .select("*, client:clients(id, nom, type), facture:factures(id, numero)")
@@ -66,7 +66,7 @@ export async function getIntervention(id: string): Promise<{
   client: Database["public"]["Tables"]["clients"]["Row"] | null;
   facture: { id: string; numero: string; statut: string } | null;
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("interventions")
     .select("*, client:clients(*), facture:factures(id, numero, statut)")
@@ -91,7 +91,7 @@ export async function listEquipementsClientAction(
   clientId: string,
 ): Promise<ActionResult<EquipementClient[]>> {
   if (!/^[0-9a-f-]{36}$/i.test(clientId)) return { ok: true, data: [] };
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("interventions")
     .select("date_intervention, equipement_marque, equipement_modele, equipement_num_serie, fluide_frigo_type")
@@ -123,7 +123,7 @@ export async function listInterventionsClient(
     facture: { id: string; numero: string } | null;
   }>
 > {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("interventions")
     .select(
@@ -151,7 +151,7 @@ export async function listInterventionsClient(
  * déclaration F-Gas et le rapport au client).
  */
 export async function bilanFluidesFrigo(annee?: number) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const year = annee ?? new Date().getFullYear();
   const start = `${year}-01-01`;
   const end = `${year + 1}-01-01`;
@@ -220,7 +220,7 @@ export async function createInterventionAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -274,7 +274,7 @@ export async function createInterventionSerieAction(
   }
   const dates = datesOccurrences(v.date_intervention, rec.data);
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -336,7 +336,7 @@ export async function updateInterventionAction(
   }
   const v = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("interventions")
     .update({
@@ -378,7 +378,7 @@ export async function updateInterventionAction(
 
 /** Ids qui portent des signatures ou des fiches CERFA archivées (documents à conserver 5 ans). */
 async function idsProteges(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   ids: string[],
 ): Promise<{ signatures: Set<string>; cerfa: Set<string> }> {
   const [sig, cerfa] = await Promise.all([
@@ -405,7 +405,7 @@ export type InterventionCorbeille = {
 
 /** Corbeille : les interventions supprimées, les plus récentes d'abord. */
 export async function listCorbeille(): Promise<InterventionCorbeille[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("interventions")
     .select("id, date_intervention, date_fin, heure_debut, description, type, supprime_le, client:clients(nom)")
@@ -439,7 +439,7 @@ export async function deleteInterventionAction(
   id: string,
   portee: PorteeSerie = "seule",
 ): Promise<ActionResult<{ supprimees: number; conservees: number; ids: string[] }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   let cibles: string[] = [id];
   if (portee === "suivantes") {
@@ -482,7 +482,7 @@ export async function restaurerInterventionAction(
 ): Promise<ActionResult<{ restaurees: number }>> {
   const liste = Array.isArray(ids) ? ids : [ids];
   if (liste.length === 0) return { ok: true, data: { restaurees: 0 } };
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("interventions")
     .update({ supprime_le: null })
@@ -506,7 +506,7 @@ export async function restaurerInterventionAction(
 export async function supprimerDefinitivementAction(
   id: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const proteges = await idsProteges(supabase, [id]);
   if (proteges.signatures.has(id)) {
     return {
@@ -573,7 +573,7 @@ export async function quickEditInterventionAction(
   },
   portee: PorteeSerie = "seule",
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const champs = {
     client_id: partial.client_id,
     heure_debut: partial.heure_debut,
@@ -660,7 +660,7 @@ export async function setInterventionAFacturerAction(
   id: string,
   aFacturer: boolean,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("interventions")
     .update({ a_facturer: aFacturer })
@@ -686,7 +686,7 @@ export async function deplacerInterventionAction(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Planning invalide." };
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("interventions")
     .update({

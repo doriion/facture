@@ -112,7 +112,7 @@ export async function getAgendaEvents(
   month: number, // 1-12
   options: { depuis?: string; jusquau?: string } = {},
 ): Promise<AgendaData> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const fenetre = fenetreAgenda(year, month, options);
 
   // Garde d'auth explicite : la RLS protège déjà les données, mais on
@@ -342,7 +342,7 @@ export async function getAgendaEvents(
  * l'affichage de l'agenda : si iCloud est lent, l'agenda ne l'est pas.
  */
 export async function getAgendaExternes(fenetre: Fenetre): Promise<AgendaExternes> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

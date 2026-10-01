@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image-compress";
+import { TAILLE_VIGNETTE } from "@/lib/photos-vignettes";
 import { appelerOuMettreEnAttente, MESSAGE_HORS_LIGNE } from "@/lib/appel-action";
 import { genererId } from "@/lib/file-attente-helpers";
 import { formatDateFr } from "@/lib/format";
@@ -149,17 +150,20 @@ export function TacheQuickAdd({
       for (const photo of photos) {
         const compressed = await compressImage(photo.file);
         const photoId = genererId();
+        const vignette = await compressImage(compressed, TAILLE_VIGNETTE);
+        const avecVignette = vignette.size < compressed.size ? vignette : null;
         const fd = new FormData();
         fd.append("id", photoId);
         fd.append("file", compressed);
+        if (avecVignette) fd.append("vignette", avecVignette);
         // La tâche est en attente : ses photos aussi, sans tenter l'envoi.
         const up = enAttente
           ? await appelerOuMettreEnAttente(
-              { id: photoId, type: "photo_tache", payload: { tacheId, file: compressed } },
+              { id: photoId, type: "photo_tache", payload: { tacheId, file: compressed, vignette: avecVignette } },
               async () => ({ ok: false as const, error: MESSAGE_HORS_LIGNE }),
             )
           : await appelerOuMettreEnAttente(
-              { id: photoId, type: "photo_tache", payload: { tacheId, file: compressed } },
+              { id: photoId, type: "photo_tache", payload: { tacheId, file: compressed, vignette: avecVignette } },
               () => uploadTachePhotoAction(tacheId, fd),
             );
         if (!up.ok) echecsPhotos += 1;

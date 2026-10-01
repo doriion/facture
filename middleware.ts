@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 import { verificationRequise } from "@/lib/mfa-helpers";
+import { EN_TETE_UTILISATEUR, encoderUtilisateur } from "@/lib/auth-transmise";
 
 /**
  * Middleware d'auth Supabase (pattern officiel @supabase/ssr pour
@@ -21,7 +22,9 @@ import { verificationRequise } from "@/lib/mfa-helpers";
  * Supabase reste la protection ultime des données.
  */
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // Cookies rafraîchis par Supabase pendant getUser : posés sur la
+  // réponse construite à la fin (quand l'identité est connue).
+  let cookiesRafraichis: Array<{ name: string; value: string; options: Parameters<NextResponse["cookies"]["set"]>[2] }> = [];
 
   const supabase = createServerClient<Database>(
     SUPABASE_URL,
@@ -35,10 +38,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
+          cookiesRafraichis = cookiesToSet;
         },
       },
     },
@@ -107,13 +107,22 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // En-têtes de la requête transmise au rendu : les cookies rafraîchis
+  // (request.cookies.set les a déjà reportés) et l'identité validée —
+  // le layout n'a plus à rappeler Supabase Auth. Toute valeur de cet
+  // en-tête venant du client est effacée : seul le middleware le pose.
+  const enTetesRequete = new Headers(request.headers);
+  enTetesRequete.delete(EN_TETE_UTILISATEUR);
+  if (user) enTetesRequete.set(EN_TETE_UTILISATEUR, encoderUtilisateur({ id: user.id, email: user.email ?? "" }));
+  const response = NextResponse.next({ request: { headers: enTetesRequete } });
+  cookiesRafraichis.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+
   // Pages et routes publiques (lien de signature, PDF public) : jamais
   // indexées par un moteur de recherche.
   if (path.startsWith("/c/") || path.startsWith("/api/public/")) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   }
-  // Toujours renvoyer `response` telle quelle : elle porte les cookies
-  // de session éventuellement rafraîchis.
+  // `response` porte les cookies de session éventuellement rafraîchis.
   return response;
 }
 

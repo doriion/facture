@@ -32,7 +32,7 @@ export type FacturesEnRetardData = {
  * l'historique des relances envoyées.
  */
 export async function getFacturesEnRetard(): Promise<FacturesEnRetardData> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },

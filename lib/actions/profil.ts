@@ -18,7 +18,7 @@ type ActionResult<T = void> =
  * Renvoie null s'il n'a jamais été créé (premier passage sur Paramètres).
  */
 export async function getProfil() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -48,7 +48,7 @@ export async function upsertProfil(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -131,7 +131,7 @@ export async function uploadLogo(formData: FormData): Promise<ActionResult<strin
     return { ok: false, error: "Format non supporté (PNG, JPG, SVG, WebP)." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -169,7 +169,7 @@ export async function uploadLogo(formData: FormData): Promise<ActionResult<strin
  * Supprime le logo (storage + référence en base).
  */
 export async function removeLogo(): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -200,7 +200,7 @@ export async function removeLogo(): Promise<ActionResult> {
  */
 export async function getLogoUrl(path: string | null | undefined) {
   if (!path) return null;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase.storage
     .from("logos")
     .createSignedUrl(path, 3600);
@@ -214,7 +214,7 @@ export async function getLogoUrl(path: string | null | undefined) {
 export async function getOrCreateCalendarToken(
   regenerate = false,
 ): Promise<ActionResult<string>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("ensure_calendar_token", {
     p_force: regenerate,
   });
@@ -235,7 +235,7 @@ export async function getOrCreateCalendarToken(
 export async function saveExternalCalendarUrlAction(
   rawUrl: string | null,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -284,7 +284,7 @@ export async function saveAgendaCouleursAction(
     if (c) clean[cat] = c;
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

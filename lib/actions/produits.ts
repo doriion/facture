@@ -23,7 +23,7 @@ export async function listProduits(params?: {
   categorie?: string;
   inclureInactifs?: boolean;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("produits_services")
     .select("*")
@@ -55,7 +55,7 @@ export async function createProduitAction(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -98,7 +98,7 @@ export async function updateProduitAction(
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const v = parsed.data;
   const { error } = await supabase
     .from("produits_services")
@@ -128,7 +128,7 @@ export async function updateProduitAction(
 export async function duplicateProduitAction(
   id: string,
 ): Promise<ActionResult<{ id: string }>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -172,7 +172,7 @@ export async function duplicateProduitAction(
 }
 
 export async function deleteProduitAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("produits_services")
     .delete()
@@ -212,7 +212,7 @@ export async function ajouterLigneAuCatalogueAction(ligne: {
     return { ok: false, error: "Désignation trop longue (200 caractères max)." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

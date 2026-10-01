@@ -62,7 +62,7 @@ function tranchesDe(json: unknown): Tranche[] {
  * de deux chargements simultanés).
  */
 export async function getBaremeEntretien(): Promise<BaremeEntretien> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -158,7 +158,7 @@ export type PosteSaisi = {
 
 /** Crée ou met à jour un poste du barème. */
 export async function savePosteBaremeAction(input: PosteSaisi): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -218,7 +218,7 @@ export async function savePosteBaremeAction(input: PosteSaisi): Promise<ActionRe
 }
 
 export async function deletePosteBaremeAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("bareme_entretien_postes").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalider();
@@ -236,7 +236,7 @@ export type ZoneSaisie = {
 
 /** Crée ou met à jour une zone de déplacement. */
 export async function saveZoneBaremeAction(input: ZoneSaisie): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -288,7 +288,7 @@ export async function saveZoneBaremeAction(input: ZoneSaisie): Promise<ActionRes
 }
 
 export async function deleteZoneBaremeAction(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("bareme_entretien_zones").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalider();
@@ -300,7 +300,7 @@ export async function saveReglagesBaremeAction(input: {
   tarif_km: string | number;
   taux_horaire: string | number;
 }): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

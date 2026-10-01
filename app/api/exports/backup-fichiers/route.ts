@@ -19,7 +19,7 @@ export const maxDuration = 60;
  * buckets (dossier {user_id}/) ET par user_id.
  */
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },

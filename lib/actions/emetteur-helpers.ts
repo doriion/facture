@@ -8,7 +8,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import { buildEmetteurSnapshot } from "@/lib/emetteur";
 
-type Supabase = ReturnType<typeof createClient>;
+type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 /**
  * Fige les mentions émetteur d'un document s'il ne l'est pas déjà

@@ -125,7 +125,7 @@ export type DashboardData = {
  * côté Node sans souci de perf.
  */
 export async function getDashboardData(): Promise<DashboardData> {
-  const supabase = createClient();
+  const supabase = await createClient();
   // Heure de Paris : à 0 h 30 un 1er du mois, le serveur (UTC) est
   // encore la veille — le mois courant serait faux.
   const today = aujourdhuiParis();

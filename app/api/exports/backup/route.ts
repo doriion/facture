@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
  * pour restaurer, à ne jamais transmettre à un client.
  */
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },

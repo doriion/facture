@@ -38,7 +38,7 @@ const abonnementSchema = z.object({
 
 /** Appareils abonnés de l'utilisateur (RLS). */
 export async function listAppareilsPush(): Promise<AppareilPush[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("push_abonnements")
     .select("id, endpoint, appareil, created_at, derniere_utilisation")
@@ -55,7 +55,7 @@ export async function enregistrerAbonnementPushAction(
 ): Promise<ActionResult> {
   const parsed = abonnementSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Abonnement invalide." };
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -80,7 +80,7 @@ export async function enregistrerAbonnementPushAction(
 export async function supprimerAbonnementPushAction(
   endpoint: string,
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("push_abonnements").delete().eq("endpoint", endpoint);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/parametres");
@@ -96,7 +96,7 @@ export async function saveReglagesRappelsPushAction(input: {
   if (!Number.isFinite(delai) || delai < 5 || delai > 1440) {
     return { ok: false, error: "Délai de rappel : entre 5 min et 24 h." };
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -123,7 +123,7 @@ export async function envoyerPushTestAction(): Promise<
   if (!pushConfigure()) {
     return { ok: false, error: "Rappels push non configurés sur le serveur (clés VAPID)." };
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: abonnements } = await supabase
     .from("push_abonnements")
     .select("endpoint, p256dh, auth");
