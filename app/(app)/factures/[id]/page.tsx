@@ -42,11 +42,12 @@ export const metadata = { title: "Édition facture — NG Gestion" };
 type Facture = NonNullable<Awaited<ReturnType<typeof getFacture>>["facture"]>;
 type Enfant = Awaited<ReturnType<typeof listFactureEnfants>>[number];
 
-export default async function EditFacturePage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function EditFacturePage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   // Les listes (clients, produits, profil) ne dépendent pas de la
   // facture : lancées en même temps qu'elle. Paiements et enfants
   // attendent de savoir qu'elle existe (ils lèvent une erreur sinon).

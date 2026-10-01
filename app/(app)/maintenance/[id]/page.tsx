@@ -13,11 +13,12 @@ import { formatDateFr } from "@/lib/format";
 
 export const metadata = { title: "Contrat de maintenance — NG Gestion" };
 
-export default async function EditContratPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function EditContratPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const [{ contrat, client }, clients] = await Promise.all([
     getContrat(params.id),
     listClients(),

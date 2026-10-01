@@ -23,10 +23,8 @@ export const dynamic = "force-dynamic";
  * (pas de numéro). Signé : signature + page de preuve avec l'empreinte
  * archivée.
  */
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const supabase = createClient();
   const {
     data: { user },

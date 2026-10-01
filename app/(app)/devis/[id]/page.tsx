@@ -27,11 +27,12 @@ import { formatDateFr, formatEuros } from "@/lib/format";
 
 export const metadata = { title: "Édition devis — NG Gestion" };
 
-export default async function EditDevisPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function EditDevisPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const { devis, lignes, client } = await getDevis(params.id);
   if (!devis) notFound();
 

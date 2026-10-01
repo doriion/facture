@@ -56,11 +56,12 @@ export const metadata = { title: "Détail client — NG Gestion" };
 /**
  * Page de détail d'un client : infos + historique factures et devis.
  */
-export default async function ClientDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ClientDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const { client, factures, devis, interventions, entretiens, contrats } = await getClient(
     params.id,
   );

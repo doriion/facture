@@ -26,11 +26,12 @@ import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
 
 export const metadata = { title: "Édition intervention — NG Gestion" };
 
-export default async function EditInterventionPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function EditInterventionPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const { intervention, client, facture } = await getIntervention(params.id);
   if (!intervention) notFound();
 

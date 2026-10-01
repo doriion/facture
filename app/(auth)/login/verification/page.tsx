@@ -15,11 +15,12 @@ export const metadata = {
  * session : retour à la connexion ; session déjà vérifiée ou sans
  * facteur : on ouvre directement la page demandée.
  */
-export default async function VerificationPage({
-  searchParams,
-}: {
-  searchParams: { next?: string };
-}) {
+export default async function VerificationPage(
+  props: {
+    searchParams: Promise<{ next?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const supabase = createClient();
   const {
     data: { user },

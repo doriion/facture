@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
 
 /**
- * Point d'entrée d'instrumentation Next.js (nécessite
- * experimental.instrumentationHook, activé dans next.config.mjs).
+ * Point d'entrée d'instrumentation Next.js (standard depuis Next 15,
+ * plus d'option expérimentale à activer).
  * Charge la config Sentry adaptée au runtime et remonte les erreurs
  * des routes/server actions — y compris les échecs de crons et
  * d'envois d'email (console.error + exceptions).

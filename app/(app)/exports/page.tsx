@@ -15,11 +15,12 @@ export const metadata = { title: "Export comptable — NG Gestion" };
 
 export const dynamic = "force-dynamic";
 
-export default async function ExportsPage({
-  searchParams,
-}: {
-  searchParams: { start?: string; end?: string; label?: string };
-}) {
+export default async function ExportsPage(
+  props: {
+    searchParams: Promise<{ start?: string; end?: string; label?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const periodes = getExportPeriodes();
 
   // Période par défaut = trimestre en cours

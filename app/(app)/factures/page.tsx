@@ -11,11 +11,12 @@ import { MobileActionBar } from "@/components/mobile-action-bar";
 
 export const metadata = { title: "Factures — NG Gestion" };
 
-export default async function FacturesPage({
-  searchParams,
-}: {
-  searchParams: { search?: string; statut?: string; type?: string };
-}) {
+export default async function FacturesPage(
+  props: {
+    searchParams: Promise<{ search?: string; statut?: string; type?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const search = searchParams.search ?? "";
   const statut = searchParams.statut ?? "";
   const type = searchParams.type ?? "";

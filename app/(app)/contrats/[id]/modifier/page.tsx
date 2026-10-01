@@ -10,11 +10,12 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Modifier le contrat — NG Gestion" };
 
-export default async function ModifierContratPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ModifierContratPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const [contrat, clients, baremeEntretien] = await Promise.all([
     getContratEntretien(params.id),
     listClients(),

@@ -12,11 +12,12 @@ export const metadata = {
  * `?next=` (posé par le middleware) = page à rouvrir après connexion ;
  * transmis au formulaire puis validé côté serveur (sanitizeNextPath).
  */
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: { next?: string };
-}) {
+export default async function LoginPage(
+  props: {
+    searchParams: Promise<{ next?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   return (
     <div className="flex min-h-dvh items-center justify-center bg-muted/40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="w-full max-w-md">

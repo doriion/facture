@@ -12,11 +12,12 @@ import {
 
 export const metadata = { title: "Nouvelle intervention — NG Gestion" };
 
-export default async function NouvelleInterventionPage({
-  searchParams,
-}: {
-  searchParams: { client?: string; source?: string };
-}) {
+export default async function NouvelleInterventionPage(
+  props: {
+    searchParams: Promise<{ client?: string; source?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // ?source= (« planifier la prochaine visite ») : on repart d'une
   // intervention passée — même client, même matériel, même fluide. Les
   // quantités, heures, notes et la facture ne sont PAS reprises.

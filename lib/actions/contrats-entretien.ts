@@ -334,7 +334,7 @@ export async function envoyerContratAction(
 
   // URL absolue du lien public : NEXT_PUBLIC_APP_URL d'abord (jamais
   // dépendante d'un en-tête de requête), l'hôte de la requête en repli.
-  const h = headers();
+  const h = await headers();
   const proto = h.get("x-forwarded-proto") ?? "https";
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "") || (host ? `${proto}://${host}` : "");

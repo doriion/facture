@@ -12,11 +12,12 @@ export const metadata = { title: "Catalogue — NG Gestion" };
  * Catalogue de prestations réutilisables (plomberie, clim, PAC, entretien, dépannage).
  * Tout est chargé une fois ; recherche et catégorie filtrent sur place.
  */
-export default async function ProduitsPage({
-  searchParams,
-}: {
-  searchParams: { search?: string; categorie?: string };
-}) {
+export default async function ProduitsPage(
+  props: {
+    searchParams: Promise<{ search?: string; categorie?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // En Phase 2 on n'expose pas le filtre actif/inactif ; on inclut tout.
   const produits = await listProduits({ inclureInactifs: true });
 

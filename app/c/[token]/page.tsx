@@ -33,11 +33,12 @@ function masquerEmail(email: string): string {
   return `${local.slice(0, 1)}***@${domaine}`;
 }
 
-export default async function SignatureContratPage({
-  params,
-}: {
-  params: { token: string };
-}) {
+export default async function SignatureContratPage(
+  props: {
+    params: Promise<{ token: string }>;
+  }
+) {
+  const params = await props.params;
   const { etat, contrat, prestataire } = await getContratParToken(
     params.token,
   );
