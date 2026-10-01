@@ -15,6 +15,7 @@ const source: DevisRow = {
   date_validite: "2026-06-15",
   date_debut_travaux: "2026-04-01",
   date_signature: null,
+  signataire_nom: null,
   emetteur: null,
   acompte_pct: null,
   acompte_montant: null,

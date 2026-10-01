@@ -116,6 +116,8 @@ export default async function EditDevisPage(
                 signatureUrl={devis.signature_client_url}
                 dateSignature={devis.date_signature}
                 statut={statutAffiche}
+                clientNom={client?.nom ?? null}
+                clientEmail={client?.email ?? null}
               />
             )}
             <DevisActions

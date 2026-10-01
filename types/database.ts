@@ -712,6 +712,7 @@ export type Database = {
           performances_energetiques: Json;
           pdf_template_version: number | null;
           signature_client_url: string | null;
+          signataire_nom: string | null;
           statut: string;
           total_ht: number;
           type_activite: string;
@@ -746,6 +747,7 @@ export type Database = {
           performances_energetiques?: Json;
           pdf_template_version?: number | null;
           signature_client_url?: string | null;
+          signataire_nom?: string | null;
           statut?: string;
           total_ht?: number;
           type_activite?: string;
@@ -780,6 +782,7 @@ export type Database = {
           performances_energetiques?: Json;
           pdf_template_version?: number | null;
           signature_client_url?: string | null;
+          signataire_nom?: string | null;
           statut?: string;
           total_ht?: number;
           type_activite?: string;

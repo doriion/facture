@@ -506,7 +506,9 @@ export function DevisPdfSimple({
             {signatureData ? (
               <>
                 <Text style={styles.accordDate}>
-                  Le{" "}
+                  {(devis as { signataire_nom?: string | null }).signataire_nom
+                    ? `Bon pour accord — ${(devis as { signataire_nom?: string | null }).signataire_nom}, le `
+                    : "Le "}
                   {devis.date_signature
                     ? formatDateFr(devis.date_signature)
                     : "…"}

@@ -254,8 +254,19 @@ export async function envoyerDevisParEmailAction(
     import("@react-pdf/renderer"),
     import("@/components/devis/devis-pdf"),
   ]);
+  // Devis signé dans l'app : la signature « bon pour accord » figure
+  // sur l'exemplaire envoyé (comme sur le PDF téléchargé).
+  let signatureData: string | null = null;
+  if (devis.signature_client_url) {
+    try {
+      const { data: blob } = await supabase.storage.from("signatures").download(devis.signature_client_url);
+      if (blob) signatureData = `data:image/png;base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`;
+    } catch {
+      signatureData = null;
+    }
+  }
   const pdfBuffer = await renderToBuffer(
-    DevisPdf({ devis, lignes: payloadLignesPdf(lignes), client, profil, logoData: logoUrl }),
+    DevisPdf({ devis, lignes: payloadLignesPdf(lignes), client, profil, logoData: logoUrl, signatureData }),
   );
 
   const expediteurNom =
@@ -270,6 +281,7 @@ export async function envoyerDevisParEmailAction(
     expediteurNom,
     totalText: formatEuros(Number(devis.total_ht)),
     messagePerso,
+    signeLe: devis.signature_client_url && devis.date_signature ? formatDateFr(devis.date_signature) : undefined,
   });
 
   const res = await sendEmail({
