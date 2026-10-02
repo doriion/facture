@@ -194,6 +194,8 @@ export function buildDocumentEmail(args: {
   dateText?: string;
   /** Nature de la prestation (clé type_activite du document), pour la phrase d'intro. */
   natureActivite?: string | null;
+  /** Facture : date(s) d'intervention déjà formatées, « du 28/09/2026 » ou « du 25/09/2026 au 28/09/2026 ». */
+  interventionText?: string;
   signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
   const libelle = args.type === "facture" ? "Facture" : args.type === "avoir" ? "Avoir" : "Devis";
@@ -206,9 +208,16 @@ export function buildDocumentEmail(args: {
   resume.push(["Montant", args.totalText]);
 
   if (args.type === "avoir") {
-    paragraphes.push(`Veuillez trouver ci-joint l'avoir ${args.numero}${args.echeanceText ? `, ${args.echeanceText}` : ""}.`);
+    paragraphes.push(`Voici votre avoir ${args.numero}${args.echeanceText ? `, ${args.echeanceText}` : ""}. Vous le trouverez en pièce jointe.`);
   } else if (args.type === "facture") {
-    paragraphes.push(`Veuillez trouver ci-joint la facture ${args.numero} correspondant aux travaux réalisés.`);
+    paragraphes.push(
+      `Comme convenu, voici votre facture ${args.numero} ${objet}${args.interventionText ? `, suite à mon intervention ${args.interventionText}` : ""}. Vous la trouverez en pièce jointe.`,
+    );
+    paragraphes.push(
+      args.echeanceText
+        ? `Elle est à régler avant le ${args.echeanceText}, par virement : les coordonnées bancaires figurent sur la facture.`
+        : "Elle est à régler par virement : les coordonnées bancaires figurent sur la facture.",
+    );
     if (args.echeanceText) resume.push(["À régler avant le", args.echeanceText]);
   } else if (args.signeLe) {
     paragraphes.push(
@@ -229,7 +238,7 @@ export function buildDocumentEmail(args: {
     args.type === "devis" && !args.signeLe
       ? "S'il vous convient, un retour signé avec la mention « bon pour accord » suffit, ou répondez simplement à ce message : nous fixerons ensemble une date."
       : args.type === "facture"
-        ? "Les coordonnées de règlement figurent sur la facture. Pour toute question, répondez simplement à ce message."
+        ? "Pour toute question, répondez simplement à ce message. Merci pour votre confiance, et à bientôt."
         : "Pour toute question, répondez simplement à ce message.";
 
   return emailDepuisContenu(subject, {
