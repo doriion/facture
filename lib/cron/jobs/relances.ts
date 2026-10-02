@@ -6,7 +6,7 @@ import {
   facturesARelancer,
   type FactureRelancable,
 } from "@/lib/relances-auto";
-import { buildRelanceEmail, escapeHtml, isEmailConfigured, sendEmail } from "@/lib/email";
+import { buildRelanceEmail, escapeHtml, isEmailConfigured, sendEmail, signatureDepuisProfil } from "@/lib/email";
 import { lignePenseBeteHtml } from "@/lib/cron/pense-bete";
 import { formatDateFr, formatEuros } from "@/lib/format";
 import { montantRestant } from "@/lib/paiements-helpers";
@@ -164,6 +164,7 @@ async function executerRelances({
       resteText: f.reste < f.total_ht - 0.005 ? formatEuros(f.reste) : undefined,
       echeanceText: formatDateFr(f.date_echeance),
       joursRetard: f.joursRetard,
+      signature: signatureDepuisProfil(profil, expediteurNom),
     });
     // Trace AVANT l'envoi : c'est elle qui empêche une seconde relance
     // demain. Si elle ne peut pas être écrite, on n'envoie pas ; si

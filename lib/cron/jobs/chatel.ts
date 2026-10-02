@@ -8,7 +8,7 @@ import {
   type ContratAviseable,
 } from "@/lib/contrats/chatel";
 import type { ClientSnapshot } from "@/lib/contrats/rendu";
-import { buildAvisChatelEmail, isEmailConfigured, sendEmail } from "@/lib/email";
+import { buildAvisChatelEmail, isEmailConfigured, sendEmail, signatureDepuisProfil } from "@/lib/email";
 import { formatDateFr } from "@/lib/format";
 
 /**
@@ -118,6 +118,7 @@ async function executerChatel({
       dateLimiteText: formatDateFr(dateLimiteDenonciation(echeance)),
       telephone: profil.telephone,
       emailPro: profil.email_pro,
+      signature: signatureDepuisProfil(profil, expediteurNom),
     };
 
     const emailClient = buildAvisChatelEmail({

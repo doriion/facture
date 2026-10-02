@@ -6,7 +6,7 @@ import {
   contratsARappeler,
   type ContratRappelable,
 } from "@/lib/rappels-entretien";
-import { buildRappelEntretienEmail, escapeHtml, isEmailConfigured, sendEmail } from "@/lib/email";
+import { buildRappelEntretienEmail, escapeHtml, isEmailConfigured, sendEmail, signatureDepuisProfil } from "@/lib/email";
 import { lignePenseBeteHtml } from "@/lib/cron/pense-bete";
 import { formatDateFr } from "@/lib/format";
 import { NOM_APPLICATION } from "@/lib/marque";
@@ -108,6 +108,7 @@ async function executerRappels({
       dateVisiteText: formatDateFr(c.prochaine_visite!),
       telephone: profil.telephone,
       emailPro: profil.email_pro,
+      signature: signatureDepuisProfil(profil, expediteurNom),
     });
     // Un seul rappel par échéance : la marque est posée AVANT l'envoi
     // (conditionnelle : un déclencheur concurrent ne renvoie pas) et

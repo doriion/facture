@@ -12,6 +12,7 @@ import {
   buildRelanceEmail,
   isEmailConfigured,
   sendEmail,
+  signatureDepuisProfil,
 } from "@/lib/email";
 import { formatDateFr, formatEuros } from "@/lib/format";
 import { joursDeRetard } from "@/lib/relances-helpers";
@@ -147,6 +148,8 @@ export async function envoyerFactureParEmailAction(
     expediteurNom,
     totalText: formatEuros(Number(facture.total_ht)),
     // Avoir : pas d'échéance, mais la précision du mode.
+    dateText: formatDateFr(facture.date_emission),
+    signature: signatureDepuisProfil(profil, expediteurNom),
     echeanceText: estAvoir
       ? facture.mode_avoir === "remboursement"
         ? "qui vous sera remboursé"
@@ -283,6 +286,9 @@ export async function envoyerDevisParEmailAction(
     totalText: formatEuros(Number(devis.total_ht)),
     messagePerso,
     signeLe: devis.signature_client_url && devis.date_signature ? formatDateFr(devis.date_signature) : undefined,
+    dateText: formatDateFr(devis.date_emission),
+    validiteText: devis.date_validite ? formatDateFr(devis.date_validite) : undefined,
+    signature: signatureDepuisProfil(profil, expediteurNom),
   });
 
   const res = await sendEmail({
@@ -411,6 +417,7 @@ export async function envoyerRelanceFactureAction(
     resteText,
     echeanceText: formatDateFr(facture.date_echeance),
     joursRetard,
+    signature: signatureDepuisProfil(profil, expediteurNom),
   });
 
   const res = await sendEmail({
