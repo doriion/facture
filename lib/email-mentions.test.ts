@@ -60,6 +60,7 @@ describe("gabarit des e-mails de documents", () => {
     validiteText: "01/11/2026",
     dateText: "02/10/2026",
     messagePerso: "voila le devis\nà bientôt",
+    natureActivite: "plomberie",
     signature: { nom: "Nathan Geneve EI", telephone: "06 12 34 56 78", email: "x@gmail.com", adresse: "12 rue des Alpes, 38000 Grenoble", siret: "123 456 789 01234" },
   });
 
@@ -75,6 +76,10 @@ describe("gabarit des e-mails de documents", () => {
       expect(mail.text).toContain(attendu);
     }
     expect(mail.subject).toBe("Votre devis D-2026-0026 — Nathan Geneve EI");
+    // Ton direct : nature de la prestation et validité dans le texte, plus de « ci-joint ».
+    expect(mail.text).toContain("Comme convenu, voici votre devis D-2026-0026 pour les travaux de plomberie");
+    expect(mail.text).toContain("valable jusqu'au 01/11/2026");
+    expect(mail.text).not.toContain("Veuillez trouver ci-joint");
     expect(mail.text).not.toMatch(/<(p|table|td|div|a)\b/);
   });
 });

@@ -157,6 +157,24 @@ export async function sendEmail(params: SendEmailParams): Promise<{
 /** Signature de repli quand l'appelant n'a que le nom. */
 const sig = (signature: SignatureEmail | undefined, nom: string): SignatureEmail => signature ?? { nom };
 
+/** « pour les travaux de plomberie », « pour l'installation de votre climatisation »… (clé type_activite). */
+export function objetPrestation(natureActivite: string | null | undefined): string {
+  switch (natureActivite) {
+    case "plomberie":
+      return "pour les travaux de plomberie";
+    case "installation_clim":
+      return "pour l'installation de votre climatisation";
+    case "installation_pac":
+      return "pour l'installation de votre pompe à chaleur";
+    case "entretien":
+      return "pour l'entretien de votre installation";
+    case "depannage":
+      return "pour le dépannage";
+    default:
+      return "pour les travaux dont nous avons parlé";
+  }
+}
+
 /**
  * E-mail d'envoi d'une facture, d'un avoir ou d'un devis (PDF joint).
  */
@@ -174,9 +192,12 @@ export function buildDocumentEmail(args: {
   validiteText?: string;
   /** Date d'émission, déjà formatée. */
   dateText?: string;
+  /** Nature de la prestation (clé type_activite du document), pour la phrase d'intro. */
+  natureActivite?: string | null;
   signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
   const libelle = args.type === "facture" ? "Facture" : args.type === "avoir" ? "Avoir" : "Devis";
+  const objet = objetPrestation(args.natureActivite);
   const subject = `${args.type === "facture" ? "Votre facture" : args.type === "avoir" ? "Votre avoir" : "Votre devis"} ${args.numero}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
 
   const paragraphes: string[] = [];
@@ -190,16 +211,23 @@ export function buildDocumentEmail(args: {
     paragraphes.push(`Veuillez trouver ci-joint la facture ${args.numero} correspondant aux travaux réalisés.`);
     if (args.echeanceText) resume.push(["À régler avant le", args.echeanceText]);
   } else if (args.signeLe) {
-    paragraphes.push(`Veuillez trouver ci-joint votre exemplaire du devis ${args.numero}, signé « bon pour accord » le ${args.signeLe}. Merci pour votre confiance.`);
+    paragraphes.push(
+      `Voici votre exemplaire du devis ${args.numero} ${objet}, signé « bon pour accord » le ${args.signeLe}. Merci pour votre confiance : je reviens vers vous rapidement pour caler la date d'intervention.`,
+    );
     resume.push(["Signé le", args.signeLe]);
   } else {
-    paragraphes.push(`Veuillez trouver ci-joint le devis ${args.numero} pour les travaux dont nous avons parlé.`);
-    if (args.validiteText) resume.push(["Valable jusqu'au", args.validiteText]);
+    paragraphes.push(
+      `Comme convenu, voici votre devis ${args.numero} ${objet}. Vous y trouverez le détail des prestations et le montant, en pièce jointe.`,
+    );
+    if (args.validiteText) {
+      paragraphes.push(`Il est valable jusqu'au ${args.validiteText} ; n'hésitez pas à me poser vos questions d'ici là.`);
+      resume.push(["Valable jusqu'au", args.validiteText]);
+    }
   }
 
   const conclusion =
     args.type === "devis" && !args.signeLe
-      ? "Pour accepter ce devis, retournez-le daté et signé avec la mention « bon pour accord », ou répondez simplement à ce message : nous conviendrons ensemble d'une date."
+      ? "S'il vous convient, un retour signé avec la mention « bon pour accord » suffit, ou répondez simplement à ce message : nous fixerons ensemble une date."
       : args.type === "facture"
         ? "Les coordonnées de règlement figurent sur la facture. Pour toute question, répondez simplement à ce message."
         : "Pour toute question, répondez simplement à ce message.";
