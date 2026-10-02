@@ -20,9 +20,17 @@
 import { Resend } from "resend";
 
 import { mentionTvaFranchise } from "@/lib/legal-text";
-import { PRINCIPAL } from "@/lib/theme";
 import { NOM_APPLICATION } from "@/lib/marque";
 import { adresseExpediteur } from "@/lib/expediteur-email";
+import {
+  emailDepuisContenu,
+  escapeHtml,
+  signatureDepuisProfil,
+  type SignatureEmail,
+} from "@/lib/email-gabarit";
+
+export { escapeHtml, signatureDepuisProfil };
+export type { SignatureEmail };
 
 type SendEmailParams = {
   to: string;
@@ -146,9 +154,11 @@ export async function sendEmail(params: SendEmailParams): Promise<{
   }
 }
 
+/** Signature de repli quand l'appelant n'a que le nom. */
+const sig = (signature: SignatureEmail | undefined, nom: string): SignatureEmail => signature ?? { nom };
+
 /**
- * Construit le corps email (HTML simple + texte plain) pour l'envoi
- * d'une facture ou d'un devis au client.
+ * E-mail d'envoi d'une facture, d'un avoir ou d'un devis (PDF joint).
  */
 export function buildDocumentEmail(args: {
   type: "facture" | "devis" | "avoir";
@@ -160,104 +170,78 @@ export function buildDocumentEmail(args: {
   messagePerso?: string;
   /** Devis déjà signé « bon pour accord » (date) : copie pour le client, rien à retourner. */
   signeLe?: string;
+  /** Validité du devis, déjà formatée. */
+  validiteText?: string;
+  /** Date d'émission, déjà formatée. */
+  dateText?: string;
+  signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
-  const titre =
-    args.type === "facture" ? "Votre facture" : args.type === "avoir" ? "Votre avoir" : "Votre devis";
-  const subject = `${titre} ${args.numero}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
+  const libelle = args.type === "facture" ? "Facture" : args.type === "avoir" ? "Avoir" : "Devis";
+  const subject = `${args.type === "facture" ? "Votre facture" : args.type === "avoir" ? "Votre avoir" : "Votre devis"} ${args.numero}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
 
-  const intro =
-    args.type === "avoir"
-      ? `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
-         <p>Veuillez trouver ci-joint l'avoir <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>${args.echeanceText ? ` ${escapeHtml(args.echeanceText)}` : ""}.</p>`
+  const paragraphes: string[] = [];
+  const resume: Array<[string, string]> = [[libelle, args.numero]];
+  if (args.dateText) resume.push(["Date", args.dateText]);
+  resume.push(["Montant", args.totalText]);
+
+  if (args.type === "avoir") {
+    paragraphes.push(`Veuillez trouver ci-joint l'avoir ${args.numero}${args.echeanceText ? `, ${args.echeanceText}` : ""}.`);
+  } else if (args.type === "facture") {
+    paragraphes.push(`Veuillez trouver ci-joint la facture ${args.numero} correspondant aux travaux réalisés.`);
+    if (args.echeanceText) resume.push(["À régler avant le", args.echeanceText]);
+  } else if (args.signeLe) {
+    paragraphes.push(`Veuillez trouver ci-joint votre exemplaire du devis ${args.numero}, signé « bon pour accord » le ${args.signeLe}. Merci pour votre confiance.`);
+    resume.push(["Signé le", args.signeLe]);
+  } else {
+    paragraphes.push(`Veuillez trouver ci-joint le devis ${args.numero} pour les travaux dont nous avons parlé.`);
+    if (args.validiteText) resume.push(["Valable jusqu'au", args.validiteText]);
+  }
+
+  const conclusion =
+    args.type === "devis" && !args.signeLe
+      ? "Pour accepter ce devis, retournez-le daté et signé avec la mention « bon pour accord », ou répondez simplement à ce message : nous conviendrons ensemble d'une date."
       : args.type === "facture"
-      ? `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
-         <p>Veuillez trouver ci-joint la facture <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>${args.echeanceText ? `, à régler avant le <strong>${escapeHtml(args.echeanceText)}</strong>` : ""}.</p>`
-      : args.signeLe
-      ? `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
-         <p>Veuillez trouver ci-joint votre exemplaire du devis <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>, signé « bon pour accord » le ${escapeHtml(args.signeLe)}. Merci pour votre confiance.</p>`
-      : `<p>Bonjour ${escapeHtml(args.clientNom)},</p>
-         <p>Veuillez trouver ci-joint le devis <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>.</p>
-         <p>Merci de me retourner ce devis daté, signé et avec la mention « bon pour accord » pour validation.</p>`;
+        ? "Les coordonnées de règlement figurent sur la facture. Pour toute question, répondez simplement à ce message."
+        : "Pour toute question, répondez simplement à ce message.";
 
-  const perso = args.messagePerso?.trim()
-    ? `<p>${escapeHtml(args.messagePerso).replace(/\n/g, "<br/>")}</p>`
-    : "";
-
-  const signature = args.expediteurNom
-    ? `<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>`
-    : "";
-
-  const html = `<!doctype html>
-<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
-${intro}
-${perso}
-<p>Pour toute question, je reste à votre disposition.</p>
-${signature}
-<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
-</body></html>`;
-
-  const textIntro =
-    args.type === "avoir"
-      ? `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint l'avoir ${args.numero} d'un montant de ${args.totalText}${args.echeanceText ? ` ${args.echeanceText}` : ""}.\n\n`
-      : args.type === "facture"
-      ? `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint la facture ${args.numero} d'un montant de ${args.totalText}${args.echeanceText ? `, à régler avant le ${args.echeanceText}` : ""}.\n\n`
-      : args.signeLe
-      ? `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint votre exemplaire du devis ${args.numero} d'un montant de ${args.totalText}, signé « bon pour accord » le ${args.signeLe}. Merci pour votre confiance.\n\n`
-      : `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint le devis ${args.numero} d'un montant de ${args.totalText}.\nMerci de me retourner ce devis signé pour validation.\n\n`;
-
-  const text =
-    textIntro +
-    (args.messagePerso?.trim() ? args.messagePerso + "\n\n" : "") +
-    "Pour toute question, je reste à votre disposition.\n\n" +
-    (args.expediteurNom ? `Cordialement,\n${args.expediteurNom}\n` : "") +
-    `\n— Envoyé via ${NOM_APPLICATION}`;
-
-  return { subject, html, text };
-}
-
-export function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return emailDepuisContenu(subject, {
+    titre: `${libelle} ${args.numero}`,
+    apercu: `${libelle} ${args.numero} · ${args.totalText}`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes,
+    resume,
+    messagePerso: args.messagePerso,
+    conclusion,
+    signature: sig(args.signature, args.expediteurNom),
+  });
 }
 
 /**
- * Email de relance pour facture impayée. Ton ferme mais courtois.
- */
-/**
- * Email d'envoi d'un bon d'intervention (PDF joint) au client.
+ * E-mail d'envoi d'un bon d'intervention (PDF joint) au client.
  */
 export function buildBonInterventionEmail(args: {
   clientNom: string;
   expediteurNom: string;
   dateText: string;
   messagePerso?: string;
+  signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
   const subject = `Bon d'intervention du ${args.dateText}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
-  const perso = args.messagePerso?.trim()
-    ? `<p>${escapeHtml(args.messagePerso).replace(/\n/g, "<br/>")}</p>`
-    : "";
-  const html = `<!doctype html>
-<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
-<p>Bonjour ${escapeHtml(args.clientNom)},</p>
-<p>Veuillez trouver ci-joint le bon d'intervention du <strong>${escapeHtml(args.dateText)}</strong>, qui récapitule les travaux réalisés.</p>
-${perso}
-<p>Pour toute question, je reste à votre disposition.</p>
-<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
-<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
-</body></html>`;
-  const text =
-    `Bonjour ${args.clientNom},\n\nVeuillez trouver ci-joint le bon d'intervention du ${args.dateText}, qui récapitule les travaux réalisés.\n\n` +
-    (args.messagePerso?.trim() ? args.messagePerso.trim() + "\n\n" : "") +
-    `Pour toute question, je reste à votre disposition.\n\nCordialement,\n${args.expediteurNom}`;
-  return { subject, html, text };
+  return emailDepuisContenu(subject, {
+    titre: `Bon d'intervention du ${args.dateText}`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `Veuillez trouver ci-joint le bon d'intervention du ${args.dateText}, qui récapitule les travaux réalisés chez vous.`,
+    ],
+    messagePerso: args.messagePerso,
+    conclusion: "Pour toute question, répondez simplement à ce message.",
+    signature: sig(args.signature, args.expediteurNom),
+  });
 }
 
+/**
+ * Relance pour facture impayée. Ton ferme mais courtois.
+ */
 export function buildRelanceEmail(args: {
   numero: string;
   clientNom: string;
@@ -267,42 +251,32 @@ export function buildRelanceEmail(args: {
   resteText?: string;
   echeanceText: string;
   joursRetard: number;
+  signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
   const subject = `Relance — Facture ${args.numero} impayée depuis ${args.joursRetard} jours`;
-  const resteHtml = args.resteText
-    ? ` (reste à régler : <strong>${escapeHtml(args.resteText)}</strong>)`
-    : "";
-  const resteTexte = args.resteText ? ` (reste à régler : ${args.resteText})` : "";
-
-  const html = `<!doctype html>
-<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
-<p>Bonjour ${escapeHtml(args.clientNom)},</p>
-<p>Sauf erreur de ma part, la facture <strong>${escapeHtml(args.numero)}</strong> d'un montant de <strong>${escapeHtml(args.totalText)}</strong>${resteHtml} dont l'échéance était fixée au <strong>${escapeHtml(args.echeanceText)}</strong> n'a pas été réglée à ce jour (<strong>${args.joursRetard} jours de retard</strong>).</p>
-<p>Pourriez-vous procéder au règlement dans les meilleurs délais ?</p>
-<p>Si le paiement a été effectué entre temps, considérez ce mail comme nul et merci de me communiquer la date d'encaissement.</p>
-<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
-<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
-</body></html>`;
-
-  const text = `Bonjour ${args.clientNom},
-
-Sauf erreur de ma part, la facture ${args.numero} d'un montant de ${args.totalText}${resteTexte} dont l'échéance était fixée au ${args.echeanceText} n'a pas été réglée à ce jour (${args.joursRetard} jours de retard).
-
-Pourriez-vous procéder au règlement dans les meilleurs délais ?
-
-Si le paiement a été effectué entre temps, considérez ce mail comme nul et merci de me communiquer la date d'encaissement.
-
-Cordialement,
-${args.expediteurNom}
-
-— Envoyé via ${NOM_APPLICATION}`;
-
-  return { subject, html, text };
+  const resume: Array<[string, string]> = [
+    ["Facture", args.numero],
+    ["Montant", args.totalText],
+  ];
+  if (args.resteText) resume.push(["Reste à régler", args.resteText]);
+  resume.push(["Échéance", args.echeanceText]);
+  resume.push(["Retard", `${args.joursRetard} jour${args.joursRetard > 1 ? "s" : ""}`]);
+  return emailDepuisContenu(subject, {
+    titre: `Rappel — facture ${args.numero}`,
+    apercu: `Facture ${args.numero} en attente de règlement`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `Sauf erreur de ma part, la facture ${args.numero} dont l'échéance était fixée au ${args.echeanceText} n'a pas encore été réglée.`,
+      "Pourriez-vous procéder au règlement dans les meilleurs délais ? Les coordonnées bancaires figurent sur la facture.",
+      "Si le paiement a été effectué entre-temps, merci de ne pas tenir compte de ce message et de m'indiquer la date du règlement.",
+    ],
+    resume,
+    signature: sig(args.signature, args.expediteurNom),
+  });
 }
 
 /**
- * Email d'invitation à signer un contrat d'entretien (lien public).
+ * Invitation à signer un contrat d'entretien (lien public).
  */
 export function buildLienContratEmail(args: {
   clientNom: string;
@@ -310,41 +284,25 @@ export function buildLienContratEmail(args: {
   numero: string;
   lien: string;
   expireLeText: string;
+  signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
   const subject = `Votre contrat d'entretien ${args.numero} — à signer en ligne${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
-
-  const html = `<!doctype html>
-<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
-<p>Bonjour ${escapeHtml(args.clientNom)},</p>
-<p>Veuillez trouver ci-dessous le lien vers votre contrat d'entretien <strong>${escapeHtml(args.numero)}</strong>. Vous pouvez le lire, compléter vos informations et le signer directement depuis votre téléphone — aucun compte n'est nécessaire.</p>
-<p style="text-align:center; margin:24px 0;">
-  <a href="${args.lien}" style="background:${PRINCIPAL}; color:#fff; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:600;">Lire et signer mon contrat</a>
-</p>
-<p style="font-size:13px; color:#666;">Ce lien est personnel et valable jusqu'au ${escapeHtml(args.expireLeText)}. Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br/>${args.lien}</p>
-<p>Une fois signé, vous recevrez immédiatement le contrat en PDF par retour d'e-mail.</p>
-<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
-<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
-</body></html>`;
-
-  const text = `Bonjour ${args.clientNom},
-
-Voici le lien vers votre contrat d'entretien ${args.numero}, à lire et signer en ligne (aucun compte nécessaire) :
-
-${args.lien}
-
-Ce lien est personnel et valable jusqu'au ${args.expireLeText}. Une fois signé, vous recevrez immédiatement le contrat en PDF par retour d'e-mail.
-
-Cordialement,
-${args.expediteurNom}
-
-— Envoyé via ${NOM_APPLICATION}`;
-
-  return { subject, html, text };
+  return emailDepuisContenu(subject, {
+    titre: `Contrat d'entretien ${args.numero}`,
+    apercu: "À lire et signer en ligne, depuis votre téléphone",
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `Voici votre contrat d'entretien ${args.numero}. Vous pouvez le lire, compléter vos informations et le signer directement depuis votre téléphone — aucun compte n'est nécessaire.`,
+    ],
+    bouton: { libelle: "Lire et signer mon contrat", href: args.lien },
+    resume: [["Lien valable jusqu'au", args.expireLeText]],
+    conclusion: `Une fois signé, vous recevrez immédiatement votre exemplaire en PDF. Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur : ${args.lien}`,
+    signature: sig(args.signature, args.expediteurNom),
+  });
 }
 
 /**
- * Email accompagnant le PDF signé (envoyé au client ET à l'artisan).
+ * E-mail accompagnant le contrat signé (client ET artisan).
  */
 export function buildContratSigneEmail(args: {
   destinataireNom: string;
@@ -352,90 +310,76 @@ export function buildContratSigneEmail(args: {
   signataireNom: string;
   dateSignatureText: string;
   pourArtisan: boolean;
+  signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
   const subject = args.pourArtisan
     ? `✅ Contrat ${args.numero} signé par ${args.signataireNom}`
     : `Votre contrat d'entretien ${args.numero} signé — exemplaire PDF`;
-
-  const intro = args.pourArtisan
-    ? `<p>Bonjour,</p><p><strong>${escapeHtml(args.signataireNom)}</strong> a signé le contrat d'entretien <strong>${escapeHtml(args.numero)}</strong> le ${escapeHtml(args.dateSignatureText)}.</p><p>L'exemplaire signé (avec sa page de preuve) est en pièce jointe et archivé dans l'application. Pensez à passer le contrat en « actif » et à créer le suivi de maintenance.</p>`
-    : `<p>Bonjour ${escapeHtml(args.destinataireNom)},</p><p>Merci ! Votre contrat d'entretien <strong>${escapeHtml(args.numero)}</strong> a bien été signé le ${escapeHtml(args.dateSignatureText)}.</p><p>Vous trouverez en pièce jointe votre exemplaire PDF, à conserver. Il comprend la page de preuve de la signature électronique.</p>`;
-
-  const html = `<!doctype html>
-<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
-${intro}
-<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
-</body></html>`;
-
-  const text = args.pourArtisan
-    ? `${args.signataireNom} a signé le contrat d'entretien ${args.numero} le ${args.dateSignatureText}. L'exemplaire signé est en pièce jointe.`
-    : `Bonjour ${args.destinataireNom},
-
-Votre contrat d'entretien ${args.numero} a bien été signé le ${args.dateSignatureText}. Votre exemplaire PDF est en pièce jointe, à conserver.
-
-— Envoyé via ${NOM_APPLICATION}`;
-
-  return { subject, html, text };
+  const signature = sig(args.signature, args.pourArtisan ? NOM_APPLICATION : "Votre artisan");
+  return emailDepuisContenu(subject, {
+    titre: `Contrat ${args.numero} signé`,
+    salutation: args.pourArtisan ? "Bonjour," : `Bonjour ${args.destinataireNom},`,
+    paragraphes: args.pourArtisan
+      ? [
+          `${args.signataireNom} a signé le contrat d'entretien ${args.numero} le ${args.dateSignatureText}.`,
+          "L'exemplaire signé (avec sa page de preuve) est en pièce jointe et archivé dans l'application. Pensez à passer le contrat en « actif » et à créer le suivi de maintenance.",
+        ]
+      : [
+          `Merci ! Votre contrat d'entretien ${args.numero} a bien été signé le ${args.dateSignatureText}.`,
+          "Vous trouverez en pièce jointe votre exemplaire PDF, à conserver. Il comprend la page de preuve de la signature électronique.",
+        ],
+    resume: [
+      ["Contrat", args.numero],
+      ["Signé par", args.signataireNom],
+      ["Le", args.dateSignatureText],
+    ],
+    signature,
+  });
 }
 
 /**
- * Email de rappel d'entretien (contrat de maintenance). Ton cordial :
- * on invite le client à prendre rendez-vous, avec les coordonnées de
- * l'artisan pour répondre directement.
+ * Rappel d'entretien (contrat de maintenance) : on invite le client à
+ * prendre rendez-vous.
  */
 export function buildRappelEntretienEmail(args: {
   clientNom: string;
   expediteurNom: string;
   /** Libellé du contrat ou de l'équipement (ex. « Entretien clim annuel ») */
   objetEntretien: string;
-  /** Date de visite prévue, déjà formatée (ex. « 20 septembre 2026 ») */
+  /** Date de visite prévue, déjà formatée */
   dateVisiteText: string;
   telephone?: string | null;
   emailPro?: string | null;
+  signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
   const subject = `Rappel d'entretien — ${args.objetEntretien}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
-
   const coordonnees = [
     args.telephone ? `par téléphone au ${args.telephone}` : null,
-    args.emailPro ? `par email à ${args.emailPro}` : null,
+    args.emailPro ? `par e-mail à ${args.emailPro}` : null,
   ]
     .filter(Boolean)
     .join(" ou ");
-
-  const contactHtml = coordonnees
-    ? `<p>Pour convenir d'un rendez-vous, vous pouvez me joindre ${escapeHtml(coordonnees)}, ou simplement répondre à ce message.</p>`
-    : `<p>Pour convenir d'un rendez-vous, vous pouvez simplement répondre à ce message.</p>`;
-
-  const html = `<!doctype html>
-<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
-<p>Bonjour ${escapeHtml(args.clientNom)},</p>
-<p>La prochaine visite d'entretien de votre installation (<strong>${escapeHtml(args.objetEntretien)}</strong>) est prévue aux alentours du <strong>${escapeHtml(args.dateVisiteText)}</strong>.</p>
-<p>Un entretien régulier garantit le bon fonctionnement et la longévité de votre équipement.</p>
-${contactHtml}
-<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
-<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}.</p>
-</body></html>`;
-
-  const contactText = coordonnees
-    ? `Pour convenir d'un rendez-vous, vous pouvez me joindre ${coordonnees}, ou simplement répondre à ce message.`
-    : `Pour convenir d'un rendez-vous, vous pouvez simplement répondre à ce message.`;
-
-  const text = `Bonjour ${args.clientNom},
-
-La prochaine visite d'entretien de votre installation (${args.objetEntretien}) est prévue aux alentours du ${args.dateVisiteText}.
-
-Un entretien régulier garantit le bon fonctionnement et la longévité de votre équipement.
-
-${contactText}
-
-Cordialement,
-${args.expediteurNom}
-
-— Envoyé via ${NOM_APPLICATION}`;
-
-  return { subject, html, text };
+  return emailDepuisContenu(subject, {
+    titre: "Votre prochain entretien",
+    apercu: `${args.objetEntretien} · vers le ${args.dateVisiteText}`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `La prochaine visite d'entretien de votre installation est prévue aux alentours du ${args.dateVisiteText}.`,
+      "Un entretien régulier garantit le bon fonctionnement et la longévité de votre équipement.",
+    ],
+    resume: [
+      ["Installation", args.objetEntretien],
+      ["Période prévue", `vers le ${args.dateVisiteText}`],
+    ],
+    conclusion: coordonnees
+      ? `Pour convenir d'un rendez-vous, vous pouvez me joindre ${coordonnees}, ou simplement répondre à ce message.`
+      : "Pour convenir d'un rendez-vous, répondez simplement à ce message.",
+    signature: {
+      ...sig(args.signature, args.expediteurNom),
+      telephone: args.signature?.telephone ?? args.telephone,
+      email: args.signature?.email ?? args.emailPro,
+    },
+  });
 }
 
 /**
@@ -453,7 +397,7 @@ export function buildAvisChatelEmail(args: {
   expediteurNom: string;
   /** Numéro du contrat (ex. « 2026-001 ») */
   numero: string;
-  /** Échéance annuelle, déjà formatée (ex. « 10 novembre 2026 ») */
+  /** Échéance annuelle, déjà formatée */
   dateEcheanceText: string;
   /** Date limite de dénonciation (échéance − 2 mois), déjà formatée */
   dateLimiteText: string;
@@ -461,68 +405,50 @@ export function buildAvisChatelEmail(args: {
   emailPro?: string | null;
   /** Copie destinée à l'artisan (récapitulatif) plutôt qu'au client */
   pourArtisan?: boolean;
+  signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
   const subject = args.pourArtisan
     ? `Copie — avis de reconduction envoyé (contrat ${args.numero})`
     : `Votre contrat d'entretien ${args.numero} — reconduction annuelle`;
-
   const coordonnees = [
     args.telephone ? `par téléphone au ${args.telephone}` : null,
-    args.emailPro ? `par email à ${args.emailPro}` : null,
+    args.emailPro ? `par e-mail à ${args.emailPro}` : null,
   ]
     .filter(Boolean)
     .join(" ou ");
-
-  const enTeteHtml = args.pourArtisan
-    ? `<p style="background:#f4f4f5; padding:10px; border-radius:6px; font-size:13px;">Copie de l'avis envoyé au client ${escapeHtml(args.clientNom)}. Aucune action de votre part n'est nécessaire.</p>`
-    : "";
-
-  const contactHtml = coordonnees
-    ? `<p>Pour toute question, vous pouvez me joindre ${escapeHtml(coordonnees)}, ou simplement répondre à ce message.</p>`
-    : `<p>Pour toute question, vous pouvez simplement répondre à ce message.</p>`;
 
   // Mention de franchise : valeur centralisée dans lib/legal-text,
   // jamais écrite en dur ici. Sans argument, elle prend la date du
   // jour — c'est la bonne : ce pied de page décrit le régime de
   // l'expéditeur au moment où le message part, pas celui d'un
-  // document passé.
+  // document passé. Le gabarit l'échappe en HTML et la garde telle
+  // quelle en texte (vérifié par lib/email-mentions.test.ts).
   const mentionTva = mentionTvaFranchise();
 
-  const html = `<!doctype html>
-<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#111; max-width:600px; margin:auto; padding:16px; line-height:1.5;">
-${enTeteHtml}
-<p>Bonjour ${escapeHtml(args.clientNom)},</p>
-<p>Votre contrat d'entretien n° <strong>${escapeHtml(args.numero)}</strong> arrive à son échéance annuelle le <strong>${escapeHtml(args.dateEcheanceText)}</strong>. Sauf opposition de votre part, il sera reconduit pour un an.</p>
-<p>Conformément aux articles L. 215-1 et suivants du code de la consommation, je vous informe que <strong>vous pouvez choisir de ne pas le reconduire</strong>. Pour cela, adressez-moi une lettre recommandée avec accusé de réception au plus tard le <strong>${escapeHtml(args.dateLimiteText)}</strong>, soit deux mois avant l'échéance.</p>
-<p>Si vous souhaitez au contraire poursuivre, vous n'avez aucune démarche à faire.</p>
-${contactHtml}
-<p style="margin-top:24px;">Cordialement,<br/><strong>${escapeHtml(args.expediteurNom)}</strong></p>
-<hr style="margin:24px 0; border:none; border-top:1px solid #eee;"/>
-<p style="font-size:12px; color:#666;">Envoyé via ${NOM_APPLICATION}. ${escapeHtml(mentionTva)}.</p>
-</body></html>`;
-
-  const enTeteText = args.pourArtisan
-    ? `Copie de l'avis envoyé au client ${args.clientNom}. Aucune action de votre part n'est nécessaire.\n\n`
-    : "";
-
-  const contactText = coordonnees
-    ? `Pour toute question, vous pouvez me joindre ${coordonnees}, ou simplement répondre à ce message.`
-    : `Pour toute question, vous pouvez simplement répondre à ce message.`;
-
-  const text = `${enTeteText}Bonjour ${args.clientNom},
-
-Votre contrat d'entretien n° ${args.numero} arrive à son échéance annuelle le ${args.dateEcheanceText}. Sauf opposition de votre part, il sera reconduit pour un an.
-
-Conformément aux articles L. 215-1 et suivants du code de la consommation, je vous informe que vous pouvez choisir de ne pas le reconduire. Pour cela, adressez-moi une lettre recommandée avec accusé de réception au plus tard le ${args.dateLimiteText}, soit deux mois avant l'échéance.
-
-Si vous souhaitez au contraire poursuivre, vous n'avez aucune démarche à faire.
-
-${contactText}
-
-Cordialement,
-${args.expediteurNom}
-
-— Envoyé via ${NOM_APPLICATION}. ${mentionTva}.`;
-
-  return { subject, html, text };
+  return emailDepuisContenu(subject, {
+    titre: `Contrat ${args.numero} — reconduction annuelle`,
+    bandeau: args.pourArtisan
+      ? `Copie de l'avis envoyé au client ${args.clientNom}. Aucune action de votre part n'est nécessaire.`
+      : null,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `Votre contrat d'entretien n° ${args.numero} arrive à son échéance annuelle le ${args.dateEcheanceText}. Sauf opposition de votre part, il sera reconduit pour un an.`,
+      `Conformément aux articles L. 215-1 et suivants du code de la consommation, je vous informe que vous pouvez choisir de ne pas le reconduire. Pour cela, adressez-moi une lettre recommandée avec accusé de réception au plus tard le ${args.dateLimiteText}, soit deux mois avant l'échéance.`,
+      "Si vous souhaitez au contraire poursuivre, vous n'avez aucune démarche à faire.",
+    ],
+    resume: [
+      ["Contrat", args.numero],
+      ["Échéance annuelle", args.dateEcheanceText],
+      ["Dénonciation possible jusqu'au", args.dateLimiteText],
+    ],
+    conclusion: coordonnees
+      ? `Pour toute question, vous pouvez me joindre ${coordonnees}, ou simplement répondre à ce message.`
+      : "Pour toute question, répondez simplement à ce message.",
+    signature: {
+      ...sig(args.signature, args.expediteurNom),
+      telephone: args.signature?.telephone ?? args.telephone,
+      email: args.signature?.email ?? args.emailPro,
+    },
+    mentionPied: mentionTva,
+  });
 }

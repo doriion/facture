@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { aujourdhuiParis } from "@/lib/dates";
-import { buildBonInterventionEmail, sendEmail } from "@/lib/email";
+import { buildBonInterventionEmail, sendEmail, signatureDepuisProfil } from "@/lib/email";
 import { coordonneesEmetteur, enseigneEmetteur, ligneePiedDePage } from "@/lib/devis-modele";
 import { logoApplication } from "@/lib/logo-app";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
@@ -274,6 +274,7 @@ export async function genererBonInterventionAction(
       expediteurNom,
       dateText: formatDateCourte(intervention.date_intervention),
       messagePerso: options.messagePerso,
+      signature: signatureDepuisProfil(profil, expediteurNom),
     });
     const res = await sendEmail({
       to: client.email,

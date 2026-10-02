@@ -27,7 +27,7 @@ import {
   chargerSignatureDataUri,
   rendreContratSigne,
 } from "@/lib/contrats/pdf-helpers";
-import { buildLienContratEmail, isEmailConfigured, sendEmail } from "@/lib/email";
+import { buildLienContratEmail, isEmailConfigured, sendEmail, signatureDepuisProfil } from "@/lib/email";
 import { formatDateFr } from "@/lib/format";
 
 type ActionResult<T = void> =
@@ -351,6 +351,7 @@ export async function envoyerContratAction(
     numero: numero!,
     lien,
     expireLeText: formatDateFr(tokenExpiresAt.slice(0, 10)),
+    signature: signatureDepuisProfil(profil, expediteurNom),
   });
   const envoi = await sendEmail({
     to: client.email,

@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { buildAvisChatelEmail, buildDocumentEmail } from "./email";
+import { escapeHtml } from "./email-gabarit";
 import {
   MENTION_TVA_FRANCHISE_CGI,
   MENTION_TVA_FRANCHISE_CIBS,
@@ -13,46 +15,66 @@ import {
  * Les e-mails partent MAINTENANT : leur pied de page doit porter la
  * rédaction en vigueur au moment de l'envoi, pas celle figée dans le
  * code à l'écriture du gabarit.
- *
- * Le fichier lib/email.ts n'est pas testable en unité tel quel (il
- * instancie le client Resend au chargement), d'où un contrôle
- * statique : c'est le même garde-fou que celui posé sur les devis et
- * les contrats, et il suffit à empêcher la régression visée.
  */
-describe("garde-fou : aucune mention de TVA en dur dans les e-mails", () => {
-  const source = readFileSync(join(__dirname, "email.ts"), "utf8");
-  const code = source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
-
-  it("le gabarit reprend la valeur centralisée", () => {
-    expect(code).toContain("mentionTvaFranchise(");
-    expect(code).toContain("${escapeHtml(mentionTva)}");
-    expect(code).toContain("${mentionTva}");
+describe("mention de TVA dans les e-mails", () => {
+  const avis = buildAvisChatelEmail({
+    clientNom: "Mme Durand <test>",
+    expediteurNom: "Nathan Geneve EI",
+    numero: "2026-001",
+    dateEcheanceText: "10 novembre 2026",
+    dateLimiteText: "10 septembre 2026",
   });
 
-  it("aucune rédaction n'est recopiée dans le fichier", () => {
-    expect(code).not.toContain("293 B");
-    expect(code).not.toContain("L. 223-3");
-    expect(code).not.toContain("TVA non applicable");
+  it("le rendu reprend la valeur centralisée, échappée en HTML, brute en texte", () => {
+    expect(avis.html).toContain(escapeHtml(mentionTvaFranchise()));
+    expect(avis.text).toContain(mentionTvaFranchise());
   });
 
-  it("la version HTML échappe la mention, comme le reste du gabarit", () => {
-    // La mention vient du code, pas d'une saisie — mais l'échappement
-    // reste la règle du fichier, et une future mention pourrait citer
-    // un caractère à échapper.
-    expect(code).toContain("escapeHtml(mentionTva)");
+  it("aucune rédaction n'est recopiée dans les fichiers d'e-mail", () => {
+    for (const f of ["email.ts", "email-gabarit.ts"]) {
+      const code = readFileSync(join(__dirname, f), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+      expect(code).not.toContain("293 B");
+      expect(code).not.toContain("L. 223-3");
+      expect(code).not.toContain("TVA non applicable");
+    }
   });
-});
 
-describe("la mention envoyée suit la date du jour", () => {
   it("aujourd'hui, c'est la rédaction CIBS", () => {
     expect(mentionTvaFranchise()).toBe(MENTION_TVA_FRANCHISE_CIBS);
   });
 
   it("la fonction reste capable de rendre l'ancienne rédaction", () => {
-    // Elle sert encore aux documents antérieurs à la bascule ; ce test
-    // casse si quelqu'un supprime la branche historique.
     expect(mentionTvaFranchise("2026-05-11")).toBe(MENTION_TVA_FRANCHISE_CGI);
+  });
+});
+
+describe("gabarit des e-mails de documents", () => {
+  const mail = buildDocumentEmail({
+    type: "devis",
+    numero: "D-2026-0026",
+    clientNom: "M. <b>Test</b>",
+    expediteurNom: "Nathan Geneve EI",
+    totalText: "100,00 €",
+    validiteText: "01/11/2026",
+    dateText: "02/10/2026",
+    messagePerso: "voila le devis\nà bientôt",
+    signature: { nom: "Nathan Geneve EI", telephone: "06 12 34 56 78", email: "x@gmail.com", adresse: "12 rue des Alpes, 38000 Grenoble", siret: "123 456 789 01234" },
+  });
+
+  it("échappe le HTML venant des données et garde les retours à la ligne", () => {
+    expect(mail.html).toContain("M. &lt;b&gt;Test&lt;/b&gt;");
+    expect(mail.html).not.toContain("<b>Test</b>");
+    expect(mail.html).toContain("voila le devis<br/>à bientôt");
+  });
+
+  it("résumé, signature complète et versions HTML / texte cohérentes", () => {
+    for (const attendu of ["D-2026-0026", "100,00 €", "01/11/2026", "Tél. 06 12 34 56 78", "x@gmail.com", "SIRET 123 456 789 01234", "bon pour accord"]) {
+      expect(mail.html).toContain(escapeHtml(attendu));
+      expect(mail.text).toContain(attendu);
+    }
+    expect(mail.subject).toBe("Votre devis D-2026-0026 — Nathan Geneve EI");
+    expect(mail.text).not.toMatch(/<(p|table|td|div|a)\b/);
   });
 });
