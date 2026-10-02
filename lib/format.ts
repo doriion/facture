@@ -107,6 +107,38 @@ export const REGEX = {
 };
 
 /**
+ * Téléphone français par paires : « 0647214864 », « 06.47.21.48.64 »,
+ * « +33647214864 » → « 06 47 21 48 64 » ou « +33 6 47 21 48 64 ».
+ * Un numéro non reconnu est rendu tel quel (jamais altéré).
+ */
+export function formatTelephone(tel: string | null | undefined): string {
+  const brut = (tel ?? "").trim();
+  if (!brut) return "";
+  const chiffres = brut.replace(/\D/g, "");
+  const paires = (s: string) => s.replace(/(\d{2})(?=\d)/g, "$1 ");
+  if (/^0[1-9]\d{8}$/.test(chiffres)) return paires(chiffres);
+  if (brut.startsWith("+")) {
+    // « +33 (0)6 47… » : le 0 entre parenthèses ne fait pas partie du numéro.
+    const national = chiffres.replace(/^330(?=[1-9]\d{8}$)/, "33");
+    if (/^33[1-9]\d{8}$/.test(national)) return `+33 ${national[2]} ${paires(national.slice(3))}`;
+  }
+  return brut;
+}
+
+/**
+ * Lien « tel: » cliquable, en format international pour un numéro
+ * français ; null si aucun chiffre.
+ */
+export function lienTelephone(tel: string | null | undefined): string | null {
+  const brut = (tel ?? "").trim();
+  const chiffres = brut.replace(/\D/g, "");
+  if (!chiffres) return null;
+  if (/^0[1-9]\d{8}$/.test(chiffres)) return `tel:+33${chiffres.slice(1)}`;
+  if (brut.startsWith("+")) return `tel:+${chiffres.replace(/^330(?=[1-9]\d{8}$)/, "33")}`;
+  return `tel:${chiffres}`;
+}
+
+/**
  * Normalise une chaîne en supprimant tous les espaces.
  */
 export function stripSpaces(s: string): string {

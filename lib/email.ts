@@ -22,6 +22,7 @@ import { Resend } from "resend";
 import { mentionTvaFranchise } from "@/lib/legal-text";
 import { NOM_APPLICATION } from "@/lib/marque";
 import { adresseExpediteur } from "@/lib/expediteur-email";
+import { formatTelephone } from "@/lib/format";
 import {
   emailDepuisContenu,
   escapeHtml,
@@ -204,14 +205,16 @@ export function buildDocumentEmail(args: {
 
   const paragraphes: string[] = [];
   const resume: Array<[string, string]> = [[libelle, args.numero]];
-  if (args.dateText) resume.push(["Date", args.dateText]);
+  // « Émise le » pour la facture, « Émis le » pour le devis et l'avoir :
+  // « Date » prêtait à confusion avec la date d'intervention.
+  if (args.dateText) resume.push([args.type === "facture" ? "Émise le" : "Émis le", args.dateText]);
   resume.push(["Montant", args.totalText]);
 
   if (args.type === "avoir") {
     paragraphes.push(`Voici votre avoir ${args.numero}${args.echeanceText ? `, ${args.echeanceText}` : ""}. Vous le trouverez en pièce jointe.`);
   } else if (args.type === "facture") {
     paragraphes.push(
-      `Comme convenu, voici votre facture ${args.numero} ${objet}${args.interventionText ? `, suite à mon intervention ${args.interventionText}` : ""}. Vous la trouverez en pièce jointe.`,
+      `Voici votre facture ${args.numero} ${objet}${args.interventionText ? `, suite à mon intervention ${args.interventionText}` : ""}. Vous la trouverez en pièce jointe.`,
     );
     paragraphes.push(
       args.echeanceText
@@ -391,7 +394,7 @@ export function buildRappelEntretienEmail(args: {
 }): { subject: string; html: string; text: string } {
   const subject = `Rappel d'entretien — ${args.objetEntretien}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
   const coordonnees = [
-    args.telephone ? `par téléphone au ${args.telephone}` : null,
+    args.telephone ? `par téléphone au ${formatTelephone(args.telephone)}` : null,
     args.emailPro ? `par e-mail à ${args.emailPro}` : null,
   ]
     .filter(Boolean)
@@ -448,7 +451,7 @@ export function buildAvisChatelEmail(args: {
     ? `Copie — avis de reconduction envoyé (contrat ${args.numero})`
     : `Votre contrat d'entretien ${args.numero} — reconduction annuelle`;
   const coordonnees = [
-    args.telephone ? `par téléphone au ${args.telephone}` : null,
+    args.telephone ? `par téléphone au ${formatTelephone(args.telephone)}` : null,
     args.emailPro ? `par e-mail à ${args.emailPro}` : null,
   ]
     .filter(Boolean)

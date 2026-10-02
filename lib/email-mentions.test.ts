@@ -61,7 +61,16 @@ describe("gabarit des e-mails de documents", () => {
     dateText: "02/10/2026",
     messagePerso: "voila le devis\nà bientôt",
     natureActivite: "plomberie",
-    signature: { nom: "Nathan Geneve EI", telephone: "06 12 34 56 78", email: "x@gmail.com", adresse: "12 rue des Alpes, 38000 Grenoble", siret: "123 456 789 01234" },
+    signature: { nom: "Nathan Geneve EI", telephone: "0612345678", email: "x@gmail.com", adresse: "12 rue des Alpes, 38000 Grenoble", siret: "123 456 789 01234" },
+  });
+
+  it("signature : téléphone par paires et cliquable (lien tel:)", () => {
+    expect(mail.text).toContain("Tél. 06 12 34 56 78");
+    expect(mail.html).toContain('<a href="tel:+33612345678"');
+    expect(mail.html).toContain(">06 12 34 56 78</a>");
+    // Le libellé de la date d'émission ne se confond plus avec l'intervention.
+    expect(mail.text).toContain("Émis le : 02/10/2026");
+    expect(mail.text).not.toContain("Date : ");
   });
 
   it("échappe le HTML venant des données et garde les retours à la ligne", () => {
@@ -71,7 +80,7 @@ describe("gabarit des e-mails de documents", () => {
   });
 
   it("résumé, signature complète et versions HTML / texte cohérentes", () => {
-    for (const attendu of ["D-2026-0026", "100,00 €", "01/11/2026", "Tél. 06 12 34 56 78", "x@gmail.com", "SIRET 123 456 789 01234", "bon pour accord"]) {
+    for (const attendu of ["D-2026-0026", "100,00 €", "01/11/2026", "06 12 34 56 78", "x@gmail.com", "SIRET 123 456 789 01234", "bon pour accord"]) {
       expect(mail.html).toContain(escapeHtml(attendu));
       expect(mail.text).toContain(attendu);
     }
@@ -97,8 +106,10 @@ describe("gabarit des e-mails de documents", () => {
     });
     expect(facture.subject).toBe("Votre facture F-2026-0051 — Nathan Geneve EI");
     expect(facture.text).toContain(
-      "Comme convenu, voici votre facture F-2026-0051 pour le dépannage, suite à mon intervention du 25/09/2026 au 28/09/2026.",
+      "Voici votre facture F-2026-0051 pour le dépannage, suite à mon intervention du 25/09/2026 au 28/09/2026.",
     );
+    expect(facture.text).not.toContain("Comme convenu");
+    expect(facture.text).toContain("Émise le : 02/10/2026");
     expect(facture.text).toContain("à régler avant le 01/11/2026, par virement : les coordonnées bancaires figurent sur la facture");
     expect(facture.text).toContain("À régler avant le");
     expect(facture.text.trimEnd().includes("Merci pour votre confiance")).toBe(true);
@@ -114,7 +125,7 @@ describe("gabarit des e-mails de documents", () => {
       totalText: "100,00 €",
       natureActivite: "autre",
     });
-    expect(sansDates.text).toContain("voici votre facture F-2026-0052 pour les travaux dont nous avons parlé. Vous la trouverez en pièce jointe.");
+    expect(sansDates.text).toContain("Voici votre facture F-2026-0052 pour les travaux dont nous avons parlé. Vous la trouverez en pièce jointe.");
     expect(sansDates.text).toContain("Elle est à régler par virement : les coordonnées bancaires figurent sur la facture.");
     expect(sansDates.text).not.toContain("suite à mon intervention");
   });
