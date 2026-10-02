@@ -43,7 +43,7 @@ export async function envoyerFactureParEmailAction(
     return {
       ok: false,
       error:
-        "Resend non configuré. Ajoutez RESEND_API_KEY et RESEND_FROM dans Vercel.",
+        "Envoi d'e-mail non configuré. Ajoutez GMAIL_USER et GMAIL_APP_PASSWORD (ou RESEND_API_KEY et RESEND_FROM) dans Vercel.",
     };
   }
 
@@ -161,6 +161,7 @@ export async function envoyerFactureParEmailAction(
     html: email.html,
     text: email.text,
     replyTo: profil.email_pro ?? undefined,
+    fromName: expediteurNom,
     attachments: [
       {
         filename: `${facture.numero}.pdf`,
@@ -207,7 +208,7 @@ export async function envoyerDevisParEmailAction(
     return {
       ok: false,
       error:
-        "Resend non configuré. Ajoutez RESEND_API_KEY et RESEND_FROM dans Vercel.",
+        "Envoi d'e-mail non configuré. Ajoutez GMAIL_USER et GMAIL_APP_PASSWORD (ou RESEND_API_KEY et RESEND_FROM) dans Vercel.",
     };
   }
 
@@ -290,6 +291,7 @@ export async function envoyerDevisParEmailAction(
     html: email.html,
     text: email.text,
     replyTo: profil.email_pro ?? undefined,
+    fromName: expediteurNom,
     attachments: [
       {
         filename: `${devis.numero}.pdf`,
@@ -331,7 +333,7 @@ export async function envoyerRelanceFactureAction(
     return {
       ok: false,
       error:
-        "Resend non configuré. Ajoutez RESEND_API_KEY et RESEND_FROM dans Vercel.",
+        "Envoi d'e-mail non configuré. Ajoutez GMAIL_USER et GMAIL_APP_PASSWORD (ou RESEND_API_KEY et RESEND_FROM) dans Vercel.",
     };
   }
 
@@ -417,6 +419,7 @@ export async function envoyerRelanceFactureAction(
     html: email.html,
     text: email.text,
     replyTo: profil?.email_pro ?? undefined,
+    fromName: expediteurNom,
     attachments: [
       {
         filename: `${facture.numero}.pdf`,

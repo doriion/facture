@@ -226,7 +226,7 @@ export async function envoyerContratAction(
     return {
       ok: false,
       error:
-        "Resend non configuré (RESEND_API_KEY / RESEND_FROM) — impossible d'envoyer.",
+        "Envoi d'e-mail non configuré (GMAIL_USER / GMAIL_APP_PASSWORD) — impossible d'envoyer.",
     };
   }
 
