@@ -23,19 +23,34 @@ export function mentionAcompte(
   acomptePct: number | null | undefined,
   acompteMontant: number | null | undefined,
 ): string | null {
+  const acompte = acompteDevis(totalHt, acomptePct, acompteMontant);
+  if (!acompte) return null;
+  return acompte.pct !== null
+    ? `Acompte à la commande : ${acompte.pctAffiche} % (${euros(acompte.montant)}), solde à réception de facture.`
+    : `Acompte à la commande : ${euros(acompte.montant)}, solde à réception de facture.`;
+}
+
+/**
+ * Acompte demandé par le devis (le % prime sur le montant fixe) :
+ * montant arrondi au centime, pourcentage affiché à la française, et
+ * texte court pour un e-mail (« 1 350,00 € (30 %) » ou « 500,00 € »).
+ * null sans acompte (valeurs nulles ou zéro).
+ */
+export function acompteDevis(
+  totalHt: number,
+  acomptePct: number | null | undefined,
+  acompteMontant: number | null | undefined,
+): { montant: number; pct: number | null; pctAffiche: string | null; texte: string } | null {
   if (acomptePct !== null && acomptePct !== undefined && acomptePct > 0) {
     const montant = round2((totalHt * acomptePct) / 100);
     const pctAffiche = Number.isInteger(acomptePct)
       ? String(acomptePct)
       : acomptePct.toLocaleString("fr-FR");
-    return `Acompte à la commande : ${pctAffiche} % (${euros(montant)}), solde à réception de facture.`;
+    return { montant, pct: acomptePct, pctAffiche, texte: `${euros(montant)} (${pctAffiche} %)` };
   }
-  if (
-    acompteMontant !== null &&
-    acompteMontant !== undefined &&
-    acompteMontant > 0
-  ) {
-    return `Acompte à la commande : ${euros(round2(acompteMontant))}, solde à réception de facture.`;
+  if (acompteMontant !== null && acompteMontant !== undefined && acompteMontant > 0) {
+    const montant = round2(acompteMontant);
+    return { montant, pct: null, pctAffiche: null, texte: euros(montant) };
   }
   return null;
 }

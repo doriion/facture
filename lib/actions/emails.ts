@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { acompteDevis } from "@/lib/devis-mentions";
 import { aujourdhuiParis } from "@/lib/dates";
 import { payloadLignesPdf } from "@/lib/pdf-payload";
 import { estErreurMoteurTva, verifierMoteurTva } from "@/lib/tva-garde";
@@ -298,6 +299,12 @@ export async function envoyerDevisParEmailAction(
     dateText: formatDateFr(devis.date_emission),
     validiteText: devis.date_validite ? formatDateFr(devis.date_validite) : undefined,
     natureActivite: devis.type_activite,
+    // Acompte demandé : même calcul que le PDF (le % prime). Sans acompte, rien n'est dit.
+    acompteText: acompteDevis(
+      Number(devis.total_ht),
+      devis.acompte_pct !== null ? Number(devis.acompte_pct) : null,
+      devis.acompte_montant !== null ? Number(devis.acompte_montant) : null,
+    )?.texte,
     signature: signatureDepuisProfil(profil, expediteurNom),
   });
 

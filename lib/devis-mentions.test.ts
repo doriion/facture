@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import { mentionAcompte } from "./devis-mentions";
+import { acompteDevis, mentionAcompte } from "./devis-mentions";
+
+describe("acompteDevis", () => {
+  it("pourcentage : montant calculé et texte court", () => {
+    expect(acompteDevis(1250, 30, null)).toEqual({ montant: 375, pct: 30, pctAffiche: "30", texte: "375,00 € (30 %)" });
+    expect(acompteDevis(1000, 33.5, null)?.texte).toBe("335,00 € (33,5 %)");
+  });
+  it("montant fixe sans pourcentage", () => {
+    expect(acompteDevis(4500, null, 500)).toEqual({ montant: 500, pct: null, pctAffiche: null, texte: "500,00 €" });
+  });
+  it("le pourcentage prime ; null sans acompte", () => {
+    expect(acompteDevis(1000, 30, 999)?.texte).toBe("300,00 € (30 %)");
+    expect(acompteDevis(4500, null, null)).toBeNull();
+    expect(acompteDevis(4500, 0, 0)).toBeNull();
+    expect(acompteDevis(4500, undefined, undefined)).toBeNull();
+  });
+});
 
 describe("mentionAcompte", () => {
   it("pourcentage : calcule le montant sur le total et l'affiche", () => {

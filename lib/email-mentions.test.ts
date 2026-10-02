@@ -61,6 +61,7 @@ describe("gabarit des e-mails de documents", () => {
     dateText: "02/10/2026",
     messagePerso: "voila le devis\nà bientôt",
     natureActivite: "plomberie",
+    acompteText: "30,00 € (30 %)",
     signature: { nom: "Nathan Geneve EI", telephone: "0612345678", email: "x@gmail.com", adresse: "12 rue des Alpes, 38000 Grenoble", siret: "123 456 789 01234" },
   });
 
@@ -90,6 +91,37 @@ describe("gabarit des e-mails de documents", () => {
     expect(mail.text).toContain("valable jusqu'au 01/11/2026");
     expect(mail.text).not.toContain("Veuillez trouver ci-joint");
     expect(mail.text).not.toMatch(/<(p|table|td|div|a)\b/);
+  });
+
+  it("devis : l'acompte n'est mentionné que s'il y en a un", () => {
+    expect(mail.text).toContain(
+      "accompagné de l'acompte de 30,00 € (30 %) par virement, les coordonnées bancaires figurent sur le devis",
+    );
+    expect(mail.text).toContain("Acompte à la commande : 30,00 € (30 %)");
+
+    const sansAcompte = buildDocumentEmail({
+      type: "devis",
+      numero: "D-2026-0027",
+      clientNom: "M. Durand",
+      expediteurNom: "Nathan Geneve EI",
+      totalText: "100,00 €",
+      natureActivite: "entretien",
+    });
+    expect(sansAcompte.text.toLowerCase()).not.toContain("acompte");
+    expect(sansAcompte.text).toContain("un retour signé avec la mention « bon pour accord » suffit, ou répondez simplement à ce message");
+
+    const signe = buildDocumentEmail({
+      type: "devis",
+      numero: "D-2026-0028",
+      clientNom: "Mme Martin",
+      expediteurNom: "Nathan Geneve EI",
+      totalText: "1 250,00 €",
+      signeLe: "02/10/2026",
+      acompteText: "375,00 € (30 %)",
+      natureActivite: "installation_pac",
+    });
+    expect(signe.text).toContain("L'acompte de 375,00 € (30 %) est à régler par virement");
+    expect(signe.text).toContain("Acompte à la commande : 375,00 € (30 %)");
   });
 
   it("facture : nature de la prestation, date d'intervention, virement et remerciement", () => {
