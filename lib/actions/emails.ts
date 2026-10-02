@@ -288,6 +288,7 @@ export async function envoyerDevisParEmailAction(
     signeLe: devis.signature_client_url && devis.date_signature ? formatDateFr(devis.date_signature) : undefined,
     dateText: formatDateFr(devis.date_emission),
     validiteText: devis.date_validite ? formatDateFr(devis.date_validite) : undefined,
+    natureActivite: devis.type_activite,
     signature: signatureDepuisProfil(profil, expediteurNom),
   });
 
