@@ -193,7 +193,7 @@ describe("garde-fou : la palette n'est plus recopiée ailleurs", () => {
     "components/contrats/contrat-pdf.tsx",
     "components/dashboard/ca-mensuel-chart.tsx",
     "components/dashboard/repartition-activite-chart.tsx",
-    "lib/email.ts",
+    "lib/email-gabarit.ts",
   ];
 
   for (const fichier of FICHIERS) {
