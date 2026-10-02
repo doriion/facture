@@ -82,4 +82,40 @@ describe("gabarit des e-mails de documents", () => {
     expect(mail.text).not.toContain("Veuillez trouver ci-joint");
     expect(mail.text).not.toMatch(/<(p|table|td|div|a)\b/);
   });
+
+  it("facture : nature de la prestation, date d'intervention, virement et remerciement", () => {
+    const facture = buildDocumentEmail({
+      type: "facture",
+      numero: "F-2026-0051",
+      clientNom: "Mme Martin",
+      expediteurNom: "Nathan Geneve EI",
+      totalText: "640,00 €",
+      dateText: "02/10/2026",
+      echeanceText: "01/11/2026",
+      natureActivite: "depannage",
+      interventionText: "du 25/09/2026 au 28/09/2026",
+    });
+    expect(facture.subject).toBe("Votre facture F-2026-0051 — Nathan Geneve EI");
+    expect(facture.text).toContain(
+      "Comme convenu, voici votre facture F-2026-0051 pour le dépannage, suite à mon intervention du 25/09/2026 au 28/09/2026.",
+    );
+    expect(facture.text).toContain("à régler avant le 01/11/2026, par virement : les coordonnées bancaires figurent sur la facture");
+    expect(facture.text).toContain("À régler avant le");
+    expect(facture.text.trimEnd().includes("Merci pour votre confiance")).toBe(true);
+    expect(facture.text).not.toContain("Veuillez trouver ci-joint");
+    expect(facture.text).not.toContain("correspondant aux travaux réalisés");
+
+    // Sans date d'intervention ni échéance : aucune information inventée.
+    const sansDates = buildDocumentEmail({
+      type: "facture",
+      numero: "F-2026-0052",
+      clientNom: "M. Durand",
+      expediteurNom: "Nathan Geneve EI",
+      totalText: "100,00 €",
+      natureActivite: "autre",
+    });
+    expect(sansDates.text).toContain("voici votre facture F-2026-0052 pour les travaux dont nous avons parlé. Vous la trouverez en pièce jointe.");
+    expect(sansDates.text).toContain("Elle est à régler par virement : les coordonnées bancaires figurent sur la facture.");
+    expect(sansDates.text).not.toContain("suite à mon intervention");
+  });
 });

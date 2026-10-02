@@ -141,12 +141,21 @@ export async function envoyerFactureParEmailAction(
     "Auto-entrepreneur";
 
   const estAvoir = facture.type_facture === "avoir";
+  // Date(s) d'intervention pour la phrase d'intro : rien n'est inventé
+  // si la facture n'en porte pas.
+  const interventionText = facture.date_prestation
+    ? facture.date_prestation_fin && facture.date_prestation_fin !== facture.date_prestation
+      ? `du ${formatDateFr(facture.date_prestation)} au ${formatDateFr(facture.date_prestation_fin)}`
+      : `du ${formatDateFr(facture.date_prestation)}`
+    : undefined;
   const email = buildDocumentEmail({
     type: estAvoir ? "avoir" : "facture",
     numero: facture.numero,
     clientNom: client.nom,
     expediteurNom,
     totalText: formatEuros(Number(facture.total_ht)),
+    natureActivite: facture.type_activite,
+    interventionText: estAvoir ? undefined : interventionText,
     // Avoir : pas d'échéance, mais la précision du mode.
     dateText: formatDateFr(facture.date_emission),
     signature: signatureDepuisProfil(profil, expediteurNom),
