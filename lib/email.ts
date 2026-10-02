@@ -191,6 +191,8 @@ export function buildDocumentEmail(args: {
   signeLe?: string;
   /** Validité du devis, déjà formatée. */
   validiteText?: string;
+  /** Devis : acompte demandé à la commande, déjà formaté (« 375,00 € (30 %) »). Absent = pas d'acompte, rien n'est dit. */
+  acompteText?: string;
   /** Date d'émission, déjà formatée. */
   dateText?: string;
   /** Nature de la prestation (clé type_activite du document), pour la phrase d'intro. */
@@ -226,7 +228,13 @@ export function buildDocumentEmail(args: {
     paragraphes.push(
       `Voici votre exemplaire du devis ${args.numero} ${objet}, signé « bon pour accord » le ${args.signeLe}. Merci pour votre confiance : je reviens vers vous rapidement pour caler la date d'intervention.`,
     );
+    if (args.acompteText) {
+      paragraphes.push(
+        `L'acompte de ${args.acompteText} est à régler par virement, les coordonnées bancaires figurent sur le devis ; le solde à réception de la facture.`,
+      );
+    }
     resume.push(["Signé le", args.signeLe]);
+    if (args.acompteText) resume.push(["Acompte à la commande", args.acompteText]);
   } else {
     paragraphes.push(
       `Comme convenu, voici votre devis ${args.numero} ${objet}. Vous y trouverez le détail des prestations et le montant, en pièce jointe.`,
@@ -235,11 +243,14 @@ export function buildDocumentEmail(args: {
       paragraphes.push(`Il est valable jusqu'au ${args.validiteText} ; n'hésitez pas à me poser vos questions d'ici là.`);
       resume.push(["Valable jusqu'au", args.validiteText]);
     }
+    if (args.acompteText) resume.push(["Acompte à la commande", args.acompteText]);
   }
 
   const conclusion =
     args.type === "devis" && !args.signeLe
-      ? "S'il vous convient, un retour signé avec la mention « bon pour accord » suffit, ou répondez simplement à ce message : nous fixerons ensemble une date."
+      ? args.acompteText
+        ? `S'il vous convient, un retour signé avec la mention « bon pour accord » suffit, accompagné de l'acompte de ${args.acompteText} par virement, les coordonnées bancaires figurent sur le devis. Vous pouvez aussi répondre simplement à ce message : nous fixerons ensemble une date.`
+        : "S'il vous convient, un retour signé avec la mention « bon pour accord » suffit, ou répondez simplement à ce message : nous fixerons ensemble une date."
       : args.type === "facture"
         ? "Pour toute question, répondez simplement à ce message. Merci pour votre confiance, et à bientôt."
         : "Pour toute question, répondez simplement à ce message.";
