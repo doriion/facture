@@ -284,7 +284,7 @@ export async function effectuerSauvegarde(opts: {
   if (!emailDestinataire) {
     morceaux.push("email non envoyé : adresse pro absente du profil");
   } else if (!isEmailConfigured()) {
-    morceaux.push("email non envoyé : Resend non configuré");
+    morceaux.push("email non envoyé : canal e-mail non configuré");
   } else {
     const sujet = `Sauvegarde NG Gestion — ${dateIso}`;
     let corps = `<p>Bonjour,</p><p>Voici la sauvegarde complète de vos données NG Gestion (${totalLignes} lignes). Conservez ces fichiers hors de l'application — obligation de conservation des pièces : 10 ans. Ils contiennent vos prix d'achat : ne les transmettez jamais à un client.</p>`;

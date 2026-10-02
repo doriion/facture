@@ -1,14 +1,20 @@
 /**
- * Wrapper léger autour de Resend pour l'envoi d'emails transactionnels :
- * - envoi de factures et devis (PDF en pièce jointe)
- * - relances de factures impayées
+ * Envoi des e-mails transactionnels (devis, factures, relances,
+ * sauvegardes, rappels) par l'un des deux canaux :
  *
- * Configuration : variables d'environnement Vercel
- * - RESEND_API_KEY : clé API Resend (commence par re_…)
- * - RESEND_FROM : adresse d'expédition (ex : "NG Gestion <facture@tondomaine.fr>")
+ * 1. GMAIL (prioritaire) — le client reçoit un e-mail qui vient
+ *    vraiment de l'adresse Gmail de l'artisan, et le message figure
+ *    dans ses « Messages envoyés ». Variables Vercel :
+ *    - GMAIL_USER : l'adresse (ex. nathangeneve.pro@gmail.com)
+ *    - GMAIL_APP_PASSWORD : un « mot de passe d'application » Google
+ *      (16 caractères, compte avec validation en 2 étapes), jamais le
+ *      mot de passe du compte.
+ *    Limite Google : ~500 destinataires par jour, largement assez.
  *
- * En l'absence de ces variables, les actions d'email retourneront une
- * erreur explicite et l'utilisateur sera invité à configurer Resend.
+ * 2. RESEND (repli) — nécessite un domaine vérifié :
+ *    - RESEND_API_KEY, RESEND_FROM ("NG Gestion <contact@domaine.fr>").
+ *
+ * Sans l'un ni l'autre, les actions renvoient une erreur explicite.
  */
 
 import { Resend } from "resend";
@@ -16,6 +22,7 @@ import { Resend } from "resend";
 import { mentionTvaFranchise } from "@/lib/legal-text";
 import { PRINCIPAL } from "@/lib/theme";
 import { NOM_APPLICATION } from "@/lib/marque";
+import { adresseExpediteur } from "@/lib/expediteur-email";
 
 type SendEmailParams = {
   to: string;
@@ -28,10 +35,70 @@ type SendEmailParams = {
     contentType?: string;
   }>;
   replyTo?: string;
+  /** Nom affiché comme expéditeur (Gmail : devant l'adresse du compte). */
+  fromName?: string;
 };
 
+function gmailConfigure(): { user: string; motDePasse: string } | null {
+  const user = process.env.GMAIL_USER?.trim();
+  const motDePasse = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
+  return user && motDePasse ? { user, motDePasse } : null;
+}
+
 export function isEmailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM);
+  return Boolean(gmailConfigure() || (process.env.RESEND_API_KEY && process.env.RESEND_FROM));
+}
+
+/** Canal actif, pour l'affichage dans Paramètres. */
+export function canalEmail(): "gmail" | "resend" | null {
+  if (gmailConfigure()) return "gmail";
+  if (process.env.RESEND_API_KEY && process.env.RESEND_FROM) return "resend";
+  return null;
+}
+
+async function envoyerParGmail(
+  compte: { user: string; motDePasse: string },
+  params: SendEmailParams,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  // Chargé à la demande : seules les actions qui envoient paient le poids.
+  const nodemailer = await import("nodemailer");
+  const transport = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: { user: compte.user, pass: compte.motDePasse },
+    connectionTimeout: 15_000,
+    socketTimeout: 30_000,
+  });
+  try {
+    const info = await transport.sendMail({
+      from: adresseExpediteur(params.fromName ?? NOM_APPLICATION, compte.user),
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+      text: params.text,
+      replyTo: params.replyTo,
+      attachments: params.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
+    });
+    return { ok: true, id: info.messageId ?? "" };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erreur d'envoi inconnue.";
+    // Les erreurs SMTP de Google sont verbeuses : on garde l'essentiel.
+    if (/535|Username and Password not accepted|BadCredentials/i.test(message)) {
+      return {
+        ok: false,
+        error:
+          "Gmail a refusé l'identifiant : vérifiez GMAIL_USER et le mot de passe d'application (16 caractères, validation en 2 étapes activée).",
+      };
+    }
+    return { ok: false, error: message };
+  } finally {
+    transport.close();
+  }
 }
 
 export async function sendEmail(params: SendEmailParams): Promise<{
@@ -41,13 +108,16 @@ export async function sendEmail(params: SendEmailParams): Promise<{
   ok: false;
   error: string;
 }> {
+  const gmail = gmailConfigure();
+  if (gmail) return envoyerParGmail(gmail, params);
+
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;
   if (!apiKey || !from) {
     return {
       ok: false,
       error:
-        "Resend non configuré. Ajoutez RESEND_API_KEY et RESEND_FROM dans les variables d'environnement Vercel.",
+        "Envoi d'e-mail non configuré. Ajoutez GMAIL_USER et GMAIL_APP_PASSWORD (ou RESEND_API_KEY et RESEND_FROM) dans les variables d'environnement Vercel.",
     };
   }
 

@@ -97,7 +97,7 @@ async function executerChatel({
   if (!isEmailConfigured()) {
     return {
       statut: "erreur",
-      details: "Resend non configuré (RESEND_API_KEY / RESEND_FROM).",
+      details: "Envoi d'e-mail non configuré (GMAIL_USER / GMAIL_APP_PASSWORD).",
     };
   }
 

@@ -336,7 +336,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ token: s
         }
       }
     } else {
-      anomalies.push("Resend non configuré : aucun email envoyé.");
+      anomalies.push("Envoi d'e-mail non configuré : aucun email envoyé.");
     }
   } catch (e) {
     // Signature valide malgré tout : on trace, on ne renvoie pas d'erreur
