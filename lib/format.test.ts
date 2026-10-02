@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  REGEX,
   formatDateFr,
   formatEuros,
   formatIban,
   formatSiret,
+  formatTelephone,
+  lienTelephone,
   parseMoneyInput,
+  REGEX,
   siretToSiren,
   stripSpaces,
 } from "./format";
@@ -106,6 +108,28 @@ describe("parseMoneyInput", () => {
     expect(parseMoneyInput("abc")).toBeNaN();
     expect(parseMoneyInput(null)).toBeNaN();
     expect(parseMoneyInput(undefined)).toBeNaN();
+  });
+});
+
+describe("formatTelephone / lienTelephone", () => {
+  it("met un numéro français par paires", () => {
+    expect(formatTelephone("0647214864")).toBe("06 47 21 48 64");
+    expect(formatTelephone("06.47.21.48.64")).toBe("06 47 21 48 64");
+    expect(formatTelephone(" 06 47 21 48 64 ")).toBe("06 47 21 48 64");
+    expect(formatTelephone("+33647214864")).toBe("+33 6 47 21 48 64");
+    expect(formatTelephone("+33 (0)6 47 21 48 64")).toBe("+33 6 47 21 48 64");
+  });
+  it("ne touche pas à un numéro non reconnu, et gère le vide", () => {
+    expect(formatTelephone("04 76 00 00")).toBe("04 76 00 00");
+    expect(formatTelephone("+41 22 345 67 89")).toBe("+41 22 345 67 89");
+    expect(formatTelephone(null)).toBe("");
+    expect(formatTelephone("  ")).toBe("");
+  });
+  it("produit un lien tel: international", () => {
+    expect(lienTelephone("06 47 21 48 64")).toBe("tel:+33647214864");
+    expect(lienTelephone("+33 (0)6 47 21 48 64")).toBe("tel:+33647214864");
+    expect(lienTelephone("+41 22 345 67 89")).toBe("tel:+41223456789");
+    expect(lienTelephone("")).toBeNull();
   });
 });
 

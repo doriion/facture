@@ -10,6 +10,7 @@
 
 import { BORDURE, FOND_PALE, PRINCIPAL, TEXTE, TEXTE_DOUX } from "@/lib/theme";
 import { NOM_APPLICATION } from "@/lib/marque";
+import { formatTelephone, lienTelephone } from "@/lib/format";
 
 export type SignatureEmail = {
   nom: string;
@@ -55,14 +56,31 @@ export function escapeHtml(s: string): string {
 
 const multiligne = (s: string) => escapeHtml(s).replace(/\n/g, "<br/>");
 
-function lignesSignature(s: SignatureEmail): string[] {
-  return [
-    s.sousTitre?.trim() || null,
-    s.telephone?.trim() ? `Tél. ${s.telephone.trim()}` : null,
-    s.email?.trim() || null,
-    s.adresse?.trim() || null,
-    s.siret?.trim() ? `SIRET ${s.siret.trim()}` : null,
-  ].filter((l): l is string => Boolean(l));
+/** Ligne de signature : texte brut, et lien éventuel (tél. cliquable en HTML). */
+type LigneSignature = { prefixe?: string; texte: string; href?: string };
+
+function lignesSignature(s: SignatureEmail): LigneSignature[] {
+  const tel = s.telephone?.trim();
+  const lignes: Array<LigneSignature | null> = [
+    s.sousTitre?.trim() ? { texte: s.sousTitre.trim() } : null,
+    tel ? { prefixe: "Tél. ", texte: formatTelephone(tel), href: lienTelephone(tel) ?? undefined } : null,
+    s.email?.trim() ? { texte: s.email.trim() } : null,
+    s.adresse?.trim() ? { texte: s.adresse.trim() } : null,
+    s.siret?.trim() ? { texte: `SIRET ${s.siret.trim()}` } : null,
+  ];
+  return lignes.filter((l): l is LigneSignature => l !== null);
+}
+
+function texteLigneSignature(l: LigneSignature): string {
+  return `${l.prefixe ?? ""}${l.texte}`;
+}
+
+function htmlLigneSignature(l: LigneSignature): string {
+  const texte = escapeHtml(l.texte);
+  const corps = l.href
+    ? `<a href="${escapeHtml(l.href)}" style="color:inherit;text-decoration:none;">${texte}</a>`
+    : texte;
+  return `${escapeHtml(l.prefixe ?? "")}${corps}`;
 }
 
 /** Version HTML : bandeau, carte, encadré, bouton, signature, pied. */
@@ -97,7 +115,7 @@ ${c.resume
 <div style="margin-bottom:2px;">Cordialement,</div>
 <div style="font-size:16px;font-weight:700;color:${PRINCIPAL};">${escapeHtml(c.signature.nom)}</div>
 ${lignesSignature(c.signature)
-  .map((l) => `<div style="color:${TEXTE_DOUX};font-size:13px;">${escapeHtml(l)}</div>`)
+  .map((l) => `<div style="color:${TEXTE_DOUX};font-size:13px;">${htmlLigneSignature(l)}</div>`)
   .join("\n")}
 </td></tr></table>`;
   const pied = [c.mentionPied?.trim() || null, `Envoyé avec ${NOM_APPLICATION}`]
@@ -143,7 +161,7 @@ export function texteEmail(c: ContenuEmail): string {
   if (c.bouton) blocs.push(`${c.bouton.libelle} : ${c.bouton.href}`);
   if (c.messagePerso?.trim()) blocs.push(c.messagePerso.trim());
   if (c.conclusion) blocs.push(c.conclusion);
-  blocs.push(["Cordialement,", c.signature.nom, ...lignesSignature(c.signature)].join("\n"));
+  blocs.push(["Cordialement,", c.signature.nom, ...lignesSignature(c.signature).map(texteLigneSignature)].join("\n"));
   blocs.push([c.mentionPied?.trim() || null, `— Envoyé avec ${NOM_APPLICATION}`].filter(Boolean).join("\n"));
   return blocs.join("\n\n");
 }
