@@ -47,12 +47,11 @@ export async function listContrats(params?: {
 }
 
 /**
- * Visites à venir dans les N prochains jours (calendrier compact pour
- * dashboard ou page maintenance).
+ * Visites en retard et visites à venir dans les N prochains jours
+ * (page maintenance, qui affiche les retards en rouge).
  */
 export async function prochainesVisites(joursAVenir = 60) {
   const supabase = await createClient();
-  const today = aujourdhuiParis();
   const limite = new Date(Date.now() + joursAVenir * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -62,7 +61,6 @@ export async function prochainesVisites(joursAVenir = 60) {
     .select("*, client:clients(id, nom)")
     .eq("statut", "actif")
     .not("prochaine_visite", "is", null)
-    .gte("prochaine_visite", today)
     .lte("prochaine_visite", limite)
     .order("prochaine_visite", { ascending: true });
 

@@ -5,6 +5,7 @@ import {
   listContrats,
   prochainesVisites,
 } from "@/lib/actions/contrats";
+import { synchroniserEcheancierContrats } from "@/lib/actions/contrats-entretien";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +22,8 @@ import { aujourdhuiParis } from "@/lib/dates";
 export const metadata = { title: "Échéancier des visites — NG Gestion" };
 
 export default async function MaintenancePage() {
+  // Contrats signés déjà actifs mais pas encore reliés à l'échéancier.
+  await synchroniserEcheancierContrats();
   const [contrats, prochaines] = await Promise.all([
     listContrats(),
     prochainesVisites(60),
