@@ -29,6 +29,8 @@ import {
 } from "@/lib/contrats/pdf-helpers";
 import { buildLienContratEmail, isEmailConfigured, sendEmail, signatureDepuisProfil } from "@/lib/email";
 import { formatDateFr } from "@/lib/format";
+import { aujourdhuiParis } from "@/lib/dates";
+import { ligneEcheancierDepuisContrat } from "@/lib/contrats/echeancier";
 
 type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -412,7 +414,7 @@ export async function changerStatutContratAction(
   const supabase = await createClient();
   const { data: existant } = await supabase
     .from("contrats")
-    .select("statut")
+    .select("statut, maintenance_id")
     .eq("id", id)
     .maybeSingle();
   if (!existant) return { ok: false, error: "Contrat introuvable." };
@@ -431,9 +433,87 @@ export async function changerStatutContratAction(
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
+  // Mise en service → la visite annuelle entre dans l'échéancier ;
+  // résiliation / expiration → la ligne d'échéancier est terminée. Un
+  // échec ici ne défait pas le changement de statut : la page
+  // échéancier rattrape les contrats actifs non reliés.
+  if (statut === "actif") {
+    const err = await rattacherEcheancier(supabase, id);
+    if (err) Sentry.captureMessage(`Échéancier non créé pour le contrat ${id} : ${err}`);
+  } else if (existant.maintenance_id) {
+    await supabase
+      .from("contrats_maintenance")
+      .update({ statut: "termine" })
+      .eq("id", existant.maintenance_id)
+      .eq("statut", "actif");
+  }
+
   revalidatePath("/contrats");
   revalidatePath(`/contrats/${id}`);
+  revalidatePath("/maintenance");
+  revalidatePath("/dashboard");
   return { ok: true, data: undefined };
+}
+
+type SupabaseServeur = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Crée la ligne d'échéancier d'un contrat actif et la relie via
+ * contrats.maintenance_id. Idempotent : rien à faire si le contrat
+ * est déjà relié. Si deux appels se croisent, le perdant supprime sa
+ * ligne (le lien n'est posé que sur un maintenance_id encore nul).
+ * Renvoie un message d'erreur, ou null.
+ */
+async function rattacherEcheancier(
+  supabase: SupabaseServeur,
+  contratId: string,
+): Promise<string | null> {
+  const { data: contrat } = await supabase
+    .from("contrats")
+    .select("user_id, numero, client_id, equipements, redevance, remise, date_effet, maintenance_id, statut")
+    .eq("id", contratId)
+    .maybeSingle();
+  if (!contrat) return "contrat introuvable";
+  if (contrat.maintenance_id || contrat.statut !== "actif") return null;
+
+  const ligne = ligneEcheancierDepuisContrat(contrat, aujourdhuiParis());
+  const { data: cree, error } = await supabase
+    .from("contrats_maintenance")
+    .insert({ ...ligne, user_id: contrat.user_id })
+    .select("id")
+    .single();
+  if (error || !cree) return error?.message ?? "insertion impossible";
+
+  const { data: relie, error: lienErr } = await supabase
+    .from("contrats")
+    .update({ maintenance_id: cree.id })
+    .eq("id", contratId)
+    .is("maintenance_id", null)
+    .select("id");
+  if (lienErr || !relie?.length) {
+    await supabase.from("contrats_maintenance").delete().eq("id", cree.id);
+    return lienErr?.message ?? null;
+  }
+  return null;
+}
+
+/**
+ * Rattrapage : relie à l'échéancier les contrats déjà actifs qui ne le
+ * sont pas (mis en service avant que le lien existe, ou échec lors de
+ * la mise en service). Appelé au chargement de l'échéancier ; ne
+ * revalide rien (appel pendant le rendu).
+ */
+export async function synchroniserEcheancierContrats(): Promise<void> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("contrats")
+    .select("id")
+    .eq("statut", "actif")
+    .is("maintenance_id", null);
+  for (const c of data ?? []) {
+    const err = await rattacherEcheancier(supabase, c.id);
+    if (err) Sentry.captureMessage(`Échéancier non créé pour le contrat ${c.id} : ${err}`);
+  }
 }
 
 /**

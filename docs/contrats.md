@@ -88,6 +88,22 @@ l'écran d'authentification Vercel avant l'app).
    existants (brouillons compris, tant qu'ils portent 1) restent
    rendus avec v1.
 
+## Lien avec l'échéancier des visites
+
+`contrats` (le document signé) et `contrats_maintenance` (l'échéancier :
+visites, factures de visite, rappels) sont deux tables distinctes,
+reliées par `contrats.maintenance_id`.
+
+- **Mise en service** (`signe` → `actif`) : une ligne d'échéancier est
+  créée et reliée — fréquence annuelle (art. 2.1 : une visite par an),
+  prix annuel = redevance − remise, première visite à la date d'effet
+  (ou aujourd'hui si elle est passée). Construction pure :
+  `lib/contrats/echeancier.ts`.
+- **Résiliation / expiration** : la ligne reliée passe en `termine`.
+- **Rattrapage** : à chaque ouverture de `/maintenance`, les contrats
+  actifs sans `maintenance_id` sont reliés (contrats mis en service
+  avant ce lien, ou échec ponctuel). Idempotent.
+
 ## Automatisations branchées
 
 Deux jobs dans le cron quotidien (`lib/cron/registre.ts`), dans cet
