@@ -15,6 +15,7 @@ import {
   LABELS_STATUT_CONTRAT,
 } from "@/lib/validations/contrat";
 import { aujourdhuiParis } from "@/lib/dates";
+import { heureLisible } from "@/lib/visite-entretien";
 
 type ContratRow = {
   id: string;
@@ -25,6 +26,7 @@ type ContratRow = {
   frequence: string;
   prix_annuel_ht: number | string;
   prochaine_visite: string | null;
+  prochaine_visite_heure?: string | null;
   statut: string;
   client: { id: string; nom: string; type: string; ville: string | null } | null;
 };
@@ -93,10 +95,20 @@ export function ContratsTable({ contrats }: { contrats: ContratRow[] }) {
               <div className="mt-3 flex items-end justify-between gap-3">
                 <div className="text-xs text-muted-foreground">
                   <p>{libelleFrequence(c.frequence)}</p>
-                  <p className={overdue ? "font-medium text-destructive" : undefined}>
+                  <p
+                    className={
+                      overdue
+                        ? "font-medium text-destructive"
+                        : !c.prochaine_visite && c.statut === "actif"
+                          ? "font-medium text-orange-700 dark:text-orange-300"
+                          : undefined
+                    }
+                  >
                     {c.prochaine_visite
-                      ? `Prochaine visite le ${formatDateFr(c.prochaine_visite)}${overdue ? " (en retard)" : ""}`
-                      : "Pas de visite planifiée"}
+                      ? `Prochaine visite le ${formatDateFr(c.prochaine_visite)}${c.prochaine_visite_heure ? ` à ${heureLisible(c.prochaine_visite_heure)}` : ""}${overdue ? " (en retard)" : ""}`
+                      : c.statut === "actif"
+                        ? "Visite à convenir avec le client"
+                        : "Pas de visite planifiée"}
                   </p>
                 </div>
                 <p className="text-lg font-bold tabular-nums">
@@ -167,7 +179,12 @@ export function ContratsTable({ contrats }: { contrats: ContratRow[] }) {
                       }
                     >
                       {formatDateFr(c.prochaine_visite)}
+                      {c.prochaine_visite_heure ? ` à ${heureLisible(c.prochaine_visite_heure)}` : ""}
                       {overdue && " (en retard)"}
+                    </span>
+                  ) : c.statut === "actif" ? (
+                    <span className="font-medium text-orange-700 dark:text-orange-300">
+                      À convenir avec le client
                     </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>

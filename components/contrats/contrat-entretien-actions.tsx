@@ -210,7 +210,7 @@ export function ContratEntretienActions({
           onClick={() =>
             changerStatut(
               "actif",
-              "Contrat actif — pensez à créer le suivi de maintenance.",
+              "Contrat actif — la visite est à convenir avec le client : planifiez-la depuis l'échéancier des visites.",
             )
           }
         >

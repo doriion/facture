@@ -67,6 +67,21 @@ export async function prochainesVisites(joursAVenir = 60) {
   return data ?? [];
 }
 
+/**
+ * Contrats actifs sans date de prochaine visite : la date est à convenir
+ * avec le client (contrat signé mis en service, ou visite effacée).
+ */
+export async function visitesAConvenir() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("contrats_maintenance")
+    .select("*, client:clients(id, nom, email)")
+    .eq("statut", "actif")
+    .is("prochaine_visite", null)
+    .order("date_debut", { ascending: true });
+  return data ?? [];
+}
+
 export async function getContrat(id: string): Promise<{
   contrat: Contrat | null;
   client: Database["public"]["Tables"]["clients"]["Row"] | null;
@@ -290,9 +305,11 @@ export async function genererFactureVisiteAction(
     contrat.prochaine_visite ?? today,
     contrat.frequence as Frequence,
   );
+  // L'heure convenue valait pour la visite facturée : la suivante se
+  // convient à nouveau avec le client (date proposée, heure à fixer).
   await supabase
     .from("contrats_maintenance")
-    .update({ prochaine_visite: nouvelleDate })
+    .update({ prochaine_visite: nouvelleDate, prochaine_visite_heure: null })
     .eq("id", contratId);
 
   revalidatePath("/maintenance");

@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { buildAvisChatelEmail, buildDocumentEmail } from "./email";
+import { buildAvisChatelEmail, buildConfirmationVisiteEmail, buildDocumentEmail } from "./email";
 import { escapeHtml } from "./email-gabarit";
 import {
   MENTION_TVA_FRANCHISE_CGI,
@@ -160,5 +160,36 @@ describe("gabarit des e-mails de documents", () => {
     expect(sansDates.text).toContain("Voici votre facture F-2026-0052 pour les travaux dont nous avons parlé. Vous la trouverez en pièce jointe.");
     expect(sansDates.text).toContain("Elle est à régler par virement : les coordonnées bancaires figurent sur la facture.");
     expect(sansDates.text).not.toContain("suite à mon intervention");
+  });
+});
+
+describe("e-mail de confirmation de visite d'entretien", () => {
+  it("date, heure et adresse convenues ; sans heure, « dans la journée »", () => {
+    const avecHeure = buildConfirmationVisiteEmail({
+      clientNom: "M. Clément",
+      expediteurNom: "Nathan Geneve EI",
+      objetEntretien: "PAC air/eau Daikin Altherma",
+      dateVisiteLongue: "Mardi 15 octobre 2026",
+      dateVisiteCourte: "15/10/2026",
+      heureText: "9 h 30",
+      adresse: "12 rue des Alpes, 38000 Grenoble",
+    });
+    expect(avecHeure.subject).toBe("Visite d'entretien le 15/10/2026 à 9 h 30 — Nathan Geneve EI");
+    expect(avecHeure.text).toContain("Comme convenu, je passerai le mardi 15 octobre 2026 à 9 h 30 pour la visite d'entretien de votre installation.");
+    expect(avecHeure.text).toContain("Adresse : 12 rue des Alpes, 38000 Grenoble");
+    expect(avecHeure.text).toContain("Heure : 9 h 30");
+    expect(avecHeure.html).toContain("PAC air/eau Daikin Altherma");
+
+    const sansHeure = buildConfirmationVisiteEmail({
+      clientNom: "Mme Martin",
+      expediteurNom: "Nathan Geneve EI",
+      objetEntretien: "Chaudière gaz",
+      dateVisiteLongue: "Jeudi 17 octobre 2026",
+      dateVisiteCourte: "17/10/2026",
+    });
+    expect(sansHeure.subject).toBe("Visite d'entretien le 17/10/2026 — Nathan Geneve EI");
+    expect(sansHeure.text).toContain("le jeudi 17 octobre 2026 dans la journée pour la visite");
+    expect(sansHeure.text).toContain("Heure : dans la journée");
+    expect(sansHeure.text).not.toContain("Adresse :");
   });
 });

@@ -214,6 +214,9 @@ export type Database = {
           notes: string | null;
           prix_annuel_ht: number;
           prochaine_visite: string | null;
+          prochaine_visite_heure: string | null;
+          confirmation_envoyee_pour: string | null;
+          confirmation_envoyee_le: string | null;
           rappel_envoye_pour: string | null;
           statut: string;
           updated_at: string;
@@ -232,6 +235,9 @@ export type Database = {
           notes?: string | null;
           prix_annuel_ht: number;
           prochaine_visite?: string | null;
+          prochaine_visite_heure?: string | null;
+          confirmation_envoyee_pour?: string | null;
+          confirmation_envoyee_le?: string | null;
           rappel_envoye_pour?: string | null;
           statut?: string;
           updated_at?: string;
@@ -250,6 +256,9 @@ export type Database = {
           notes?: string | null;
           prix_annuel_ht?: number;
           prochaine_visite?: string | null;
+          prochaine_visite_heure?: string | null;
+          confirmation_envoyee_pour?: string | null;
+          confirmation_envoyee_le?: string | null;
           rappel_envoye_pour?: string | null;
           statut?: string;
           updated_at?: string;
