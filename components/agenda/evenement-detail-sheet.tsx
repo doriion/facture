@@ -12,6 +12,8 @@ import type { AgendaEvent } from "@/lib/actions/agenda";
 import { deleteInterventionAction, restaurerInterventionAction, setInterventionAFacturerAction } from "@/lib/actions/interventions";
 import type { ChangementOptimiste } from "@/lib/agenda-optimiste";
 import { contactEvenement, lienAppel, lienItineraire, lienSms } from "@/lib/agenda-contact";
+import { clientDepuisEvenement } from "@/lib/client-depuis-evenement";
+import { ClientDetecteCard } from "@/components/agenda/client-detecte-card";
 import { libelleRecurrence } from "@/lib/agenda-recurrence";
 import { heureCourte, libelleJourLong } from "@/lib/agenda-vues";
 import { Button } from "@/components/ui/button";
@@ -76,6 +78,12 @@ export function EvenementDetailSheet({
   const [basculeEnCours, setBasculeEnCours] = useState(false);
   const e = evenement;
   const contact = e ? contactEvenement(e) : null;
+  // Coordonnées tapées dans le rendez-vous (RDV iPhone ou intervention
+  // sans client) : une fiche client en un clic.
+  const clientDetecte =
+    e && !e.client_id && (e.kind === "intervention" || e.kind === "external")
+      ? clientDepuisEvenement(e)
+      : null;
 
   // « Rien à facturer » ↔ « à facturer », sans ouvrir le dialogue.
   async function basculerFacturation(ev: AgendaEvent) {
@@ -192,9 +200,20 @@ export function EvenementDetailSheet({
                   }}
                 >
                   <UserPlus className="size-4" />
-                  Ajouter un client
+                  {clientDetecte ? "Choisir un client existant" : "Ajouter un client"}
                 </Button>
               </div>
+            )}
+
+            {clientDetecte && (
+              <ClientDetecteCard
+                detecte={clientDetecte}
+                interventionId={e.kind === "intervention" ? e.id : null}
+                onEnregistre={() => {
+                  onClose();
+                  router.refresh();
+                }}
+              />
             )}
 
             {(contact.adresse || contact.telephone || contact.rechercheLibelle) && (
