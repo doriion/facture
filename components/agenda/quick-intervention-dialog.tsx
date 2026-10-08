@@ -12,6 +12,8 @@ import { appelerAction, appelerOuMettreEnAttente } from "@/lib/appel-action";
 import { genererId } from "@/lib/file-attente-helpers";
 
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
+import { ClientDetecteCard } from "@/components/agenda/client-detecte-card";
+import { clientDepuisEvenement } from "@/lib/client-depuis-evenement";
 import { SelecteurCouleur } from "@/components/agenda/selecteur-couleur";
 import { setCouleursEvenementsAction } from "@/lib/actions/agenda-couleurs";
 import { normaliserCouleur } from "@/lib/agenda-colors";
@@ -204,6 +206,13 @@ export function QuickInterventionDialog({
   ];
 
   const currentClient = watch("client_id") ?? "";
+  const currentDescription = watch("description") ?? "";
+  // Coordonnées tapées dans la description sans client choisi : on
+  // propose d'en faire une fiche, sélectionnée aussitôt.
+  const clientDetecte =
+    !currentClient && currentDescription.trim()
+      ? clientDepuisEvenement({ description: currentDescription })
+      : null;
   const currentType = watch("type");
   const currentStart = watch("date_intervention");
   const currentEnd = watch("date_fin");
@@ -601,6 +610,16 @@ export function QuickInterventionDialog({
               placeholder="Ex : Remplacement ballon eau chaude 200 L"
               {...register("description")}
             />
+            {clientDetecte && (
+              <ClientDetecteCard
+                compact
+                detecte={clientDetecte}
+                onEnregistre={(r) => {
+                  setClientsCrees((l) => (l.some((c) => c.id === r.id) ? l : [...l, { id: r.id, nom: r.nom }]));
+                  setValue("client_id", r.id, { shouldValidate: true });
+                }}
+              />
+            )}
           </div>
 
           {/* Création : répéter le rendez-vous (série) */}
