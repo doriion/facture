@@ -1,10 +1,13 @@
 import Link from "next/link";
-import { CalendarClock, Plus } from "lucide-react";
+import { CalendarCheck, CalendarClock, Plus } from "lucide-react";
 
 import {
   listContrats,
   prochainesVisites,
+  visitesAConvenir,
 } from "@/lib/actions/contrats";
+import { PlanifierVisiteDialog } from "@/components/maintenance/planifier-visite-dialog";
+import { confirmationValable, heureLisible } from "@/lib/visite-entretien";
 import { synchroniserEcheancierContrats } from "@/lib/actions/contrats-entretien";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,9 +27,10 @@ export const metadata = { title: "Échéancier des visites — NG Gestion" };
 export default async function MaintenancePage() {
   // Contrats signés déjà actifs mais pas encore reliés à l'échéancier.
   await synchroniserEcheancierContrats();
-  const [contrats, prochaines] = await Promise.all([
+  const [contrats, prochaines, aConvenir] = await Promise.all([
     listContrats(),
     prochainesVisites(60),
+    visitesAConvenir(),
   ]);
 
   // Heure de Paris : entre 0 h et 2 h, la date UTC est encore la veille.
@@ -58,6 +62,50 @@ export default async function MaintenancePage() {
           </Link>
         </Button>
       </div>
+
+      {aConvenir.length > 0 && (
+        <Card className="border-orange-300 dark:border-orange-700">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarCheck className="size-4 text-orange-600 dark:text-orange-300" />
+              Visites à convenir avec le client
+            </CardTitle>
+            <CardDescription>
+              Contrats actifs sans date de visite : fixez-la avec le client,
+              la confirmation part par e-mail en même temps.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {aConvenir.map((v) => (
+              <div
+                key={v.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-orange-200 bg-orange-50/60 px-3 py-2 text-sm dark:border-orange-800 dark:bg-orange-950/30"
+              >
+                <Link href={`/maintenance/${v.id}`} className="min-w-0 hover:underline">
+                  <span className="font-medium">{v.client?.nom ?? "Client"}</span>
+                  {v.intitule && (
+                    <span className="text-muted-foreground"> · {v.intitule}</span>
+                  )}
+                </Link>
+                <PlanifierVisiteDialog
+                  contratId={v.id}
+                  clientNom={v.client?.nom ?? null}
+                  clientEmail={v.client?.email ?? null}
+                  prochaineVisite={null}
+                  prochaineVisiteHeure={null}
+                  confirmationEnvoyeePour={null}
+                  trigger={
+                    <Button size="sm">
+                      <CalendarCheck className="size-4" />
+                      Planifier la visite
+                    </Button>
+                  }
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {(enRetard.length > 0 || aVenir.length > 0) && (
         <Card>
@@ -104,8 +152,16 @@ export default async function MaintenancePage() {
                     <span className="text-muted-foreground"> · {v.intitule}</span>
                   )}
                 </div>
-                <span className="font-medium">
-                  {formatDateFr(v.prochaine_visite!)}
+                <span className="text-right">
+                  <span className="font-medium">
+                    {formatDateFr(v.prochaine_visite!)}
+                    {v.prochaine_visite_heure ? ` à ${heureLisible(v.prochaine_visite_heure)}` : ""}
+                  </span>
+                  <span
+                    className={`block text-xs ${confirmationValable(v) ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}
+                  >
+                    {confirmationValable(v) ? "Confirmée au client" : "Non confirmée"}
+                  </span>
                 </span>
               </Link>
             ))}

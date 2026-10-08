@@ -39,14 +39,15 @@ describe("ligneEcheancierDepuisContrat", () => {
       prix_annuel_ht: 160,
       statut: "actif",
       date_debut: "2026-11-01",
-      prochaine_visite: "2026-11-01",
+      prochaine_visite: null,
     });
   });
 
-  it("date d'effet passée : la visite est à programmer dès aujourd'hui", () => {
+  it("aucune date imposée, même avec une date d'effet passée : la visite se convient avec le client", () => {
     const l = ligneEcheancierDepuisContrat(contrat({ date_effet: "2025-03-01" }), TODAY);
     expect(l.date_debut).toBe("2025-03-01");
-    expect(l.prochaine_visite).toBe(TODAY);
+    expect(l.prochaine_visite).toBeNull();
+    expect(l.notes).toContain("à convenir avec le client");
   });
 
   it("sans date d'effet ni équipement ni numéro", () => {
@@ -55,7 +56,7 @@ describe("ligneEcheancierDepuisContrat", () => {
       TODAY,
     );
     expect(l.date_debut).toBe(TODAY);
-    expect(l.prochaine_visite).toBe(TODAY);
+    expect(l.prochaine_visite).toBeNull();
     expect(l.equipement).toBeNull();
     expect(l.equipement_num_serie).toBeNull();
     expect(l.intitule).toBe("Contrat d'entretien");

@@ -434,6 +434,50 @@ export function buildRappelEntretienEmail(args: {
 }
 
 /**
+ * Confirmation d'une visite d'entretien convenue avec le client (date,
+ * heure, adresse de l'installation) — envoyée depuis « Planifier la
+ * visite ». Sans heure : « dans la journée ».
+ */
+export function buildConfirmationVisiteEmail(args: {
+  clientNom: string;
+  expediteurNom: string;
+  /** Équipement ou intitulé du contrat (ex. « PAC air/eau Daikin Altherma »). */
+  objetEntretien: string;
+  /** « Mardi 15 octobre 2026 » */
+  dateVisiteLongue: string;
+  /** « 15/10/2026 » (objet du mail et résumé) */
+  dateVisiteCourte: string;
+  /** « 9 h 30 », null = dans la journée */
+  heureText?: string | null;
+  /** Adresse de l'installation, déjà mise en forme. */
+  adresse?: string | null;
+  signature?: SignatureEmail;
+}): { subject: string; html: string; text: string } {
+  const quand = `${args.dateVisiteCourte}${args.heureText ? ` à ${args.heureText}` : ""}`;
+  const subject = `Visite d'entretien le ${quand}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
+  const dateLongue = args.dateVisiteLongue.charAt(0).toLowerCase() + args.dateVisiteLongue.slice(1);
+  const resume: Array<[string, string]> = [
+    ["Installation", args.objetEntretien],
+    ["Date", args.dateVisiteLongue],
+    ["Heure", args.heureText ?? "dans la journée"],
+  ];
+  if (args.adresse) resume.push(["Adresse", args.adresse]);
+  return emailDepuisContenu(subject, {
+    titre: "Votre visite d'entretien",
+    apercu: `${args.objetEntretien} · ${quand}`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `Comme convenu, je passerai le ${dateLongue}${args.heureText ? ` à ${args.heureText}` : " dans la journée"} pour la visite d'entretien de votre installation.`,
+      "Merci de prévoir l'accès à l'équipement ce jour-là.",
+    ],
+    resume,
+    conclusion:
+      "Si ce créneau ne vous convient plus, répondez simplement à ce message ou appelez-moi : nous en trouverons un autre. À bientôt.",
+    signature: sig(args.signature, args.expediteurNom),
+  });
+}
+
+/**
  * Avis de reconduction « loi Chatel » (art. L. 215-1 et suivants du
  * code de la consommation) — client PARTICULIER uniquement.
  *

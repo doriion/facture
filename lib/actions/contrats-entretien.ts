@@ -433,7 +433,8 @@ export async function changerStatutContratAction(
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
-  // Mise en service → la visite annuelle entre dans l'échéancier ;
+  // Mise en service → le contrat entre dans l'échéancier, date de
+  // visite à convenir avec le client (dialogue « Planifier la visite ») ;
   // résiliation / expiration → la ligne d'échéancier est terminée. Un
   // échec ici ne défait pas le changement de statut : la page
   // échéancier rattrape les contrats actifs non reliés.

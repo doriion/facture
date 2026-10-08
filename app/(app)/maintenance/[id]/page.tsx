@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LABELS_STATUT_CONTRAT } from "@/lib/validations/contrat";
 import { formatDateFr } from "@/lib/format";
+import { dateParis } from "@/lib/dates";
+import { confirmationValable, heureLisible } from "@/lib/visite-entretien";
 
 export const metadata = { title: "Contrat de maintenance — NG Gestion" };
 
@@ -55,17 +57,38 @@ export default async function EditContratPage(
                   {client.nom}
                 </Link>
               )}
-              {contrat.prochaine_visite && (
+              {contrat.prochaine_visite ? (
                 <>
                   {" — Prochaine visite : "}
                   <strong className="text-foreground">
                     {formatDateFr(contrat.prochaine_visite)}
+                    {contrat.prochaine_visite_heure
+                      ? ` à ${heureLisible(contrat.prochaine_visite_heure)}`
+                      : ""}
+                  </strong>
+                  {confirmationValable(contrat) && contrat.confirmation_envoyee_le
+                    ? ` · confirmation envoyée au client le ${formatDateFr(dateParis(contrat.confirmation_envoyee_le))}`
+                    : " · non confirmée au client"}
+                </>
+              ) : contrat.statut === "actif" ? (
+                <>
+                  {" — "}
+                  <strong className="text-orange-700 dark:text-orange-300">
+                    Visite à convenir avec le client
                   </strong>
                 </>
-              )}
+              ) : null}
             </p>
           </div>
-          <ContratActions contratId={contrat.id} statut={contrat.statut} />
+          <ContratActions
+            contratId={contrat.id}
+            statut={contrat.statut}
+            clientNom={client?.nom ?? null}
+            clientEmail={client?.email ?? null}
+            prochaineVisite={contrat.prochaine_visite}
+            prochaineVisiteHeure={contrat.prochaine_visite_heure}
+            confirmationEnvoyeePour={contrat.confirmation_envoyee_pour}
+          />
         </div>
       </div>
 

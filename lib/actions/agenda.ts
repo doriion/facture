@@ -158,7 +158,7 @@ export async function getAgendaEvents(
         .order("date_debut_travaux", { ascending: true }),
       supabase
         .from("contrats_maintenance")
-        .select(`id, intitule, prochaine_visite, statut, ${SELECT_CLIENT}`)
+        .select(`id, intitule, prochaine_visite, prochaine_visite_heure, statut, ${SELECT_CLIENT}`)
         .eq("statut", "actif")
         .not("prochaine_visite", "is", null)
         .gte("prochaine_visite", ws)
@@ -293,6 +293,7 @@ export async function getAgendaEvents(
     id: string;
     intitule: string | null;
     prochaine_visite: string | null;
+    prochaine_visite_heure: string | null;
     statut: string;
     client: ClientJoint | null;
   };
@@ -307,7 +308,8 @@ export async function getAgendaEvents(
       description: null,
       client_nom: c.client?.nom ?? null,
       client_id: null,
-      heure_debut: null,
+      // Heure convenue avec le client ; sans heure, visite « dans la journée ».
+      heure_debut: c.prochaine_visite_heure ?? null,
       heure_fin: null,
       href: `/maintenance/${c.id}`,
       ...coordonnees(c.client),

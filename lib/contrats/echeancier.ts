@@ -32,7 +32,8 @@ export type LigneEcheancier = {
   date_debut: string;
   frequence: "annuelle";
   prix_annuel_ht: number;
-  prochaine_visite: string;
+  /** NULL : la date se convient avec le client (dialogue « Planifier la visite »). */
+  prochaine_visite: null;
   statut: "actif";
   notes: string;
 };
@@ -48,9 +49,10 @@ function equipementsDe(valeur: unknown): EquipementContrat[] {
 /**
  * Ligne d'échéancier d'un contrat actif. Le texte du contrat prévoit
  * une (1) visite par an (art. 2.1) : fréquence annuelle, prix annuel =
- * net à payer (redevance − remise). La première visite est due à la
- * date d'effet, ou aujourd'hui si celle-ci est déjà passée — le
- * contrat apparaît ainsi tout de suite dans « Visites à programmer ».
+ * net à payer (redevance − remise). Aucune date de visite n'est
+ * imposée : elle se convient avec le client, le contrat apparaît dans
+ * « Visites à convenir » jusqu'à ce qu'elle soit planifiée (avant, la
+ * visite tombait le jour même de la mise en service, puis « en retard »).
  */
 export function ligneEcheancierDepuisContrat(
   contrat: ContratARattacher,
@@ -65,7 +67,6 @@ export function ligneEcheancierDepuisContrat(
     .filter(Boolean);
 
   const dateDebut = contrat.date_effet ?? aujourdhui;
-  const prochaine = dateDebut > aujourdhui ? dateDebut : aujourdhui;
 
   return {
     client_id: contrat.client_id,
@@ -79,8 +80,8 @@ export function ligneEcheancierDepuisContrat(
     date_debut: dateDebut,
     frequence: "annuelle",
     prix_annuel_ht: netAPayer(Number(contrat.redevance), Number(contrat.remise)),
-    prochaine_visite: prochaine,
+    prochaine_visite: null,
     statut: "actif",
-    notes: "Créé automatiquement à la mise en service du contrat signé.",
+    notes: "Créé automatiquement à la mise en service du contrat signé — date de visite à convenir avec le client.",
   };
 }

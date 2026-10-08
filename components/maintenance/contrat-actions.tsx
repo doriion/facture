@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Loader2, Trash2 } from "lucide-react";
+import { CalendarCheck, FileText, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -21,13 +21,24 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { PlanifierVisiteDialog } from "@/components/maintenance/planifier-visite-dialog";
 
 export function ContratActions({
   contratId,
   statut,
+  clientNom = null,
+  clientEmail = null,
+  prochaineVisite = null,
+  prochaineVisiteHeure = null,
+  confirmationEnvoyeePour = null,
 }: {
   contratId: string;
   statut: string;
+  clientNom?: string | null;
+  clientEmail?: string | null;
+  prochaineVisite?: string | null;
+  prochaineVisiteHeure?: string | null;
+  confirmationEnvoyeePour?: string | null;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
@@ -61,7 +72,27 @@ export function ContratActions({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {statut === "actif" && (
-        <Button onClick={genererFacture} disabled={pending === "facture"}>
+        <PlanifierVisiteDialog
+          contratId={contratId}
+          clientNom={clientNom}
+          clientEmail={clientEmail}
+          prochaineVisite={prochaineVisite}
+          prochaineVisiteHeure={prochaineVisiteHeure}
+          confirmationEnvoyeePour={confirmationEnvoyeePour}
+          trigger={
+            <Button variant={prochaineVisite ? "outline" : "default"}>
+              <CalendarCheck className="size-4" />
+              {prochaineVisite ? "Replanifier la visite" : "Planifier la visite"}
+            </Button>
+          }
+        />
+      )}
+      {statut === "actif" && (
+        <Button
+          onClick={genererFacture}
+          disabled={pending === "facture"}
+          variant={prochaineVisite ? "default" : "outline"}
+        >
           {pending === "facture" ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (

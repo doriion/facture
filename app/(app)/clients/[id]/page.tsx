@@ -364,7 +364,9 @@ export default async function ClientDetailPage(
                         ? e.prochaine_visite < aujourdhui
                           ? `Visite en retard depuis le ${formatDateFr(e.prochaine_visite)}`
                           : `Prochaine visite le ${formatDateFr(e.prochaine_visite)}`
-                        : "Pas de visite planifiée"}
+                        : e.statut === "actif"
+                          ? "Visite à convenir avec le client"
+                          : "Pas de visite planifiée"}
                       {e.statut !== "actif" ? ` · ${e.statut}` : ""}
                     </p>
                   </Link>
