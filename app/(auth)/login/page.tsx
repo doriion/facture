@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/login-form";
+import { LogoMarque } from "@/components/logo-marque";
 import { NOM_APPLICATION, titrePage } from "@/lib/marque";
 
 export const metadata = {
@@ -22,6 +23,9 @@ export default async function LoginPage(
     <div className="flex min-h-dvh items-center justify-center bg-muted/40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
+          <div className="mb-3 flex justify-center">
+            <LogoMarque taille={88} />
+          </div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">
             {NOM_APPLICATION}
           </h1>

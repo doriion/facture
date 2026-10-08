@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
-    "restaurer": "node scripts/restaurer-sauvegarde.mjs"
+    "restaurer": "node scripts/restaurer-sauvegarde.mjs",
+    "icones": "node scripts/icones.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -340,8 +340,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(contenu.titre, {
       body: contenu.corps,
-      icon: "/icones/vague-192.png",
-      badge: "/icones/vague-192.png",
+      icon: "/icones/logo-192.png",
+      badge: "/icones/logo-192.png",
       tag: contenu.tag,
       renotify: Boolean(contenu.tag),
       data: { url: contenu.url },
