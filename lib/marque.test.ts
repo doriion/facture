@@ -104,26 +104,35 @@ describe("garde-fou : plus d'ancien nom dans l'interface", () => {
     expect(existsSync(join(RACINE, "app", "favicon.ico"))).toBe(false);
   });
 
-  it("les icônes de la vague existent et sont référencées", () => {
+  it("les icônes du logo original existent et sont référencées", () => {
     for (const f of [
-      "icones/vague-192.png",
-      "icones/vague-512.png",
-      "icones/vague-maskable-512.png",
-      "icones/vague-apple-180.png",
-      "icones/vague.svg",
+      "icones/logo-192.png",
+      "icones/logo-512.png",
+      "icones/logo-maskable-512.png",
+      "icones/logo-apple-180.png",
       "favicon.ico",
-      "logo.svg",
+      "logo.png",
     ]) {
       expect(existsSync(join(RACINE, "public", f))).toBe(true);
     }
+    // L'ancien tracé redessiné (logo.svg, icônes vague-*) a disparu :
+    // il ne doit rester aucune référence, sinon un écran garde l'ancien dessin.
+    for (const ancien of ["logo.svg", "icones/vague.svg", "icones/vague-192.png"]) {
+      expect(existsSync(join(RACINE, "public", ancien))).toBe(false);
+    }
     const manifeste = readFileSync(join(RACINE, "public", "manifest.json"), "utf8");
     const layout = readFileSync(join(RACINE, "app", "layout.tsx"), "utf8");
-    for (const ancien of ["icon-192", "icon-512", "icon-maskable", "apple-touch-icon", "favicon.svg"]) {
+    const sw = readFileSync(join(RACINE, "public", "sw.js"), "utf8");
+    const marque = readFileSync(join(RACINE, "components", "logo-marque.tsx"), "utf8");
+    for (const ancien of ["icon-192", "icon-512", "icon-maskable", "apple-touch-icon", "favicon.svg", "vague"]) {
       expect(manifeste).not.toContain(ancien);
       expect(layout).not.toContain(ancien);
+      expect(sw).not.toContain(`/icones/${ancien}`);
     }
-    expect(manifeste).toContain("/icones/vague-maskable-512.png");
-    expect(layout).toContain("/icones/vague-apple-180.png");
+    expect(manifeste).toContain("/icones/logo-maskable-512.png");
+    expect(layout).toContain("/icones/logo-apple-180.png");
+    expect(sw).toContain("/icones/logo-192.png");
+    expect(marque).toContain('src="/logo.png"');
   });
 });
 

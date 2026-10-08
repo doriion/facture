@@ -25,19 +25,19 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: NOM_APPLICATION,
-    startupImage: "/icones/vague-apple-180.png",
+    startupImage: "/icones/logo-apple-180.png",
   },
-  // Icônes sous un NOUVEAU chemin : un téléphone garde l'icône d'accueil
-  // en cache tant que son URL ne change pas — renommer est le seul moyen
-  // sûr de chasser l'ancienne. Générées par scripts/icones.mjs.
+  // Icônes sous un NOUVEAU chemin (logo-*, d'après l'image originale) :
+  // un téléphone garde l'icône d'accueil en cache tant que son URL ne
+  // change pas — renommer est le seul moyen sûr de chasser l'ancienne.
+  // Générées par scripts/icones.mjs.
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },
-      { url: "/icones/vague.svg", type: "image/svg+xml" },
-      { url: "/icones/vague-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icones/vague-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icones/logo-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icones/logo-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/icones/vague-apple-180.png", sizes: "180x180" }],
+    apple: [{ url: "/icones/logo-apple-180.png", sizes: "180x180" }],
   },
 };
 
