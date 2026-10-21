@@ -14,6 +14,7 @@ import { escapeHtml, isEmailConfigured, sendEmail } from "@/lib/email";
 import { lignePenseBeteHtml } from "@/lib/cron/pense-bete";
 import { formatDateFr } from "@/lib/format";
 import { NOM_APPLICATION } from "@/lib/marque";
+import { normaliserHoraires } from "@/lib/horaires-visites";
 
 /**
  * Propositions de visite automatiques (rappels d'entretien) — OFF par
@@ -82,10 +83,11 @@ async function executerRappels({
   // Premier créneau libre à partir de l'échéance (jamais avant demain) :
   // les rendez-vous déjà posés sont lus une fois pour tous les contrats.
   const demain = ajouterJours(today, 1);
-  const occupations = await occupationsAgenda(service, userId, demain, ajouterJours(today, 120));
+  const occupations = await occupationsAgenda(service, userId, demain, ajouterJours(today, 120), undefined, profil.external_calendar_url);
+  const horaires = normaliserHoraires(profil.horaires_visites);
   const creneauDe = (echeance: string): Creneau => {
     const depuis = echeance > demain ? echeance : demain;
-    const libres = creneauxLibres({ depuis, jusquau: ajouterJours(depuis, 30), occupations, max: 1 });
+    const libres = creneauxLibres({ depuis, jusquau: ajouterJours(depuis, 30), occupations, max: 1, horaires });
     return libres[0] ?? { date: depuis, debut: null, fin: null };
   };
 

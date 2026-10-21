@@ -173,7 +173,7 @@ export function AutomatisationsCard({
           {switchRow(
             "auto_rappels_active",
             "Propositions de visite aux clients (rappel d'entretien)",
-            "Chaque matin : contrats actifs dont la visite approche. Le client reçoit un créneau libre de votre agenda et d'autres au choix ; sa réponse inscrit le rendez-vous directement dans l'agenda et vous prévient. Une proposition par échéance, récapitulatif par email.",
+            "Chaque matin : contrats actifs dont la visite approche. Le client reçoit un créneau libre de votre agenda (vos horaires, hors rendez-vous posés et rendez-vous du téléphone) et d'autres au choix ; sa réponse inscrit le rendez-vous directement dans l'agenda et vous prévient. Sans réponse : relance du client après 7 jours, alerte pour vous après 14 jours. Rappel au client la veille d'une visite confirmée. Une proposition par échéance, récapitulatif par email.",
           )}
           <div className="flex items-center gap-2 pl-10 text-sm">
             <span className="text-muted-foreground">Prévenir</span>

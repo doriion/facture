@@ -8,6 +8,7 @@
 import { z } from "zod";
 
 import { ajouterJours, depuisYmd, libelleJourLong } from "@/lib/agenda-vues";
+import { horairesParDefaut, type HorairesVisites } from "@/lib/horaires-visites";
 import { heureLisible } from "@/lib/visite-entretien";
 
 /** Un créneau : une date, et des heures (null = dans la journée). */
@@ -21,11 +22,10 @@ export type Occupation = {
   heure_fin: string | null;
 };
 
-/** Demi-journées proposées aux clients. */
-export const TRANCHES: ReadonlyArray<{ debut: string; fin: string }> = [
-  { debut: "08:00", fin: "12:00" },
-  { debut: "14:00", fin: "18:00" },
-];
+/** Demi-journées proposées aux clients, d'après les horaires de l'artisan. */
+export function tranchesDe(horaires: HorairesVisites = horairesParDefaut()): Array<{ debut: string; fin: string }> {
+  return [horaires.matin, horaires.apres_midi].filter((t): t is { debut: string; fin: string } => Boolean(t));
+}
 
 /** Durée supposée d'un rendez-vous sans heure de fin. */
 const DUREE_SANS_FIN_MIN = 60;
@@ -35,10 +35,10 @@ function minutes(h: string): number {
   return (hh ?? 0) * 60 + (mm ?? 0);
 }
 
-/** Lundi à vendredi. */
-export function estJourOuvre(ymd: string): boolean {
+/** Jour travaillé (1 = lundi … 7 = dimanche ; défaut lundi à vendredi). */
+export function estJourOuvre(ymd: string, jours: number[] = horairesParDefaut().jours): boolean {
   const j = depuisYmd(ymd).getDay();
-  return j >= 1 && j <= 5;
+  return jours.includes(j === 0 ? 7 : j);
 }
 
 /** Le rendez-vous couvre-t-il ce créneau (même partiellement) ? */
@@ -68,12 +68,16 @@ export function creneauxLibres(args: {
   occupations: Occupation[];
   max?: number;
   exclure?: Creneau | null;
+  /** Horaires de l'artisan (Paramètres) ; défaut lundi–vendredi, 8–12 h et 14–18 h. */
+  horaires?: HorairesVisites;
 }): Creneau[] {
   const max = args.max ?? 6;
+  const horaires = args.horaires ?? horairesParDefaut();
+  const tranches = tranchesDe(horaires);
   const resultat: Creneau[] = [];
   for (let d = args.depuis; d <= args.jusquau && resultat.length < max; d = ajouterJours(d, 1)) {
-    if (!estJourOuvre(d)) continue;
-    for (const t of TRANCHES) {
+    if (!estJourOuvre(d, horaires.jours)) continue;
+    for (const t of tranches) {
       const c: Creneau = { date: d, debut: t.debut, fin: t.fin };
       if (args.exclure && memeCreneau(c, args.exclure)) continue;
       if (creneauOccupe(c, args.occupations)) continue;
@@ -84,13 +88,21 @@ export function creneauxLibres(args: {
   return resultat;
 }
 
-/** « le matin (8 h – 12 h) », « l'après-midi (14 h – 18 h) », « à 9 h 30 », « dans la journée ». */
+/**
+ * « le matin (8 h – 12 h) », « l'après-midi (14 h – 18 h) » pour une
+ * demi-journée (3 h ou plus), « entre 9 h 30 et 11 h 30 » pour un créneau
+ * court, « à 9 h 30 » sans fin, « dans la journée » sans heure.
+ */
 export function libellePlage(c: Creneau): string {
   if (!c.debut) return "dans la journée";
   const debut = heureLisible(c.debut)!;
-  if (c.debut === "08:00" && c.fin === "12:00") return `le matin (${debut} – ${heureLisible(c.fin)})`;
-  if (c.debut === "14:00" && c.fin === "18:00") return `l'après-midi (${debut} – ${heureLisible(c.fin)})`;
-  return c.fin ? `entre ${debut} et ${heureLisible(c.fin)}` : `à ${debut}`;
+  if (!c.fin) return `à ${debut}`;
+  const duree = minutes(c.fin) - minutes(c.debut);
+  if (duree >= 180) {
+    const periode = c.debut < "12:00" ? "le matin" : "l'après-midi";
+    return `${periode} (${debut} – ${heureLisible(c.fin)})`;
+  }
+  return `entre ${debut} et ${heureLisible(c.fin)}`;
 }
 
 /** « Mardi 15 octobre 2026, le matin (8 h – 12 h) ». */

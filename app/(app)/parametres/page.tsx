@@ -10,6 +10,8 @@ import { ExportDonneesCard } from "@/components/parametres/export-donnees-card";
 import { TauxCotisationsCard } from "@/components/parametres/taux-cotisations-card";
 import { BaremeEntretienCard } from "@/components/parametres/bareme-entretien-card";
 import { AutomatisationsCard } from "@/components/parametres/automatisations-card";
+import { HorairesVisitesCard } from "@/components/parametres/horaires-visites-card";
+import { normaliserHoraires } from "@/lib/horaires-visites";
 import { RappelsPushCard } from "@/components/parametres/rappels-push-card";
 import { DoubleAuthentificationCard } from "@/components/parametres/double-authentification-card";
 import { etatMfa } from "@/lib/actions/mfa";
@@ -112,6 +114,8 @@ export default async function ParametresPage() {
       <ProfilForm profil={profil} />
 
       <RappelsPushCard reglages={reglagesPush} appareils={appareilsPush} />
+
+      <HorairesVisitesCard horaires={normaliserHoraires(profil?.horaires_visites)} />
 
       <AutomatisationsCard reglages={reglages} journal={journal} />
 

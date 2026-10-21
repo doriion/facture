@@ -24,6 +24,7 @@ import {
 import { envoyerNotification, pushConfigure } from "@/lib/push/envoi";
 import { adresseClient } from "@/lib/agenda-contact";
 import { formatDateFr } from "@/lib/format";
+import { icsVisite } from "@/lib/ics-visite";
 
 type PropositionRow = Database["public"]["Tables"]["visites_propositions"]["Row"];
 
@@ -83,7 +84,14 @@ export async function getPropositionParToken(token: string): Promise<Proposition
   let autresLibres: Array<{ index: number; creneau: Creneau }> = [];
   if (etat === "utilisable" && autres.length > 0) {
     const dates = autres.map((c) => c.date).sort();
-    const occupations = await occupationsAgenda(service, p.user_id, dates[0]!, dates[dates.length - 1]!, p.contrat_id);
+    const occupations = await occupationsAgenda(
+      service,
+      p.user_id,
+      dates[0]!,
+      dates[dates.length - 1]!,
+      p.contrat_id,
+      (profil as Profil | null)?.external_calendar_url,
+    );
     autresLibres = autres
       .map((creneau, index) => ({ index, creneau }))
       .filter(({ creneau }) => creneau.date >= ajouterJours(today, 1) && !creneauOccupe(creneau, occupations));
@@ -217,6 +225,16 @@ export async function repondreProposition(token: string, reponse: ReponseVisite)
         adresse: adresseClient(client),
         signature: signatureDepuisProfil(profil as Profil | null, expediteurNom),
       });
+      const ics = icsVisite({
+        uid: `visite-${p.id}@ng-gestion`,
+        titre: `Visite d'entretien — ${expediteurNom}`,
+        description: `${objet}, ${libellePlage(creneau)}. Pour changer de créneau, répondez à l'e-mail de confirmation.`,
+        lieu: adresseClient(client),
+        date: creneau.date,
+        debut: creneau.debut,
+        fin: creneau.fin,
+        maintenantIso: nowIso,
+      });
       await sendEmail({
         to: client.email,
         subject: email.subject,
@@ -224,6 +242,7 @@ export async function repondreProposition(token: string, reponse: ReponseVisite)
         text: email.text,
         replyTo: (profil as Profil | null)?.email_pro ?? undefined,
         fromName: expediteurNom,
+        attachments: [{ filename: "visite-entretien.ics", content: Buffer.from(ics, "utf8"), contentType: "text/calendar; charset=utf-8; method=PUBLISH" }],
       });
     }
   }
@@ -240,14 +259,15 @@ export async function repondreProposition(token: string, reponse: ReponseVisite)
   return { ok: true, resultat: statut, creneau };
 }
 
-async function prevenirArtisan(
+/** E-mail + notification push à l'artisan : réponse d'un client, ou proposition restée sans réponse. */
+export async function prevenirArtisan(
   service: ReturnType<typeof createServiceClient>,
   userId: string,
   profil: Profil | null,
   args: {
     clientNom: string;
     objetEntretien: string;
-    statut: "confirmee" | "replanifiee" | "refusee";
+    statut: "confirmee" | "replanifiee" | "refusee" | "sans_reponse";
     creneauText: string | null;
     message: string | null;
     lienFiche: string;
@@ -256,9 +276,11 @@ async function prevenirArtisan(
   const titre =
     args.statut === "refusee"
       ? `${args.clientNom} : aucun créneau ne convient`
-      : args.statut === "confirmee"
-        ? `${args.clientNom} a confirmé la visite`
-        : `${args.clientNom} a choisi un autre créneau`;
+      : args.statut === "sans_reponse"
+        ? `${args.clientNom} n'a pas répondu à la proposition de visite`
+        : args.statut === "confirmee"
+          ? `${args.clientNom} a confirmé la visite`
+          : `${args.clientNom} a choisi un autre créneau`;
   const corps = args.creneauText
     ? `${args.creneauText} — rendez-vous ajouté à l'agenda.`
     : args.message

@@ -13,6 +13,7 @@ import {
 import { adresseClient } from "@/lib/agenda-contact";
 import { libelleJourLong } from "@/lib/agenda-vues";
 import { formatDateFr } from "@/lib/format";
+import { icsVisite } from "@/lib/ics-visite";
 import {
   heureLisible,
   planificationVisiteSchema,
@@ -110,6 +111,17 @@ export async function planifierVisiteAction(
         adresse: adresseClient(client),
         signature: signatureDepuisProfil(profil, expediteurNom),
       });
+      const nowIso = new Date().toISOString();
+      const ics = icsVisite({
+        uid: `visite-${contratId}-${v.date}@ng-gestion`,
+        titre: `Visite d'entretien — ${expediteurNom}`,
+        description: `${contrat.equipement || contrat.intitule || "Entretien"}${heure ? `, à ${heureLisible(heure)}` : ", dans la journée"}. Pour changer de créneau, répondez à l'e-mail de confirmation.`,
+        lieu: adresseClient(client),
+        date: v.date,
+        debut: v.heure || null,
+        fin: null,
+        maintenantIso: nowIso,
+      });
       const envoi = await sendEmail({
         to: client.email,
         subject: email.subject,
@@ -117,6 +129,7 @@ export async function planifierVisiteAction(
         text: email.text,
         replyTo: profil?.email_pro ?? undefined,
         fromName: expediteurNom,
+        attachments: [{ filename: "visite-entretien.ics", content: Buffer.from(ics, "utf8"), contentType: "text/calendar; charset=utf-8; method=PUBLISH" }],
       });
       if (!envoi.ok) {
         motif = `Date enregistrée, mais l'e-mail n'est pas parti : ${envoi.error}`;

@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { buildAvisChatelEmail, buildConfirmationVisiteEmail, buildDocumentEmail, buildPropositionVisiteEmail } from "./email";
+import { buildAvisChatelEmail, buildConfirmationVisiteEmail, buildDocumentEmail, buildPropositionVisiteEmail, buildRappelVeilleEmail } from "./email";
 import { escapeHtml } from "./email-gabarit";
 import {
   MENTION_TVA_FRANCHISE_CGI,
@@ -224,5 +224,27 @@ describe("e-mail de proposition de visite", () => {
     expect(mail.subject).toBe("Visite d'entretien le 20/10/2026, le matin (8 h – 12 h) — Nathan Geneve EI");
     expect(mail.text).toContain("je passerai le mardi 20 octobre 2026, le matin (8 h – 12 h), pour la visite");
     expect(mail.text).toContain("Heure : Le matin (8 h – 12 h)");
+  });
+});
+
+describe("relance et rappel de la veille", () => {
+  it("relance : objet préfixé, intro de rappel, même lien", () => {
+    const mail = buildPropositionVisiteEmail({
+      clientNom: "M. Clément", expediteurNom: "Nathan Geneve EI", objetEntretien: "PAC",
+      creneauText: "Mardi 20 octobre 2026, le matin (8 h – 12 h)", nbAutres: 2,
+      lien: "https://facture-green.vercel.app/visite/abcdef0123456789", expireLeText: "20/11/2026", relance: true,
+    });
+    expect(mail.subject.startsWith("Rappel — Visite d'entretien")).toBe(true);
+    expect(mail.text).toContain("Petit rappel : je vous ai proposé de passer le mardi 20 octobre 2026");
+    expect(mail.text).toContain("/visite/abcdef0123456789");
+  });
+  it("veille : « à demain », plage et téléphone formaté", () => {
+    const mail = buildRappelVeilleEmail({
+      clientNom: "M. Clément", expediteurNom: "Nathan Geneve EI", objetEntretien: "PAC",
+      dateVisiteLongue: "Mardi 20 octobre 2026", plageText: "le matin (8 h – 12 h)", telephone: "0647214864",
+    });
+    expect(mail.subject).toBe("À demain pour la visite d'entretien, le matin (8 h – 12 h) — Nathan Geneve EI");
+    expect(mail.text).toContain("Je passe demain, le matin (8 h – 12 h), pour la visite d'entretien");
+    expect(mail.text).toContain("appelez-moi au 06 47 21 48 64");
   });
 });

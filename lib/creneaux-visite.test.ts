@@ -13,10 +13,17 @@ import {
 } from "./creneaux-visite";
 
 describe("estJourOuvre / libellés", () => {
-  it("samedi et dimanche exclus", () => {
+  it("samedi et dimanche exclus par défaut, jours de l'artisan sinon", () => {
     expect(estJourOuvre("2026-10-19")).toBe(true); // lundi
     expect(estJourOuvre("2026-10-24")).toBe(false); // samedi
     expect(estJourOuvre("2026-10-25")).toBe(false); // dimanche
+    expect(estJourOuvre("2026-10-24", [2, 4, 6])).toBe(true); // samedi travaillé
+    expect(estJourOuvre("2026-10-19", [2, 4, 6])).toBe(false);
+  });
+  it("libellé d'une demi-journée aux horaires de l'artisan", () => {
+    expect(libellePlage({ date: "2026-10-20", debut: "07:30", fin: "12:30" })).toBe("le matin (7 h 30 – 12 h 30)");
+    expect(libellePlage({ date: "2026-10-20", debut: "13:30", fin: "17:00" })).toBe("l'après-midi (13 h 30 – 17 h)");
+    expect(libellePlage({ date: "2026-10-20", debut: "09:30", fin: null })).toBe("à 9 h 30");
   });
   it("libellés lisibles", () => {
     expect(libelleCreneau({ date: "2026-10-20", debut: "08:00", fin: "12:00" })).toBe("Mardi 20 octobre 2026, le matin (8 h – 12 h)");
@@ -65,6 +72,18 @@ describe("creneauOccupe / creneauxLibres", () => {
       { date: "2026-10-20", debut: "14:00", fin: "18:00" },
       { date: "2026-10-22", debut: "08:00", fin: "12:00" },
       { date: "2026-10-22", debut: "14:00", fin: "18:00" },
+    ]);
+  });
+  it("horaires de l'artisan : matin seul, mardi et samedi", () => {
+    const libres = creneauxLibres({
+      depuis: "2026-10-19",
+      jusquau: "2026-10-25",
+      occupations: [],
+      horaires: { jours: [2, 6], matin: { debut: "07:30", fin: "12:30" }, apres_midi: null },
+    });
+    expect(libres).toEqual([
+      { date: "2026-10-20", debut: "07:30", fin: "12:30" },
+      { date: "2026-10-24", debut: "07:30", fin: "12:30" },
     ]);
   });
 });
