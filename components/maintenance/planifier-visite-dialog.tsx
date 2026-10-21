@@ -10,6 +10,7 @@ import { planifierVisiteAction } from "@/lib/actions/visites-entretien";
 import { proposerVisiteAction } from "@/lib/actions/propositions-visite";
 import { formatDateFr } from "@/lib/format";
 import { confirmationValable, heureChamp, heureLisible } from "@/lib/visite-entretien";
+import { aujourdhuiParis } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -55,7 +56,9 @@ export function PlanifierVisiteDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(prochaineVisite ?? "");
+  // Une visite déjà passée ne sert pas de point de départ : aujourd'hui.
+  const dateInitiale = () => (prochaineVisite && prochaineVisite >= aujourdhuiParis() ? prochaineVisite : aujourdhuiParis());
+  const [date, setDate] = useState(dateInitiale);
   const [heure, setHeure] = useState(heureChamp(prochaineVisiteHeure));
   const [envoyer, setEnvoyer] = useState(Boolean(clientEmail));
   const [mode, setMode] = useState<Mode>(clientEmail ? "proposer" : "confirmer");
@@ -68,7 +71,7 @@ export function PlanifierVisiteDialog({
   function ouvrir(suivant: boolean) {
     setOpen(suivant);
     if (suivant) {
-      setDate(prochaineVisite ?? "");
+      setDate(dateInitiale());
       setHeure(heureChamp(prochaineVisiteHeure));
       setEnvoyer(Boolean(clientEmail));
       setMode(clientEmail ? "proposer" : "confirmer");
