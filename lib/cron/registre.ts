@@ -7,6 +7,7 @@ import { jobRappels } from "@/lib/cron/jobs/rappels";
 import { jobReconduction } from "@/lib/cron/jobs/reconduction";
 import { jobChatel } from "@/lib/cron/jobs/chatel";
 import { jobEmailTaches } from "@/lib/cron/jobs/taches";
+import { jobVisitesSuivi } from "@/lib/cron/jobs/visites-suivi";
 
 /**
  * Registre des tâches orchestrées par /api/cron/quotidien (UN SEUL
@@ -17,6 +18,8 @@ export const JOBS: JobDef[] = [
   jobSauvegarde,
   jobRelances,
   jobRappels,
+  // Relances / alertes / rappel de la veille : après les propositions du jour.
+  jobVisitesSuivi,
   // ORDRE IMPORTANT : la reconduction avance les échéances échues
   // AVANT que l'avis loi Chatel ne calcule sa fenêtre — sinon un
   // contrat au terme dépassé resterait invisible pour l'avis suivant.

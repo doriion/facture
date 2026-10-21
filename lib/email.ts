@@ -406,9 +406,11 @@ export function buildPropositionVisiteEmail(args: {
   lien: string;
   /** Validité du lien, déjà formatée. */
   expireLeText: string;
+  /** Relance d'une proposition restée sans réponse. */
+  relance?: boolean;
   signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
-  const subject = `Visite d'entretien : ${args.creneauText}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
+  const subject = `${args.relance ? "Rappel — " : ""}Visite d'entretien : ${args.creneauText}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
   const choix =
     args.nbAutres > 0
       ? `Pour confirmer ce créneau, ou en choisir un autre parmi mes disponibilités (${args.nbAutres} autre${args.nbAutres > 1 ? "s" : ""} proposé${args.nbAutres > 1 ? "s" : ""}), cliquez sur le bouton ci-dessous : votre choix s'inscrit directement dans mon agenda.`
@@ -418,7 +420,9 @@ export function buildPropositionVisiteEmail(args: {
     apercu: `${args.objetEntretien} · ${args.creneauText}`,
     salutation: `Bonjour ${args.clientNom},`,
     paragraphes: [
-      `La visite d'entretien de votre installation approche. Je vous propose de passer le ${args.creneauText.charAt(0).toLowerCase()}${args.creneauText.slice(1)}.`,
+      args.relance
+        ? `Petit rappel : je vous ai proposé de passer le ${args.creneauText.charAt(0).toLowerCase()}${args.creneauText.slice(1)} pour la visite d'entretien de votre installation, et je n'ai pas encore votre réponse.`
+        : `La visite d'entretien de votre installation approche. Je vous propose de passer le ${args.creneauText.charAt(0).toLowerCase()}${args.creneauText.slice(1)}.`,
       choix,
     ],
     resume: [
@@ -434,15 +438,53 @@ export function buildPropositionVisiteEmail(args: {
 }
 
 /**
- * Réponse d'un client à une proposition de visite, pour l'artisan
- * (copie e-mail de la notification).
+ * Rappel au client la veille d'une visite confirmée.
+ */
+export function buildRappelVeilleEmail(args: {
+  clientNom: string;
+  expediteurNom: string;
+  objetEntretien: string;
+  /** « Mardi 15 octobre 2026 » */
+  dateVisiteLongue: string;
+  /** « le matin (8 h – 12 h) », « à 9 h 30 », « dans la journée » */
+  plageText: string;
+  adresse?: string | null;
+  telephone?: string | null;
+  signature?: SignatureEmail;
+}): { subject: string; html: string; text: string } {
+  const subject = `À demain pour la visite d'entretien, ${args.plageText}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
+  const resume: Array<[string, string]> = [
+    ["Installation", args.objetEntretien],
+    ["Date", args.dateVisiteLongue],
+    ["Heure", args.plageText.charAt(0).toUpperCase() + args.plageText.slice(1)],
+  ];
+  if (args.adresse) resume.push(["Adresse", args.adresse]);
+  return emailDepuisContenu(subject, {
+    titre: "À demain",
+    apercu: `${args.objetEntretien} · ${args.dateVisiteLongue}, ${args.plageText}`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `Je passe demain, ${args.plageText}, pour la visite d'entretien de votre installation. Merci de prévoir l'accès à l'équipement.`,
+    ],
+    resume,
+    conclusion: args.telephone
+      ? `En cas d'empêchement, répondez simplement à ce message ou appelez-moi au ${formatTelephone(args.telephone)}. À demain !`
+      : "En cas d'empêchement, répondez simplement à ce message. À demain !",
+    signature: sig(args.signature, args.expediteurNom),
+  });
+}
+
+/**
+ * Réponse d'un client à une proposition de visite, ou proposition
+ * restée sans réponse : pour l'artisan (copie e-mail de la
+ * notification).
  */
 export function buildReponseVisiteEmail(args: {
   titre: string;
   corps: string;
   clientNom: string;
   objetEntretien: string;
-  statut: "confirmee" | "replanifiee" | "refusee";
+  statut: "confirmee" | "replanifiee" | "refusee" | "sans_reponse";
   creneauText: string | null;
   message: string | null;
   lienFiche: string;
@@ -460,7 +502,7 @@ export function buildReponseVisiteEmail(args: {
     paragraphes: [args.corps],
     resume,
     conclusion:
-      args.statut === "refusee"
+      args.statut === "refusee" || args.statut === "sans_reponse"
         ? "Reprenez contact avec le client pour convenir d'une date, puis planifiez la visite depuis l'échéancier."
         : "Le rendez-vous est dans votre agenda, rattaché au client ; la confirmation lui a été envoyée.",
     signature: { nom: NOM_APPLICATION },

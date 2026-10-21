@@ -217,6 +217,7 @@ export type Database = {
           prochaine_visite_heure: string | null;
           confirmation_envoyee_pour: string | null;
           confirmation_envoyee_le: string | null;
+          rappel_veille_envoye_pour: string | null;
           rappel_envoye_pour: string | null;
           statut: string;
           updated_at: string;
@@ -238,6 +239,7 @@ export type Database = {
           prochaine_visite_heure?: string | null;
           confirmation_envoyee_pour?: string | null;
           confirmation_envoyee_le?: string | null;
+          rappel_veille_envoye_pour?: string | null;
           rappel_envoye_pour?: string | null;
           statut?: string;
           updated_at?: string;
@@ -259,6 +261,7 @@ export type Database = {
           prochaine_visite_heure?: string | null;
           confirmation_envoyee_pour?: string | null;
           confirmation_envoyee_le?: string | null;
+          rappel_veille_envoye_pour?: string | null;
           rappel_envoye_pour?: string | null;
           statut?: string;
           updated_at?: string;
@@ -428,6 +431,8 @@ export type Database = {
           envoyee_le: string;
           expire_le: string;
           repondu_le: string | null;
+          relance_le: string | null;
+          artisan_prevenu_le: string | null;
           created_at: string;
         };
         Insert: {
@@ -448,6 +453,8 @@ export type Database = {
           envoyee_le?: string;
           expire_le: string;
           repondu_le?: string | null;
+          relance_le?: string | null;
+          artisan_prevenu_le?: string | null;
           created_at?: string;
         };
         Update: {
@@ -468,6 +475,8 @@ export type Database = {
           envoyee_le?: string;
           expire_le?: string;
           repondu_le?: string | null;
+          relance_le?: string | null;
+          artisan_prevenu_le?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -1648,6 +1657,7 @@ export type Database = {
           bic: string | null;
           calendar_token: string | null;
           agenda_couleurs: Json;
+          horaires_visites: Json;
           external_calendar_url: string | null;
           code_ape: string | null;
           code_postal: string | null;
@@ -1704,6 +1714,7 @@ export type Database = {
           bic?: string | null;
           calendar_token?: string | null;
           agenda_couleurs?: Json;
+          horaires_visites?: Json;
           external_calendar_url?: string | null;
           code_ape?: string | null;
           code_postal?: string | null;
@@ -1760,6 +1771,7 @@ export type Database = {
           bic?: string | null;
           calendar_token?: string | null;
           agenda_couleurs?: Json;
+          horaires_visites?: Json;
           external_calendar_url?: string | null;
           code_ape?: string | null;
           code_postal?: string | null;

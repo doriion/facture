@@ -208,6 +208,44 @@ function ligneIntervention(v: InterventionFormValues, userId: string) {
   };
 }
 
+/**
+ * Rendez-vous créé par le choix d'un client (proposition de visite) :
+ * le déplacer, le modifier, le mettre à la corbeille ou le restaurer
+ * depuis l'agenda met l'échéancier à jour. Une date déplacée n'est plus
+ * « confirmée au client » (confirmation_envoyee_pour reste l'ancienne) :
+ * la fiche propose de renvoyer la confirmation. rappel_envoye_pour suit
+ * la nouvelle date pour qu'aucune proposition automatique ne reparte.
+ */
+async function synchroniserVisiteLiee(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  interventionId: string,
+): Promise<void> {
+  const { data: lien } = await supabase
+    .from("visites_propositions")
+    .select("contrat_id")
+    .eq("intervention_id", interventionId)
+    .order("repondu_le", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!lien) return;
+  const { data: it } = await supabase
+    .from("interventions")
+    .select("date_intervention, heure_debut, supprime_le")
+    .eq("id", interventionId)
+    .maybeSingle();
+  if (!it) return;
+  await supabase
+    .from("contrats_maintenance")
+    .update(
+      it.supprime_le
+        ? { prochaine_visite: null, prochaine_visite_heure: null }
+        : { prochaine_visite: it.date_intervention, prochaine_visite_heure: it.heure_debut, rappel_envoye_pour: it.date_intervention },
+    )
+    .eq("id", lien.contrat_id);
+  revalidatePath("/maintenance");
+  revalidatePath(`/maintenance/${lien.contrat_id}`);
+}
+
 export async function createInterventionAction(
   values: InterventionFormValues,
 ): Promise<ActionResult<{ id: string }>> {
@@ -371,6 +409,7 @@ export async function updateInterventionAction(
     .eq("id", id);
 
   if (error) return { ok: false, error: error.message };
+  await synchroniserVisiteLiee(supabase, id);
   revalidatePath("/interventions");
   revalidatePath(`/interventions/${id}`);
   return { ok: true, data: undefined };
@@ -470,6 +509,7 @@ export async function deleteInterventionAction(
   if (error) return { ok: false, error: error.message };
   const ids = (data ?? []).map((r) => r.id);
   if (ids.length === 0) return { ok: false, error: "Intervention introuvable." };
+  for (const cible of ids) await synchroniserVisiteLiee(supabase, cible);
 
   revalidatePath("/interventions");
   revalidatePath("/agenda");
@@ -490,6 +530,7 @@ export async function restaurerInterventionAction(
     .not("supprime_le", "is", null)
     .select("id");
   if (error) return { ok: false, error: error.message };
+  for (const r of data ?? []) await synchroniserVisiteLiee(supabase, r.id);
   revalidatePath("/interventions");
   revalidatePath("/interventions/corbeille");
   revalidatePath("/agenda");
@@ -646,6 +687,7 @@ export async function quickEditInterventionAction(
     .eq("id", id);
 
   if (error) return { ok: false, error: error.message };
+  await synchroniserVisiteLiee(supabase, id);
   revalidatePath("/interventions");
   revalidatePath(`/interventions/${id}`);
   revalidatePath("/agenda");
@@ -708,6 +750,7 @@ export async function deplacerInterventionAction(
       error: "Intervention introuvable ou déjà facturée : modifiez-la depuis sa fiche.",
     };
   }
+  await synchroniserVisiteLiee(supabase, id);
   revalidatePath("/interventions");
   revalidatePath(`/interventions/${id}`);
   revalidatePath("/agenda");

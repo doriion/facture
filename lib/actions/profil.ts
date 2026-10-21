@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { horairesVisitesSchema, normaliserHoraires } from "@/lib/horaires-visites";
 import { CATEGORY_ORDER, normaliserCouleur } from "@/lib/agenda-colors";
 import { dureeValiditeSure } from "@/lib/devis-validite";
 import { profilSchema, type ProfilFormValues } from "@/lib/validations/profil";
@@ -273,6 +274,25 @@ export async function saveExternalCalendarUrlAction(
  * Sauvegarde la mapping catégorie → couleur d'agenda choisie par l'user.
  * Les valeurs sont validées côté action (whitelist de couleurs).
  */
+/** Horaires proposés aux clients pour les visites d'entretien (Paramètres). */
+export async function saveHorairesVisitesAction(valeur: unknown): Promise<ActionResult> {
+  const parsed = horairesVisitesSchema.safeParse(valeur);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Horaires invalides." };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+  const { error } = await supabase
+    .from("profil_entreprise")
+    .upsert({ user_id: user.id, horaires_visites: normaliserHoraires(parsed.data) }, { onConflict: "user_id" });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/parametres");
+  return { ok: true, data: undefined };
+}
+
 export async function saveAgendaCouleursAction(
   couleurs: Record<string, string>,
 ): Promise<ActionResult> {

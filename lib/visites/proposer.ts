@@ -20,6 +20,8 @@ import {
   signatureDepuisProfil,
 } from "@/lib/email";
 import { formatDateFr } from "@/lib/format";
+import { normaliserHoraires } from "@/lib/horaires-visites";
+import { parseIcal } from "@/lib/ical-parser";
 
 /** Client Supabase de l'utilisateur (RLS) ou service role (tâches planifiées : filtrer par user_id). */
 export type Db = SupabaseClient<Database>;
@@ -37,9 +39,38 @@ export function nomExpediteur(profil: Profil | null | undefined): string {
 }
 
 /**
- * Rendez-vous déjà posés dans l'agenda sur une période : interventions
- * (hors corbeille) et visites d'entretien planifiées des autres
- * contrats. Sert à ne proposer au client que des créneaux libres.
+ * Rendez-vous du calendrier du téléphone (abonnement iCal, lecture
+ * seule) sur une période : eux aussi rendent un créneau indisponible.
+ * Un flux lent, absent ou en panne ne bloque rien : liste vide.
+ */
+async function occupationsTelephone(url: string | null, debut: string, fin: string): Promise<Occupation[]> {
+  if (!url) return [];
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "text/calendar, text/plain, */*" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return [];
+    const texte = await res.text();
+    if (texte.length > 2 * 1024 * 1024) return [];
+    return parseIcal(texte)
+      .filter((e) => e.date_end >= debut && e.date_start <= fin)
+      .map((e) => ({
+        date_start: e.date_start,
+        date_end: e.date_end,
+        heure_debut: e.time_start ? `${e.time_start}:00` : null,
+        heure_fin: e.time_end ? `${e.time_end}:00` : null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Rendez-vous déjà posés sur une période : interventions (hors
+ * corbeille), visites d'entretien planifiées des autres contrats, et
+ * rendez-vous du téléphone. Sert à ne proposer au client que des
+ * créneaux libres.
  */
 export async function occupationsAgenda(
   db: Db,
@@ -47,6 +78,7 @@ export async function occupationsAgenda(
   debut: string,
   fin: string,
   saufContratId?: string,
+  calendrierTelephoneUrl?: string | null,
 ): Promise<Occupation[]> {
   const visites = db
     .from("contrats_maintenance")
@@ -56,7 +88,7 @@ export async function occupationsAgenda(
     .not("prochaine_visite", "is", null)
     .gte("prochaine_visite", debut)
     .lte("prochaine_visite", fin);
-  const [interv, vis] = await Promise.all([
+  const [interv, vis, telephone] = await Promise.all([
     db
       .from("interventions")
       .select("date_intervention, date_fin, heure_debut, heure_fin")
@@ -67,8 +99,9 @@ export async function occupationsAgenda(
       .gte("date_intervention", ajouterJours(debut, -31))
       .lte("date_intervention", fin),
     saufContratId ? visites.neq("id", saufContratId) : visites,
+    occupationsTelephone(calendrierTelephoneUrl ?? null, debut, fin),
   ]);
-  const occupations: Occupation[] = [];
+  const occupations: Occupation[] = [...telephone];
   for (const i of interv.data ?? []) {
     const date_end = i.date_fin ?? i.date_intervention;
     if (date_end < debut) continue;
@@ -145,8 +178,15 @@ export async function envoyerPropositionVisite(args: {
   const demain = ajouterJours(args.today, 1);
   const depuis = ajouterJours(propose.date, -7) > demain ? ajouterJours(propose.date, -7) : demain;
   const jusquau = ajouterJours(propose.date, 21);
-  const occupations = await occupationsAgenda(db, userId, depuis, jusquau, contratId);
-  const autres = creneauxLibres({ depuis, jusquau, occupations, exclure: propose, max: 6 });
+  const occupations = await occupationsAgenda(db, userId, depuis, jusquau, contratId, profil?.external_calendar_url);
+  const autres = creneauxLibres({
+    depuis,
+    jusquau,
+    occupations,
+    exclure: propose,
+    max: 6,
+    horaires: normaliserHoraires(profil?.horaires_visites),
+  });
 
   if (args.dryRun) {
     return { ok: true, data: { id: null, clientEmail: client.email, propose, autres } };
