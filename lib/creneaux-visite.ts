@@ -20,6 +20,8 @@ export type Occupation = {
   date_end: string;
   heure_debut: string | null;
   heure_fin: string | null;
+  /** Ce qui occupe le créneau (« Dépannage · Mme Martin »), pour l'affichage. */
+  libelle?: string | null;
 };
 
 /** Demi-journées proposées aux clients, d'après les horaires de l'artisan. */
@@ -116,6 +118,46 @@ export function creneauPropose(date: string, heure: string | null): Creneau {
   const debut = heure.slice(0, 5);
   const fin = Math.min(minutes(debut) + 120, 23 * 60 + 59);
   return { date, debut, fin: `${String(Math.floor(fin / 60)).padStart(2, "0")}:${String(fin % 60).padStart(2, "0")}` };
+}
+
+export type DisponibiliteJour = {
+  date: string;
+  /** Jour travaillé selon les horaires de l'artisan. */
+  travaille: boolean;
+  tranches: Array<{ debut: string; fin: string; libre: boolean }>;
+  /** Rendez-vous du jour, dans l'ordre des heures (journée entière d'abord). */
+  occupations: Array<{ libelle: string; heure_debut: string | null; heure_fin: string | null }>;
+};
+
+/**
+ * Disponibilités jour par jour sur une période : pour montrer à
+ * l'artisan, quand il choisit une date, où il est déjà pris.
+ */
+export function disponibilitesJours(args: {
+  depuis: string;
+  jours: number;
+  occupations: Occupation[];
+  horaires?: HorairesVisites;
+}): DisponibiliteJour[] {
+  const horaires = args.horaires ?? horairesParDefaut();
+  const tranches = tranchesDe(horaires);
+  const resultat: DisponibiliteJour[] = [];
+  for (let i = 0, d = args.depuis; i < args.jours; i++, d = ajouterJours(d, 1)) {
+    const duJour = args.occupations
+      .filter((o) => o.date_start <= d && o.date_end >= d)
+      .sort((a, b) => (a.heure_debut ?? "").localeCompare(b.heure_debut ?? ""));
+    resultat.push({
+      date: d,
+      travaille: estJourOuvre(d, horaires.jours),
+      tranches: tranches.map((t) => ({ ...t, libre: !creneauOccupe({ date: d, debut: t.debut, fin: t.fin }, duJour) })),
+      occupations: duJour.map((o) => ({
+        libelle: o.libelle?.trim() || "Rendez-vous",
+        heure_debut: o.heure_debut,
+        heure_fin: o.heure_fin,
+      })),
+    });
+  }
+  return resultat;
 }
 
 /** Durée de validité du lien de réponse. */

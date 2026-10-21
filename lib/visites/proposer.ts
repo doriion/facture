@@ -60,6 +60,7 @@ async function occupationsTelephone(url: string | null, debut: string, fin: stri
         date_end: e.date_end,
         heure_debut: e.time_start ? `${e.time_start}:00` : null,
         heure_fin: e.time_end ? `${e.time_end}:00` : null,
+        libelle: `📱 ${e.summary || "Rendez-vous"}`,
       }));
   } catch {
     return [];
@@ -82,7 +83,7 @@ export async function occupationsAgenda(
 ): Promise<Occupation[]> {
   const visites = db
     .from("contrats_maintenance")
-    .select("id, prochaine_visite, prochaine_visite_heure")
+    .select("id, prochaine_visite, prochaine_visite_heure, intitule, client:clients(nom)")
     .eq("user_id", userId)
     .eq("statut", "actif")
     .not("prochaine_visite", "is", null)
@@ -91,7 +92,7 @@ export async function occupationsAgenda(
   const [interv, vis, telephone] = await Promise.all([
     db
       .from("interventions")
-      .select("date_intervention, date_fin, heure_debut, heure_fin")
+      .select("date_intervention, date_fin, heure_debut, heure_fin, description, type, client:clients(nom)")
       .eq("user_id", userId)
       .is("supprime_le", null)
       // Un chantier commencé avant la période peut la couvrir : on
@@ -102,6 +103,10 @@ export async function occupationsAgenda(
     occupationsTelephone(calendrierTelephoneUrl ?? null, debut, fin),
   ]);
   const occupations: Occupation[] = [...telephone];
+  const nomClient = (c: unknown): string | null => {
+    const o = (Array.isArray(c) ? c[0] : c) as { nom?: string } | null | undefined;
+    return o?.nom ?? null;
+  };
   for (const i of interv.data ?? []) {
     const date_end = i.date_fin ?? i.date_intervention;
     if (date_end < debut) continue;
@@ -110,6 +115,7 @@ export async function occupationsAgenda(
       date_end,
       heure_debut: i.heure_debut,
       heure_fin: i.heure_fin,
+      libelle: [i.description || i.type, nomClient(i.client)].filter(Boolean).join(" · "),
     });
   }
   for (const v of vis.data ?? []) {
@@ -117,8 +123,8 @@ export async function occupationsAgenda(
       date_start: v.prochaine_visite!,
       date_end: v.prochaine_visite!,
       heure_debut: v.prochaine_visite_heure,
-      // Visite sans heure de fin : une demi-journée.
-      heure_fin: v.prochaine_visite_heure ? null : null,
+      heure_fin: null,
+      libelle: ["Visite d'entretien", nomClient(v.client) ?? v.intitule].filter(Boolean).join(" · "),
     });
   }
   return occupations;

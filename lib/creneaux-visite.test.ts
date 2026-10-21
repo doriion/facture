@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   creneauOccupe,
+  disponibilitesJours,
   creneauPropose,
   creneauxLibres,
   estJourOuvre,
@@ -110,5 +111,29 @@ describe("reponseVisiteSchema", () => {
     expect(reponseVisiteSchema.safeParse({ choix: "aucun", message: "Plutôt en novembre" }).success).toBe(true);
     expect(reponseVisiteSchema.safeParse({ choix: "autre" }).success).toBe(false);
     expect(reponseVisiteSchema.safeParse({ choix: -1 }).success).toBe(false);
+  });
+});
+
+
+describe("disponibilitesJours", () => {
+  it("jour par jour : tranches libres ou prises, jours non travaillés, rendez-vous listés", () => {
+    const jours = disponibilitesJours({
+      depuis: "2026-10-23", // vendredi
+      jours: 4,
+      occupations: [
+        { date_start: "2026-10-23", date_end: "2026-10-23", heure_debut: "15:00:00", heure_fin: "16:30:00", libelle: "Dépannage · Mme Martin" },
+        { date_start: "2026-10-26", date_end: "2026-10-27", heure_debut: null, heure_fin: null, libelle: "Chantier · M. Durand" },
+      ],
+    });
+    expect(jours.map((j) => j.date)).toEqual(["2026-10-23", "2026-10-24", "2026-10-25", "2026-10-26"]);
+    expect(jours[0]!.travaille).toBe(true);
+    expect(jours[0]!.tranches).toEqual([
+      { debut: "08:00", fin: "12:00", libre: true },
+      { debut: "14:00", fin: "18:00", libre: false },
+    ]);
+    expect(jours[0]!.occupations).toEqual([{ libelle: "Dépannage · Mme Martin", heure_debut: "15:00:00", heure_fin: "16:30:00" }]);
+    expect(jours[1]!.travaille).toBe(false); // samedi
+    expect(jours[3]!.tranches.every((t) => !t.libre)).toBe(true); // chantier sur deux jours
+    expect(jours[3]!.occupations[0]!.libelle).toBe("Chantier · M. Durand");
   });
 });
