@@ -48,15 +48,17 @@ export function HorairesVisitesCard({ horaires }: { horaires: HorairesVisites })
   const Tranche = ({ cle, libelle }: { cle: "matin" | "apres_midi"; libelle: string }) => {
     const t = valeur[cle];
     return (
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <label className="flex w-36 cursor-pointer items-center gap-2">
+      <div className="space-y-1.5 text-sm">
+        <label className="flex cursor-pointer items-center gap-2">
           <input type="checkbox" className="size-4 accent-primary" checked={Boolean(t)} onChange={() => basculerTranche(cle)} />
           <span className="font-medium">{libelle}</span>
         </label>
-        <span className="text-muted-foreground">de</span>
-        <Input type="time" className="h-9 w-28" value={t?.debut ?? ""} disabled={!t} onChange={(e) => tranche(cle, "debut", e.target.value)} />
-        <span className="text-muted-foreground">à</span>
-        <Input type="time" className="h-9 w-28" value={t?.fin ?? ""} disabled={!t} onChange={(e) => tranche(cle, "fin", e.target.value)} />
+        <div className="flex items-center gap-2 pl-6">
+          <span className="text-muted-foreground">de</span>
+          <Input type="time" className="h-9 w-28 shrink-0" value={t?.debut ?? ""} disabled={!t} onChange={(e) => tranche(cle, "debut", e.target.value)} />
+          <span className="text-muted-foreground">à</span>
+          <Input type="time" className="h-9 w-28 shrink-0" value={t?.fin ?? ""} disabled={!t} onChange={(e) => tranche(cle, "fin", e.target.value)} />
+        </div>
       </div>
     );
   };
