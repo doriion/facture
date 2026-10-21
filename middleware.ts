@@ -55,6 +55,8 @@ export async function middleware(request: NextRequest) {
   // - /login : authentification ;
   // - /c/… : page de signature d'un contrat par le client (l'accès est
   //   contrôlé par l'access_token du contrat, résolu côté serveur) ;
+  // - /visite/… : page de choix d'un créneau de visite d'entretien par
+  //   le client (jeton de la proposition, résolu côté serveur) ;
   // - /api/public/… : les routes serveur de ce même parcours ;
   // - /api/cron/… : tâches planifiées appelées SANS session (Vercel
   //   Cron, pg_cron) — chaque route vérifie elle-même son secret
@@ -64,6 +66,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/login/") ||
     path === "/hors-ligne" ||
     path.startsWith("/c/") ||
+    path.startsWith("/visite/") ||
     path.startsWith("/api/public/") ||
     path.startsWith("/api/cron/");
 
@@ -119,7 +122,7 @@ export async function middleware(request: NextRequest) {
 
   // Pages et routes publiques (lien de signature, PDF public) : jamais
   // indexées par un moteur de recherche.
-  if (path.startsWith("/c/") || path.startsWith("/api/public/")) {
+  if (path.startsWith("/c/") || path.startsWith("/visite/") || path.startsWith("/api/public/")) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   }
   // `response` porte les cookies de session éventuellement rafraîchis.

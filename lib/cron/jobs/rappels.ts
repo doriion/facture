@@ -6,18 +6,24 @@ import {
   contratsARappeler,
   type ContratRappelable,
 } from "@/lib/rappels-entretien";
-import { buildRappelEntretienEmail, escapeHtml, isEmailConfigured, sendEmail, signatureDepuisProfil } from "@/lib/email";
+import { ajouterJours } from "@/lib/agenda-vues";
+import { creneauxLibres, libelleCreneau, type Creneau } from "@/lib/creneaux-visite";
+import { envoyerPropositionVisite, occupationsAgenda } from "@/lib/visites/proposer";
+import { baseUrlPublique } from "@/lib/url-publique";
+import { escapeHtml, isEmailConfigured, sendEmail } from "@/lib/email";
 import { lignePenseBeteHtml } from "@/lib/cron/pense-bete";
 import { formatDateFr } from "@/lib/format";
 import { NOM_APPLICATION } from "@/lib/marque";
 
 /**
- * Rappels d'entretien automatiques — OFF par défaut, soumis au mode
- * simulation. La sélection (contrat actif, visite dans la fenêtre,
- * un seul rappel par échéance, email client présent) est PURE et
- * testée dans lib/rappels-entretien. Traçabilité simple : la colonne
- * contrats_maintenance.rappel_envoye_pour mémorise l'échéance déjà
- * rappelée ; changer la date de prochaine visite ré-arme le rappel.
+ * Propositions de visite automatiques (rappels d'entretien) — OFF par
+ * défaut, soumises au mode simulation. La sélection (contrat actif,
+ * échéance dans la fenêtre, pas déjà proposée ni confirmée, email
+ * client présent) est PURE et testée dans lib/rappels-entretien. Le
+ * client reçoit un créneau libre de l'agenda à l'échéance et d'autres
+ * au choix ; sa réponse crée le rendez-vous (lib/visites/public).
+ * Traçabilité : contrats_maintenance.rappel_envoye_pour mémorise
+ * l'échéance proposée ; replanifier la visite ré-arme la proposition.
  */
 export const jobRappels: JobDef = {
   tache: "rappels-entretien",
@@ -37,11 +43,11 @@ async function executerRappels({
   const { data: contrats, error: erreurLecture } = await service
     .from("contrats_maintenance")
     .select(
-      "id, intitule, equipement, statut, prochaine_visite, rappel_envoye_pour, client:clients(nom, email)",
+      "id, intitule, equipement, statut, date_debut, frequence, prochaine_visite, rappel_envoye_pour, confirmation_envoyee_pour, client:clients(nom, email)",
     )
     .eq("user_id", userId)
     .eq("statut", "actif");
-  // Une lecture en panne ne vaut pas « rien à rappeler » (le journal
+  // Une lecture en panne ne vaut pas « rien à proposer » (le journal
   // disait « succès » et bloquait tout nouvel essai le jour même).
   if (erreurLecture) {
     return { statut: "erreur", details: `Lecture des contrats : ${erreurLecture.message}` };
@@ -52,36 +58,44 @@ async function executerRappels({
     intitule: c.intitule,
     equipement: c.equipement,
     statut: c.statut,
+    date_debut: c.date_debut,
+    frequence: c.frequence,
     prochaine_visite: c.prochaine_visite,
     rappel_envoye_pour: c.rappel_envoye_pour,
-    client_email:
-      (c.client as { email: string | null } | null)?.email ?? null,
+    confirmation_envoyee_pour: c.confirmation_envoyee_pour,
+    client_email: (c.client as { email: string | null } | null)?.email ?? null,
     client_nom: (c.client as { nom: string } | null)?.nom ?? "client",
   }));
 
-  const aRappeler = contratsARappeler(
-    candidates as Array<
-      ContratRappelable & { client_nom: string }
-    >,
+  const aProposer = contratsARappeler(
+    candidates as Array<ContratRappelable & { client_nom: string }>,
     { today, fenetreJours: profil.rappels_fenetre_jours ?? 30 },
   );
 
-  if (aRappeler.length === 0) {
-    return { statut: "succes", details: "Aucun rappel d'entretien à envoyer." };
+  if (aProposer.length === 0) {
+    return { statut: "succes", details: "Aucune proposition de visite à envoyer." };
   }
 
-  const objet = (c: (typeof aRappeler)[number]) =>
+  const objet = (c: (typeof aProposer)[number]) =>
     c.intitule || c.equipement || "votre équipement";
 
-  const libelles = aRappeler.map(
-    (c) =>
-      `${objet(c)} (${c.client_nom}, visite le ${formatDateFr(c.prochaine_visite!)})`,
-  );
+  // Premier créneau libre à partir de l'échéance (jamais avant demain) :
+  // les rendez-vous déjà posés sont lus une fois pour tous les contrats.
+  const demain = ajouterJours(today, 1);
+  const occupations = await occupationsAgenda(service, userId, demain, ajouterJours(today, 120));
+  const creneauDe = (echeance: string): Creneau => {
+    const depuis = echeance > demain ? echeance : demain;
+    const libres = creneauxLibres({ depuis, jusquau: ajouterJours(depuis, 30), occupations, max: 1 });
+    return libres[0] ?? { date: depuis, debut: null, fin: null };
+  };
 
   if (dryRun) {
+    const libelles = aProposer.map(
+      (c) => `${objet(c)} (${c.client_nom}, ${libelleCreneau(creneauDe(c.echeance))})`,
+    );
     return {
       statut: "succes",
-      details: `SIMULATION : ${aRappeler.length} rappel(s) d'entretien auraient été envoyé(s) — ${libelles.join(", ")}. Désactivez le mode simulation pour envoyer réellement.`,
+      details: `SIMULATION : ${aProposer.length} proposition(s) de visite auraient été envoyée(s) — ${libelles.join(", ")}. Désactivez le mode simulation pour envoyer réellement.`,
     };
   }
 
@@ -92,77 +106,46 @@ async function executerRappels({
     };
   }
 
-  const expediteurNom =
-    profil.nom_commercial ||
-    [profil.prenom, profil.nom].filter(Boolean).join(" ") ||
-    "Votre artisan";
-
+  const baseUrl = await baseUrlPublique();
   const envoyes: string[] = [];
   const echecs: string[] = [];
 
-  for (const c of aRappeler) {
-    const email = buildRappelEntretienEmail({
-      clientNom: c.client_nom,
-      expediteurNom,
-      objetEntretien: objet(c),
-      dateVisiteText: formatDateFr(c.prochaine_visite!),
-      telephone: profil.telephone,
-      emailPro: profil.email_pro,
-      signature: signatureDepuisProfil(profil, expediteurNom),
-    });
-    // Un seul rappel par échéance : la marque est posée AVANT l'envoi
-    // (conditionnelle : un déclencheur concurrent ne renvoie pas) et
-    // retirée si l'envoi échoue. Avant, l'email partait d'abord : si la
-    // marque échouait ensuite, le second déclencheur du jour ou le
-    // lendemain renvoyait le même email au client.
-    const { data: marque, error: erreurMarque } = await service
-      .from("contrats_maintenance")
-      .update({ rappel_envoye_pour: c.prochaine_visite })
-      .eq("id", c.id)
-      .eq("user_id", userId)
-      .or(`rappel_envoye_pour.is.null,rappel_envoye_pour.neq.${c.prochaine_visite}`)
-      .select("id");
-    if (erreurMarque) {
-      echecs.push(`${objet(c)} : anti-doublon non enregistré, rappel non envoyé (${erreurMarque.message})`);
-      continue;
-    }
-    if (!marque || marque.length === 0) continue; // déjà rappelé entre-temps
-    const res = await sendEmail({
-      to: c.client_email!,
-      subject: email.subject,
-      html: email.html,
-      text: email.text,
-      replyTo: profil.email_pro ?? undefined,
+  for (const c of aProposer) {
+    const propose = creneauDe(c.echeance);
+    const res = await envoyerPropositionVisite({
+      db: service,
+      userId,
+      contratId: c.id,
+      profil,
+      propose,
+      origine: "automatique",
+      baseUrl,
+      today,
     });
     if (!res.ok) {
-      await service
-        .from("contrats_maintenance")
-        .update({ rappel_envoye_pour: c.rappel_envoye_pour ?? null })
-        .eq("id", c.id)
-        .eq("user_id", userId);
       echecs.push(`${objet(c)} : ${res.error}`);
       continue;
     }
-    envoyes.push(
-      `${objet(c)} — ${c.client_nom} — visite le ${formatDateFr(c.prochaine_visite!)}`,
-    );
+    // Le créneau proposé est maintenant pris : les contrats suivants ne le reçoivent pas.
+    occupations.push({ date_start: propose.date, date_end: propose.date, heure_debut: propose.debut ? `${propose.debut}:00` : null, heure_fin: propose.fin ? `${propose.fin}:00` : null });
+    envoyes.push(`${objet(c)} — ${c.client_nom} — ${libelleCreneau(propose)}`);
   }
 
-  // Récapitulatif à l'artisan dès qu'au moins un rappel est parti
+  // Récapitulatif à l'artisan dès qu'au moins une proposition est partie
   if (envoyes.length > 0 && profil.email_pro) {
     const penseBete = await lignePenseBeteHtml(service, userId, today);
     await sendEmail({
       to: profil.email_pro,
-      subject: `${envoyes.length} rappel(s) d'entretien envoyé(s) — ${formatDateFr(today)}`,
+      subject: `${envoyes.length} proposition(s) de visite envoyée(s) — ${formatDateFr(today)}`,
       // Noms de clients et intitulés échappés (contenu HTML).
-      html: `<p>Bonjour,</p><p>Les rappels d'entretien suivants sont partis ce matin :</p><ul>${envoyes
+      html: `<p>Bonjour,</p><p>Les propositions de visite suivantes sont parties ce matin :</p><ul>${envoyes
         .map((l) => `<li>${escapeHtml(l)}</li>`)
-        .join("")}</ul><p>Pensez à planifier ces visites dans votre agenda.</p>${penseBete}<p>— ${NOM_APPLICATION}</p>`,
+        .join("")}</ul><p>Dès qu'un client choisit son créneau, le rendez-vous apparaît dans votre agenda et vous êtes prévenu.</p>${penseBete}<p>— ${NOM_APPLICATION}</p>`,
     });
   }
 
   const details = [
-    `${envoyes.length} rappel(s) envoyé(s)${envoyes.length ? ` : ${envoyes.join(" ; ")}` : ""}`,
+    `${envoyes.length} proposition(s) envoyée(s)${envoyes.length ? ` : ${envoyes.join(" ; ")}` : ""}`,
     echecs.length ? `échecs : ${echecs.join(" ; ")}` : null,
   ]
     .filter(Boolean)

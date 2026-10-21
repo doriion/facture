@@ -409,6 +409,69 @@ export type Database = {
         };
         Relationships: [];
       };
+      visites_propositions: {
+        Row: {
+          id: string;
+          user_id: string;
+          contrat_id: string;
+          token: string;
+          origine: string;
+          date_proposee: string;
+          heure_proposee: string | null;
+          creneaux: Json;
+          statut: string;
+          choix_date: string | null;
+          choix_debut: string | null;
+          choix_fin: string | null;
+          message_client: string | null;
+          intervention_id: string | null;
+          envoyee_le: string;
+          expire_le: string;
+          repondu_le: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          contrat_id: string;
+          token: string;
+          origine?: string;
+          date_proposee: string;
+          heure_proposee?: string | null;
+          creneaux?: Json;
+          statut?: string;
+          choix_date?: string | null;
+          choix_debut?: string | null;
+          choix_fin?: string | null;
+          message_client?: string | null;
+          intervention_id?: string | null;
+          envoyee_le?: string;
+          expire_le: string;
+          repondu_le?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          contrat_id?: string;
+          token?: string;
+          origine?: string;
+          date_proposee?: string;
+          heure_proposee?: string | null;
+          creneaux?: Json;
+          statut?: string;
+          choix_date?: string | null;
+          choix_debut?: string | null;
+          choix_fin?: string | null;
+          message_client?: string | null;
+          intervention_id?: string | null;
+          envoyee_le?: string;
+          expire_le?: string;
+          repondu_le?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       taches: {
         Row: {
           id: string;

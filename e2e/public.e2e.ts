@@ -99,6 +99,19 @@ describe("pages publiques", () => {
     await page.close();
   });
 
+  it("un lien de visite inconnu affiche « Lien invalide » et interdit l'indexation", async () => {
+    const res = await reponse("/visite/jeton-inexistant");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-robots-tag")).toMatch(/noindex/);
+    const page = await navigateur.newPage();
+    await page.goto(`${BASE}/visite/jeton-inexistant`);
+    await page.locator("h1").first().waitFor({ state: "visible" });
+    const titres = (await page.locator("h1").allTextContents()).join(" | ");
+    expect(titres).toMatch(/lien invalide|indisponible/i);
+    expect(await page.locator("form").count()).toBe(0);
+    await page.close();
+  });
+
   it("la page hors-ligne est servie sans session", async () => {
     const res = await reponse("/hors-ligne");
     expect(res.status).toBe(200);

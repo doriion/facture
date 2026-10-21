@@ -48,6 +48,8 @@ export const TABLES_SAUVEGARDE = [
   "interventions_series",
   "external_events_importes",
   "push_abonnements",
+  // Après contrats_maintenance et interventions (clés étrangères).
+  "visites_propositions",
 ] as const;
 
 export type TableSauvegarde = (typeof TABLES_SAUVEGARDE)[number];

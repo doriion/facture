@@ -70,6 +70,8 @@ export const ORDRE_RESTAURATION = [
   "external_events_importes",
   "taches",
   "taches_photos",
+  // Propositions de visite : après contrats_maintenance et interventions.
+  "visites_propositions",
 ];
 
 /**

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { appelerAction } from "@/lib/appel-action";
 import { planifierVisiteAction } from "@/lib/actions/visites-entretien";
+import { proposerVisiteAction } from "@/lib/actions/propositions-visite";
 import { formatDateFr } from "@/lib/format";
 import { confirmationValable, heureChamp, heureLisible } from "@/lib/visite-entretien";
 import { Button } from "@/components/ui/button";
@@ -22,11 +23,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+type Mode = "proposer" | "confirmer";
+
 /**
- * « Planifier la visite » : la date (et l'heure) convenues avec le
- * client, et l'envoi de la confirmation par e-mail en même temps.
- * Sans adresse e-mail sur la fiche client, la date s'enregistre quand
- * même, la confirmation est simplement proposée grisée.
+ * « Planifier la visite », deux façons :
+ * - PROPOSER au client : il reçoit ce créneau et d'autres créneaux
+ *   libres de l'agenda par e-mail, choisit en ligne, et le rendez-vous
+ *   s'inscrit directement dans l'agenda (confirmation envoyée) ;
+ * - date FIXÉE avec le client (téléphone, sur place) : enregistrée
+ *   tout de suite, confirmation par e-mail en option.
+ * Sans adresse e-mail sur la fiche client, seule la seconde reste
+ * possible, sans confirmation.
  */
 export function PlanifierVisiteDialog({
   contratId,
@@ -50,6 +57,7 @@ export function PlanifierVisiteDialog({
   const [date, setDate] = useState(prochaineVisite ?? "");
   const [heure, setHeure] = useState(heureChamp(prochaineVisiteHeure));
   const [envoyer, setEnvoyer] = useState(Boolean(clientEmail));
+  const [mode, setMode] = useState<Mode>(clientEmail ? "proposer" : "confirmer");
   const [enCours, setEnCours] = useState(false);
   const dejaConfirmee = confirmationValable({
     prochaine_visite: prochaineVisite,
@@ -62,6 +70,7 @@ export function PlanifierVisiteDialog({
       setDate(prochaineVisite ?? "");
       setHeure(heureChamp(prochaineVisiteHeure));
       setEnvoyer(Boolean(clientEmail));
+      setMode(clientEmail ? "proposer" : "confirmer");
     }
   }
 
@@ -72,6 +81,21 @@ export function PlanifierVisiteDialog({
       return;
     }
     setEnCours(true);
+    const quand = `${formatDateFr(date)}${heure ? ` à ${heureLisible(heure)}` : ""}`;
+    if (mode === "proposer") {
+      const prop = await appelerAction(() => proposerVisiteAction(contratId, { date, heure }));
+      setEnCours(false);
+      if (!prop.ok) {
+        toast.error("Proposition non envoyée", { description: prop.error });
+        return;
+      }
+      toast.success(`Proposition envoyée à ${prop.data.clientEmail}`, {
+        description: `Créneau du ${quand}${prop.data.nbAutres > 0 ? ` et ${prop.data.nbAutres} autre${prop.data.nbAutres > 1 ? "s" : ""} au choix` : ""}. Le rendez-vous s'inscrira dans l'agenda dès la réponse.`,
+      });
+      setOpen(false);
+      router.refresh();
+      return;
+    }
     const res = await appelerAction(() =>
       planifierVisiteAction(contratId, { date, heure, envoyerConfirmation: envoyer }),
     );
@@ -80,7 +104,6 @@ export function PlanifierVisiteDialog({
       toast.error("Visite non planifiée", { description: res.error });
       return;
     }
-    const quand = `${formatDateFr(date)}${heure ? ` à ${heureLisible(heure)}` : ""}`;
     if (res.data.confirmationEnvoyee) {
       toast.success(`Visite planifiée le ${quand}`, {
         description: `Confirmation envoyée à ${clientEmail}.`,
@@ -113,9 +136,44 @@ export function PlanifierVisiteDialog({
             </DialogDescription>
           </DialogHeader>
 
+          <fieldset className="space-y-1.5">
+            <legend className="text-sm font-medium">Comment ?</legend>
+            <label className={`flex items-start gap-2 rounded-md border p-2 text-sm ${clientEmail ? "cursor-pointer" : "text-muted-foreground"} ${mode === "proposer" ? "border-primary bg-primary/5" : ""}`}>
+              <input
+                type="radio"
+                name="mode"
+                className="mt-0.5 size-4 accent-primary"
+                checked={mode === "proposer"}
+                disabled={!clientEmail}
+                onChange={() => setMode("proposer")}
+              />
+              <span>
+                <span className="font-medium text-foreground">Proposer au client, il choisit en ligne</span>
+                <span className="block text-xs text-muted-foreground">
+                  {clientEmail
+                    ? "Il reçoit ce créneau et jusqu'à 6 autres créneaux libres de votre agenda par e-mail. Son choix s'inscrit directement dans l'agenda, vous êtes prévenu."
+                    : "Le client n'a pas d'adresse e-mail : ajoutez-la sur sa fiche."}
+                </span>
+              </span>
+            </label>
+            <label className={`flex cursor-pointer items-start gap-2 rounded-md border p-2 text-sm ${mode === "confirmer" ? "border-primary bg-primary/5" : ""}`}>
+              <input
+                type="radio"
+                name="mode"
+                className="mt-0.5 size-4 accent-primary"
+                checked={mode === "confirmer"}
+                onChange={() => setMode("confirmer")}
+              />
+              <span>
+                <span className="font-medium text-foreground">Date déjà fixée avec le client</span>
+                <span className="block text-xs text-muted-foreground">Convenue par téléphone ou sur place : enregistrée tout de suite.</span>
+              </span>
+            </label>
+          </fieldset>
+
           <div className="grid grid-cols-[3fr_2fr] gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="visite-date">Date *</Label>
+              <Label htmlFor="visite-date">{mode === "proposer" ? "Créneau proposé *" : "Date *"}</Label>
               <Input
                 id="visite-date"
                 type="date"
@@ -135,6 +193,7 @@ export function PlanifierVisiteDialog({
             </div>
           </div>
 
+          {mode === "confirmer" && (
           <label className={`flex items-start gap-2 text-sm ${clientEmail ? "cursor-pointer" : "text-muted-foreground"}`}>
             <input
               type="checkbox"
@@ -159,6 +218,7 @@ export function PlanifierVisiteDialog({
               )}
             </span>
           </label>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={enCours}>
@@ -166,7 +226,7 @@ export function PlanifierVisiteDialog({
             </Button>
             <Button type="submit" disabled={enCours}>
               {enCours ? <Loader2 className="size-4 animate-spin" /> : <CalendarCheck className="size-4" />}
-              {envoyer && clientEmail ? "Planifier et confirmer" : "Planifier"}
+              {mode === "proposer" ? "Envoyer la proposition" : envoyer && clientEmail ? "Planifier et confirmer" : "Planifier"}
             </Button>
           </DialogFooter>
         </form>

@@ -7,6 +7,8 @@ import {
   visitesAConvenir,
 } from "@/lib/actions/contrats";
 import { PlanifierVisiteDialog } from "@/components/maintenance/planifier-visite-dialog";
+import { StatutProposition } from "@/components/maintenance/statut-proposition";
+import { dernieresPropositions } from "@/lib/actions/propositions-visite";
 import { confirmationValable, heureLisible } from "@/lib/visite-entretien";
 import { synchroniserEcheancierContrats } from "@/lib/actions/contrats-entretien";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ export default async function MaintenancePage() {
     prochainesVisites(60),
     visitesAConvenir(),
   ]);
+  const propositions = await dernieresPropositions([...prochaines, ...aConvenir].map((v) => v.id));
 
   // Heure de Paris : entre 0 h et 2 h, la date UTC est encore la veille.
   const today = aujourdhuiParis();
@@ -71,8 +74,9 @@ export default async function MaintenancePage() {
               Visites à convenir avec le client
             </CardTitle>
             <CardDescription>
-              Contrats actifs sans date de visite : fixez-la avec le client,
-              la confirmation part par e-mail en même temps.
+              Contrats actifs sans date de visite : proposez des créneaux au
+              client, il choisit en ligne et le rendez-vous s&apos;inscrit dans
+              l&apos;agenda ; ou fixez la date avec lui directement.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -81,12 +85,15 @@ export default async function MaintenancePage() {
                 key={v.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-orange-200 bg-orange-50/60 px-3 py-2 text-sm dark:border-orange-800 dark:bg-orange-950/30"
               >
-                <Link href={`/maintenance/${v.id}`} className="min-w-0 hover:underline">
-                  <span className="font-medium">{v.client?.nom ?? "Client"}</span>
-                  {v.intitule && (
-                    <span className="text-muted-foreground"> · {v.intitule}</span>
-                  )}
-                </Link>
+                <div className="min-w-0">
+                  <Link href={`/maintenance/${v.id}`} className="hover:underline">
+                    <span className="font-medium">{v.client?.nom ?? "Client"}</span>
+                    {v.intitule && (
+                      <span className="text-muted-foreground"> · {v.intitule}</span>
+                    )}
+                  </Link>
+                  <StatutProposition proposition={propositions[v.id]} compact />
+                </div>
                 <PlanifierVisiteDialog
                   contratId={v.id}
                   clientNom={v.client?.nom ?? null}
@@ -160,7 +167,15 @@ export default async function MaintenancePage() {
                   <span
                     className={`block text-xs ${confirmationValable(v) ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}
                   >
-                    {confirmationValable(v) ? "Confirmée au client" : "Non confirmée"}
+                    {confirmationValable(v)
+                      ? propositions[v.id]?.statut === "confirmee" || propositions[v.id]?.statut === "replanifiee"
+                        ? "Confirmée par le client"
+                        : "Confirmée au client"
+                      : propositions[v.id]?.statut === "envoyee"
+                        ? "Proposée, en attente du client"
+                        : propositions[v.id]?.statut === "refusee"
+                          ? "Déclinée par le client"
+                          : "Non confirmée"}
                   </span>
                 </span>
               </Link>

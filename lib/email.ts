@@ -389,47 +389,81 @@ export function buildContratSigneEmail(args: {
 }
 
 /**
- * Rappel d'entretien (contrat de maintenance) : on invite le client à
- * prendre rendez-vous.
+ * Proposition de visite d'entretien : un créneau proposé, et un lien
+ * vers la page où le client le confirme, en choisit un autre parmi les
+ * créneaux libres de l'agenda, ou décline. Son choix s'inscrit
+ * directement dans l'agenda.
  */
-export function buildRappelEntretienEmail(args: {
+export function buildPropositionVisiteEmail(args: {
   clientNom: string;
   expediteurNom: string;
-  /** Libellé du contrat ou de l'équipement (ex. « Entretien clim annuel ») */
+  /** Équipement ou intitulé du contrat. */
   objetEntretien: string;
-  /** Date de visite prévue, déjà formatée */
-  dateVisiteText: string;
-  telephone?: string | null;
-  emailPro?: string | null;
+  /** « Mardi 15 octobre 2026, le matin (8 h – 12 h) » */
+  creneauText: string;
+  /** Nombre d'autres créneaux proposés sur la page. */
+  nbAutres: number;
+  lien: string;
+  /** Validité du lien, déjà formatée. */
+  expireLeText: string;
   signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
-  const subject = `Rappel d'entretien — ${args.objetEntretien}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
-  const coordonnees = [
-    args.telephone ? `par téléphone au ${formatTelephone(args.telephone)}` : null,
-    args.emailPro ? `par e-mail à ${args.emailPro}` : null,
-  ]
-    .filter(Boolean)
-    .join(" ou ");
+  const subject = `Visite d'entretien : ${args.creneauText}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
+  const choix =
+    args.nbAutres > 0
+      ? `Pour confirmer ce créneau, ou en choisir un autre parmi mes disponibilités (${args.nbAutres} autre${args.nbAutres > 1 ? "s" : ""} proposé${args.nbAutres > 1 ? "s" : ""}), cliquez sur le bouton ci-dessous : votre choix s'inscrit directement dans mon agenda.`
+      : "Pour confirmer ce créneau, cliquez sur le bouton ci-dessous : votre choix s'inscrit directement dans mon agenda.";
   return emailDepuisContenu(subject, {
-    titre: "Votre prochain entretien",
-    apercu: `${args.objetEntretien} · vers le ${args.dateVisiteText}`,
+    titre: "Votre visite d'entretien",
+    apercu: `${args.objetEntretien} · ${args.creneauText}`,
     salutation: `Bonjour ${args.clientNom},`,
     paragraphes: [
-      `La prochaine visite d'entretien de votre installation est prévue aux alentours du ${args.dateVisiteText}.`,
-      "Un entretien régulier garantit le bon fonctionnement et la longévité de votre équipement.",
+      `La visite d'entretien de votre installation approche. Je vous propose de passer le ${args.creneauText.charAt(0).toLowerCase()}${args.creneauText.slice(1)}.`,
+      choix,
     ],
     resume: [
       ["Installation", args.objetEntretien],
-      ["Période prévue", `vers le ${args.dateVisiteText}`],
+      ["Créneau proposé", args.creneauText],
     ],
-    conclusion: coordonnees
-      ? `Pour convenir d'un rendez-vous, vous pouvez me joindre ${coordonnees}, ou simplement répondre à ce message.`
-      : "Pour convenir d'un rendez-vous, répondez simplement à ce message.",
-    signature: {
-      ...sig(args.signature, args.expediteurNom),
-      telephone: args.signature?.telephone ?? args.telephone,
-      email: args.signature?.email ?? args.emailPro,
-    },
+    bouton: { libelle: "Confirmer ou choisir un créneau", href: args.lien },
+    conclusion:
+      "Si aucune date ne vous convient, vous pourrez l'indiquer sur cette même page, ou répondre simplement à ce message.",
+    signature: sig(args.signature, args.expediteurNom),
+    mentionPied: `Lien valable jusqu'au ${args.expireLeText}.`,
+  });
+}
+
+/**
+ * Réponse d'un client à une proposition de visite, pour l'artisan
+ * (copie e-mail de la notification).
+ */
+export function buildReponseVisiteEmail(args: {
+  titre: string;
+  corps: string;
+  clientNom: string;
+  objetEntretien: string;
+  statut: "confirmee" | "replanifiee" | "refusee";
+  creneauText: string | null;
+  message: string | null;
+  lienFiche: string;
+}): { subject: string; html: string; text: string } {
+  const resume: Array<[string, string]> = [
+    ["Client", args.clientNom],
+    ["Installation", args.objetEntretien],
+  ];
+  if (args.creneauText) resume.push(["Créneau", args.creneauText]);
+  if (args.message) resume.push(["Message du client", args.message]);
+  return emailDepuisContenu(args.titre, {
+    titre: args.titre,
+    apercu: args.corps,
+    salutation: "Bonjour,",
+    paragraphes: [args.corps],
+    resume,
+    conclusion:
+      args.statut === "refusee"
+        ? "Reprenez contact avec le client pour convenir d'une date, puis planifiez la visite depuis l'échéancier."
+        : "Le rendez-vous est dans votre agenda, rattaché au client ; la confirmation lui a été envoyée.",
+    signature: { nom: NOM_APPLICATION },
   });
 }
 
@@ -449,17 +483,20 @@ export function buildConfirmationVisiteEmail(args: {
   dateVisiteCourte: string;
   /** « 9 h 30 », null = dans la journée */
   heureText?: string | null;
+  /** Plage choisie en ligne (« le matin (8 h – 12 h) ») : prime sur heureText. */
+  plageText?: string | null;
   /** Adresse de l'installation, déjà mise en forme. */
   adresse?: string | null;
   signature?: SignatureEmail;
 }): { subject: string; html: string; text: string } {
-  const quand = `${args.dateVisiteCourte}${args.heureText ? ` à ${args.heureText}` : ""}`;
+  const plage = args.plageText && args.plageText !== "dans la journée" ? args.plageText : null;
+  const quand = `${args.dateVisiteCourte}${plage ? `, ${plage}` : args.heureText ? ` à ${args.heureText}` : ""}`;
   const subject = `Visite d'entretien le ${quand}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
   const dateLongue = args.dateVisiteLongue.charAt(0).toLowerCase() + args.dateVisiteLongue.slice(1);
   const resume: Array<[string, string]> = [
     ["Installation", args.objetEntretien],
     ["Date", args.dateVisiteLongue],
-    ["Heure", args.heureText ?? "dans la journée"],
+    ["Heure", plage ? plage.charAt(0).toUpperCase() + plage.slice(1) : (args.heureText ?? "dans la journée")],
   ];
   if (args.adresse) resume.push(["Adresse", args.adresse]);
   return emailDepuisContenu(subject, {
@@ -467,7 +504,7 @@ export function buildConfirmationVisiteEmail(args: {
     apercu: `${args.objetEntretien} · ${quand}`,
     salutation: `Bonjour ${args.clientNom},`,
     paragraphes: [
-      `Comme convenu, je passerai le ${dateLongue}${args.heureText ? ` à ${args.heureText}` : " dans la journée"} pour la visite d'entretien de votre installation.`,
+      `Comme convenu, je passerai le ${dateLongue}${plage ? `, ${plage},` : args.heureText ? ` à ${args.heureText}` : " dans la journée"} pour la visite d'entretien de votre installation.`,
       "Merci de prévoir l'accès à l'équipement ce jour-là.",
     ],
     resume,
