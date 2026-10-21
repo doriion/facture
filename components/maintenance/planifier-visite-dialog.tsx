@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DisponibilitesApercu } from "@/components/maintenance/disponibilites-apercu";
 
 type Mode = "proposer" | "confirmer";
 
@@ -192,6 +193,8 @@ export function PlanifierVisiteDialog({
               />
             </div>
           </div>
+
+          {open && <DisponibilitesApercu date={date} contratId={contratId} onChoisirDate={setDate} />}
 
           {mode === "confirmer" && (
           <label className={`flex items-start gap-2 text-sm ${clientEmail ? "cursor-pointer" : "text-muted-foreground"}`}>
