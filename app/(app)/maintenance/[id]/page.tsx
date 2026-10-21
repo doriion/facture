@@ -12,6 +12,8 @@ import { LABELS_STATUT_CONTRAT } from "@/lib/validations/contrat";
 import { formatDateFr } from "@/lib/format";
 import { dateParis } from "@/lib/dates";
 import { confirmationValable, heureLisible } from "@/lib/visite-entretien";
+import { dernieresPropositions } from "@/lib/actions/propositions-visite";
+import { StatutProposition } from "@/components/maintenance/statut-proposition";
 
 export const metadata = { title: "Contrat de maintenance — NG Gestion" };
 
@@ -26,6 +28,7 @@ export default async function EditContratPage(
     listClients(),
   ]);
   if (!contrat) notFound();
+  const propositions = await dernieresPropositions([contrat.id]);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -79,6 +82,9 @@ export default async function EditContratPage(
                 </>
               ) : null}
             </p>
+            <div className="mt-1">
+              <StatutProposition proposition={propositions[contrat.id]} />
+            </div>
           </div>
           <ContratActions
             contratId={contrat.id}

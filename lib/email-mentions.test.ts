@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { buildAvisChatelEmail, buildConfirmationVisiteEmail, buildDocumentEmail } from "./email";
+import { buildAvisChatelEmail, buildConfirmationVisiteEmail, buildDocumentEmail, buildPropositionVisiteEmail } from "./email";
 import { escapeHtml } from "./email-gabarit";
 import {
   MENTION_TVA_FRANCHISE_CGI,
@@ -191,5 +191,38 @@ describe("e-mail de confirmation de visite d'entretien", () => {
     expect(sansHeure.text).toContain("le jeudi 17 octobre 2026 dans la journée pour la visite");
     expect(sansHeure.text).toContain("Heure : dans la journée");
     expect(sansHeure.text).not.toContain("Adresse :");
+  });
+});
+
+describe("e-mail de proposition de visite", () => {
+  it("créneau proposé, lien de réponse, autres créneaux annoncés", () => {
+    const mail = buildPropositionVisiteEmail({
+      clientNom: "M. Clément",
+      expediteurNom: "Nathan Geneve EI",
+      objetEntretien: "PAC air/eau Daikin Altherma",
+      creneauText: "Mardi 20 octobre 2026, le matin (8 h – 12 h)",
+      nbAutres: 4,
+      lien: "https://facture-green.vercel.app/visite/abcdef0123456789",
+      expireLeText: "20/11/2026",
+    });
+    expect(mail.subject).toBe("Visite d'entretien : Mardi 20 octobre 2026, le matin (8 h – 12 h) — Nathan Geneve EI");
+    expect(mail.text).toContain("Je vous propose de passer le mardi 20 octobre 2026, le matin (8 h – 12 h).");
+    expect(mail.text).toContain("4 autres proposés");
+    expect(mail.text).toContain("https://facture-green.vercel.app/visite/abcdef0123456789");
+    expect(mail.html).toContain('href="https://facture-green.vercel.app/visite/abcdef0123456789"');
+    expect(mail.text).toContain("Lien valable jusqu'au 20/11/2026");
+  });
+  it("confirmation d'un créneau choisi en ligne : la plage remplace l'heure", () => {
+    const mail = buildConfirmationVisiteEmail({
+      clientNom: "M. Clément",
+      expediteurNom: "Nathan Geneve EI",
+      objetEntretien: "PAC",
+      dateVisiteLongue: "Mardi 20 octobre 2026",
+      dateVisiteCourte: "20/10/2026",
+      plageText: "le matin (8 h – 12 h)",
+    });
+    expect(mail.subject).toBe("Visite d'entretien le 20/10/2026, le matin (8 h – 12 h) — Nathan Geneve EI");
+    expect(mail.text).toContain("je passerai le mardi 20 octobre 2026, le matin (8 h – 12 h), pour la visite");
+    expect(mail.text).toContain("Heure : Le matin (8 h – 12 h)");
   });
 });
