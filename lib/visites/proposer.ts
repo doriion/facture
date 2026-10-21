@@ -68,10 +68,12 @@ async function occupationsTelephone(url: string | null, debut: string, fin: stri
 }
 
 /**
- * Rendez-vous déjà posés sur une période : interventions (hors
- * corbeille), visites d'entretien planifiées des autres contrats, et
- * rendez-vous du téléphone. Sert à ne proposer au client que des
- * créneaux libres.
+ * Tout ce qui occupe l'agenda sur une période : interventions (hors
+ * corbeille), visites d'entretien planifiées des autres contrats,
+ * travaux de devis planifiés (date de début + durée estimée), tâches à
+ * l'heure non faites, et rendez-vous du téléphone. Sert à ne proposer
+ * au client que des créneaux libres, et à montrer à l'artisan où il
+ * est pris.
  */
 export async function occupationsAgenda(
   db: Db,
@@ -89,7 +91,7 @@ export async function occupationsAgenda(
     .not("prochaine_visite", "is", null)
     .gte("prochaine_visite", debut)
     .lte("prochaine_visite", fin);
-  const [interv, vis, telephone] = await Promise.all([
+  const [interv, vis, devis, taches, telephone] = await Promise.all([
     db
       .from("interventions")
       .select("date_intervention, date_fin, heure_debut, heure_fin, description, type, client:clients(nom)")
@@ -100,6 +102,23 @@ export async function occupationsAgenda(
       .gte("date_intervention", ajouterJours(debut, -31))
       .lte("date_intervention", fin),
     saufContratId ? visites.neq("id", saufContratId) : visites,
+    db
+      .from("devis")
+      .select("numero, date_debut_travaux, duree_estimee_jours, statut, client:clients(nom)")
+      .eq("user_id", userId)
+      .eq("est_modele", false)
+      .not("date_debut_travaux", "is", null)
+      .not("statut", "in", "(refuse,expire)")
+      .gte("date_debut_travaux", ajouterJours(debut, -31))
+      .lte("date_debut_travaux", fin),
+    db
+      .from("taches")
+      .select("titre, date_echeance, heure")
+      .eq("user_id", userId)
+      .eq("fait", false)
+      .not("heure", "is", null)
+      .gte("date_echeance", debut)
+      .lte("date_echeance", fin),
     occupationsTelephone(calendrierTelephoneUrl ?? null, debut, fin),
   ]);
   const occupations: Occupation[] = [...telephone];
@@ -125,6 +144,28 @@ export async function occupationsAgenda(
       heure_debut: v.prochaine_visite_heure,
       heure_fin: null,
       libelle: ["Visite d'entretien", nomClient(v.client) ?? v.intitule].filter(Boolean).join(" · "),
+    });
+  }
+  for (const d of devis.data ?? []) {
+    const jours = Math.max(1, d.duree_estimee_jours ?? 1);
+    const date_end = ajouterJours(d.date_debut_travaux!, jours - 1);
+    if (date_end < debut) continue;
+    occupations.push({
+      date_start: d.date_debut_travaux!,
+      date_end,
+      heure_debut: null,
+      heure_fin: null,
+      libelle: [`Travaux devis ${d.numero}`, nomClient(d.client)].filter(Boolean).join(" · "),
+    });
+  }
+  for (const t of taches.data ?? []) {
+    if (!t.date_echeance || !t.heure) continue;
+    occupations.push({
+      date_start: t.date_echeance,
+      date_end: t.date_echeance,
+      heure_debut: t.heure,
+      heure_fin: null,
+      libelle: `Tâche · ${t.titre}`,
     });
   }
   return occupations;
