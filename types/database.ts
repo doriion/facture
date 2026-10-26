@@ -794,6 +794,12 @@ export type Database = {
           pdf_template_version: number | null;
           signature_client_url: string | null;
           signataire_nom: string | null;
+          access_token: string | null;
+          token_expires_at: string | null;
+          signe_le: string | null;
+          signature_ip: string | null;
+          signature_user_agent: string | null;
+          signature_origine: string | null;
           statut: string;
           total_ht: number;
           type_activite: string;
@@ -829,6 +835,12 @@ export type Database = {
           pdf_template_version?: number | null;
           signature_client_url?: string | null;
           signataire_nom?: string | null;
+          access_token?: string | null;
+          token_expires_at?: string | null;
+          signe_le?: string | null;
+          signature_ip?: string | null;
+          signature_user_agent?: string | null;
+          signature_origine?: string | null;
           statut?: string;
           total_ht?: number;
           type_activite?: string;
@@ -864,6 +876,12 @@ export type Database = {
           pdf_template_version?: number | null;
           signature_client_url?: string | null;
           signataire_nom?: string | null;
+          access_token?: string | null;
+          token_expires_at?: string | null;
+          signe_le?: string | null;
+          signature_ip?: string | null;
+          signature_user_agent?: string | null;
+          signature_origine?: string | null;
           statut?: string;
           total_ht?: number;
           type_activite?: string;

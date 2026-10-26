@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { randomBytes } from "node:crypto";
+import { expirationLienDevis } from "@/lib/devis-public";
+import { baseUrlPublique } from "@/lib/url-publique";
 import { acompteDevis } from "@/lib/devis-mentions";
 import { aujourdhuiParis } from "@/lib/dates";
 import { payloadLignesPdf } from "@/lib/pdf-payload";
@@ -288,6 +291,24 @@ export async function envoyerDevisParEmailAction(
     [profil.prenom, profil.nom].filter(Boolean).join(" ") ||
     "Auto-entrepreneur";
 
+  // Lien de signature en ligne : posé (ou renouvelé s'il a expiré) à
+  // chaque envoi d'un devis non signé ; il vaut jusqu'à la fin de
+  // validité du devis.
+  let lienSignature: string | null = null;
+  if (!devis.signature_client_url && devis.statut !== "accepte") {
+    const nowIso = new Date().toISOString();
+    let token = devis.access_token;
+    const expire = expirationLienDevis(devis.date_validite, nowIso);
+    if (!token || !devis.token_expires_at || devis.token_expires_at <= nowIso) {
+      token = randomBytes(32).toString("base64url");
+    }
+    const { error: erreurJeton } = await supabase
+      .from("devis")
+      .update({ access_token: token, token_expires_at: expire })
+      .eq("id", devisId);
+    if (!erreurJeton) lienSignature = `${await baseUrlPublique()}/d/${token}`;
+  }
+
   const email = buildDocumentEmail({
     type: "devis",
     numero: devis.numero,
@@ -295,6 +316,7 @@ export async function envoyerDevisParEmailAction(
     expediteurNom,
     totalText: formatEuros(Number(devis.total_ht)),
     messagePerso,
+    lienSignature,
     signeLe: devis.signature_client_url && devis.date_signature ? formatDateFr(devis.date_signature) : undefined,
     dateText: formatDateFr(devis.date_emission),
     validiteText: devis.date_validite ? formatDateFr(devis.date_validite) : undefined,

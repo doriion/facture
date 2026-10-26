@@ -20,6 +20,7 @@ import { DevisForm } from "@/components/devis/devis-form";
 import { DevisActions } from "@/components/devis/devis-actions";
 import { ActionsFiche } from "@/components/actions-fiche";
 import { DevisSignatureDialog } from "@/components/devis/devis-signature-dialog";
+import { LienSignatureDevis } from "@/components/devis/lien-signature-devis";
 import { StatutBadgeDevis } from "@/components/devis/statut-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -135,6 +136,14 @@ export default async function EditDevisPage(
           </ActionsFiche>
         </div>
       </div>
+
+      {!devis.est_modele && (
+        <LienSignatureDevis
+          token={devis.access_token}
+          expireLe={devis.token_expires_at}
+          signeEnLigne={devis.signature_origine === "en_ligne" ? { le: devis.signe_le, ip: devis.signature_ip } : null}
+        />
+      )}
 
       {isLocked ? (
         <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-sm text-muted-foreground">

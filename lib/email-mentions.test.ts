@@ -248,3 +248,20 @@ describe("relance et rappel de la veille", () => {
     expect(mail.text).toContain("appelez-moi au 06 47 21 48 64");
   });
 });
+
+describe("e-mail de devis avec lien de signature en ligne", () => {
+  it("bouton vers la page publique et conclusion adaptée ; rien sans lien", () => {
+    const avec = buildDocumentEmail({
+      type: "devis", numero: "D-2026-0030", clientNom: "M. Clément", expediteurNom: "Nathan Geneve EI",
+      totalText: "1 250,00 €", validiteText: "20/11/2026", natureActivite: "installation_pac", acompteText: "375,00 € (30 %)",
+      lienSignature: "https://facture-green.vercel.app/d/jeton-0123456789abcdef",
+    });
+    expect(avec.html).toContain('href="https://facture-green.vercel.app/d/jeton-0123456789abcdef"');
+    expect(avec.html).toContain("Lire et signer le devis en ligne");
+    expect(avec.text).toContain("signez-le en ligne en un geste depuis votre téléphone");
+    expect(avec.text).toContain("acompte de 375,00 € (30 %)");
+    const sans = buildDocumentEmail({ type: "devis", numero: "D-2026-0031", clientNom: "M. X", expediteurNom: "N", totalText: "1,00 €", natureActivite: "autre" });
+    expect(sans.html).not.toContain("/d/");
+    expect(sans.text).toContain("un retour signé avec la mention « bon pour accord » suffit");
+  });
+});
