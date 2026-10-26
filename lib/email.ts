@@ -193,6 +193,8 @@ export function buildDocumentEmail(args: {
   validiteText?: string;
   /** Devis : acompte demandé à la commande, déjà formaté (« 375,00 € (30 %) »). Absent = pas d'acompte, rien n'est dit. */
   acompteText?: string;
+  /** Devis non signé : lien de la page publique de signature (bouton). */
+  lienSignature?: string | null;
   /** Date d'émission, déjà formatée. */
   dateText?: string;
   /** Nature de la prestation (clé type_activite du document), pour la phrase d'intro. */
@@ -248,9 +250,13 @@ export function buildDocumentEmail(args: {
 
   const conclusion =
     args.type === "devis" && !args.signeLe
-      ? args.acompteText
-        ? `S'il vous convient, un retour signé avec la mention « bon pour accord » suffit, accompagné de l'acompte de ${args.acompteText} par virement, les coordonnées bancaires figurent sur le devis. Vous pouvez aussi répondre simplement à ce message : nous fixerons ensemble une date.`
-        : "S'il vous convient, un retour signé avec la mention « bon pour accord » suffit, ou répondez simplement à ce message : nous fixerons ensemble une date."
+      ? args.lienSignature
+        ? args.acompteText
+          ? `S'il vous convient, signez-le en ligne en un geste depuis votre téléphone (bouton ci-dessus), puis réglez l'acompte de ${args.acompteText} par virement, les coordonnées bancaires figurent sur le devis. Un retour signé « bon pour accord » par e-mail convient aussi, et vous pouvez simplement répondre à ce message pour toute question.`
+          : "S'il vous convient, signez-le en ligne en un geste depuis votre téléphone (bouton ci-dessus). Un retour signé « bon pour accord » par e-mail convient aussi, et vous pouvez simplement répondre à ce message : nous fixerons ensemble une date."
+        : args.acompteText
+          ? `S'il vous convient, un retour signé avec la mention « bon pour accord » suffit, accompagné de l'acompte de ${args.acompteText} par virement, les coordonnées bancaires figurent sur le devis. Vous pouvez aussi répondre simplement à ce message : nous fixerons ensemble une date.`
+          : "S'il vous convient, un retour signé avec la mention « bon pour accord » suffit, ou répondez simplement à ce message : nous fixerons ensemble une date."
       : args.type === "facture"
         ? "Pour toute question, répondez simplement à ce message. Merci pour votre confiance, et à bientôt."
         : "Pour toute question, répondez simplement à ce message.";
@@ -261,9 +267,44 @@ export function buildDocumentEmail(args: {
     salutation: `Bonjour ${args.clientNom},`,
     paragraphes,
     resume,
+    bouton: args.type === "devis" && !args.signeLe && args.lienSignature ? { libelle: "Lire et signer le devis en ligne", href: args.lienSignature } : undefined,
     messagePerso: args.messagePerso,
     conclusion,
     signature: sig(args.signature, args.expediteurNom),
+  });
+}
+
+/** Devis signé en ligne : notification à l'artisan (exemplaire signé joint). */
+export function buildDevisSigneArtisanEmail(args: {
+  numero: string;
+  clientNom: string;
+  signataireNom: string;
+  dateSignatureText: string;
+  totalText: string;
+  acompteText?: string | null;
+  lienFiche: string;
+}): { subject: string; html: string; text: string } {
+  const subject = `Devis ${args.numero} signé en ligne par ${args.signataireNom}`;
+  const resume: Array<[string, string]> = [
+    ["Devis", args.numero],
+    ["Client", args.clientNom],
+    ["Signé par", args.signataireNom],
+    ["Le", args.dateSignatureText],
+    ["Montant", args.totalText],
+  ];
+  if (args.acompteText) resume.push(["Acompte attendu", args.acompteText]);
+  return emailDepuisContenu(subject, {
+    titre: `Devis ${args.numero} accepté`,
+    apercu: `${args.signataireNom} · ${args.totalText}`,
+    salutation: "Bonjour,",
+    paragraphes: [
+      `${args.signataireNom} vient de signer le devis ${args.numero} « bon pour accord » en ligne. Le devis est passé en « Accepté » ; l'exemplaire signé est joint, le client l'a reçu aussi.`,
+    ],
+    resume,
+    conclusion: args.acompteText
+      ? "Prochaine étape : surveiller l'acompte, puis planifier l'intervention et prévenir le client de la date."
+      : "Prochaine étape : planifier l'intervention et prévenir le client de la date.",
+    signature: { nom: NOM_APPLICATION },
   });
 }
 

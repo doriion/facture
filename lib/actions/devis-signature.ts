@@ -78,6 +78,8 @@ export async function signerDevisAction(
       signature_client_url: path,
       signataire_nom: signataireNom,
       date_signature: today,
+      signe_le: new Date().toISOString(),
+      signature_origine: "sur_place",
       statut: "accepte",
     })
     .eq("id", devisId)
