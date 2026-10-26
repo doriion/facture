@@ -800,6 +800,8 @@ export type Database = {
           signature_ip: string | null;
           signature_user_agent: string | null;
           signature_origine: string | null;
+          retour_signe_url: string | null;
+          retour_signe_mime: string | null;
           statut: string;
           total_ht: number;
           type_activite: string;
@@ -841,6 +843,8 @@ export type Database = {
           signature_ip?: string | null;
           signature_user_agent?: string | null;
           signature_origine?: string | null;
+          retour_signe_url?: string | null;
+          retour_signe_mime?: string | null;
           statut?: string;
           total_ht?: number;
           type_activite?: string;
@@ -882,6 +886,8 @@ export type Database = {
           signature_ip?: string | null;
           signature_user_agent?: string | null;
           signature_origine?: string | null;
+          retour_signe_url?: string | null;
+          retour_signe_mime?: string | null;
           statut?: string;
           total_ht?: number;
           type_activite?: string;

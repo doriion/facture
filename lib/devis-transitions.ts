@@ -39,6 +39,11 @@ export const TRANSITIONS_DEVIS: Record<string, readonly StatutDevisStocke[]> = {
   accepte: ["brouillon"],
 };
 
+/** Devis signé, quelle que soit la voie : au doigt dans l'app, en ligne, ou retour papier archivé. */
+export function devisSigne(d: { signature_client_url: string | null; retour_signe_url?: string | null }): boolean {
+  return Boolean(d.signature_client_url || d.retour_signe_url);
+}
+
 export type ContexteDevis = {
   /** signature_client_url renseignée → signature immuable */
   signee?: boolean;

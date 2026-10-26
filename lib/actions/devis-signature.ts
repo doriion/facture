@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { aujourdhuiParis } from "@/lib/dates";
 import { figerEmetteurDocument } from "@/lib/actions/emetteur-helpers";
-import { signatureDevisAutorisee } from "@/lib/devis-transitions";
+import { devisSigne, signatureDevisAutorisee } from "@/lib/devis-transitions";
 import { statutAffichageDevis } from "@/lib/validations/devis";
 
 type ActionResult<T = void> =
@@ -46,7 +46,7 @@ export async function signerDevisAction(
   const { data: devis } = await supabase
     .from("devis")
     .select(
-      "id, statut, date_validite, est_modele, signature_client_url, facture_id",
+      "id, statut, date_validite, est_modele, signature_client_url, retour_signe_url, facture_id",
     )
     .eq("id", devisId)
     .maybeSingle();
@@ -57,7 +57,7 @@ export async function signerDevisAction(
   const autorisee = signatureDevisAutorisee(
     statutAffichageDevis(devis.statut, devis.date_validite),
     {
-      signee: !!devis.signature_client_url,
+      signee: devisSigne(devis),
       convertie: !!devis.facture_id,
       modele: devis.est_modele,
     },
@@ -84,6 +84,7 @@ export async function signerDevisAction(
     })
     .eq("id", devisId)
     .is("signature_client_url", null)
+    .is("retour_signe_url", null)
     .select("id");
   if (updateErr) return { ok: false, error: updateErr.message };
   if (!updated || updated.length === 0) {
