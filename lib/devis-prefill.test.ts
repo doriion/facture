@@ -22,6 +22,8 @@ const source: DevisRow = {
   signature_ip: null,
   signature_user_agent: null,
   signature_origine: null,
+  retour_signe_url: null,
+  retour_signe_mime: null,
   emetteur: null,
   acompte_pct: null,
   acompte_montant: null,

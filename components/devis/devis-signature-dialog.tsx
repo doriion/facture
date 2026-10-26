@@ -56,7 +56,7 @@ export function DevisSignatureDialog({
   const [saving, setSaving] = useState(false);
   const [signataire, setSignataire] = useState(clientNom ?? "");
 
-  if (signatureUrl) {
+  if (signatureUrl || dateSignature) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-md border border-green-600/30 bg-green-500/5 px-2.5 py-1.5 text-sm">
         <CheckCircle2 className="size-4 text-green-600" />

@@ -21,6 +21,9 @@ import { DevisActions } from "@/components/devis/devis-actions";
 import { ActionsFiche } from "@/components/actions-fiche";
 import { DevisSignatureDialog } from "@/components/devis/devis-signature-dialog";
 import { LienSignatureDevis } from "@/components/devis/lien-signature-devis";
+import { RetourSigneDialog } from "@/components/devis/retour-signe-dialog";
+import { lienRetourSigne } from "@/lib/actions/devis-retour-signe";
+import { devisSigne } from "@/lib/devis-transitions";
 import { StatutBadgeDevis } from "@/components/devis/statut-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,7 +51,8 @@ export default async function EditDevisPage(
   // Devis converti OU signé : contenu figé (la signature du client
   // porte sur ce contenu précis, le modifier après coup la viderait de
   // son sens). Le motif exact vient de la machine à états.
-  const signee = !!devis.signature_client_url;
+  const signee = devisSigne(devis);
+  const urlRetourSigne = await lienRetourSigne(devis.retour_signe_url);
   const motifVerrou = motifVerrouDevis({
     signee,
     convertie: !!devis.facture_id,
@@ -110,6 +114,9 @@ export default async function EditDevisPage(
                 devisId={devis.id}
               />
             )}
+            {!devis.est_modele && !signee && !devis.facture_id && (statutAffiche === "envoye" || statutAffiche === "accepte") && (
+              <RetourSigneDialog devisId={devis.id} numero={devis.numero} clientNom={client?.nom ?? null} />
+            )}
             {!devis.est_modele && (
               <DevisSignatureDialog
                 devisId={devis.id}
@@ -137,6 +144,19 @@ export default async function EditDevisPage(
         </div>
       </div>
 
+      {devis.retour_signe_url && (
+        <p className="text-xs text-muted-foreground">
+          Signé sur papier{devis.date_signature ? ` le ${formatDateFr(devis.date_signature)}` : ""}
+          {devis.signataire_nom ? ` par ${devis.signataire_nom}` : ""} ·{" "}
+          {urlRetourSigne ? (
+            <a href={urlRetourSigne} target="_blank" rel="noopener" className="underline">
+              voir le devis signé reçu
+            </a>
+          ) : (
+            "document archivé"
+          )}
+        </p>
+      )}
       {!devis.est_modele && (
         <LienSignatureDevis
           token={devis.access_token}

@@ -12,8 +12,7 @@ import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
 import {
   conversionDevisAutorisee,
   motifVerrouDevis,
-  transitionDevisAutorisee,
-} from "@/lib/devis-transitions";
+  transitionDevisAutorisee, devisSigne } from "@/lib/devis-transitions";
 import { normaliserNomModele, trierModeles } from "@/lib/modeles-devis";
 import {
   devisSchema,
@@ -123,7 +122,7 @@ export async function setDevisModeleAction(
   const supabase = await createClient();
   const { data: existant } = await supabase
     .from("devis")
-    .select("signature_client_url, facture_id")
+    .select("signature_client_url, retour_signe_url, facture_id")
     .eq("id", id)
     .maybeSingle();
   if (!existant) return { ok: false, error: "Devis introuvable." };
@@ -131,7 +130,7 @@ export async function setDevisModeleAction(
   // Un devis signé ou converti est un document engageant : il ne peut
   // pas être rangé dans les modèles (où il sortirait des statistiques).
   const verrou = motifVerrouDevis({
-    signee: !!existant.signature_client_url,
+    signee: devisSigne(existant),
     convertie: !!existant.facture_id,
   });
   if (verrou) return { ok: false, error: verrou };
@@ -357,7 +356,7 @@ export async function updateDevisAction(
 
   const { data: existing } = await supabase
     .from("devis")
-    .select("statut, facture_id, signature_client_url")
+    .select("statut, facture_id, signature_client_url, retour_signe_url")
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Devis introuvable." };
@@ -365,7 +364,7 @@ export async function updateDevisAction(
   // Verrou : un devis converti en facture, ou signé par le client, ne
   // se modifie plus — la signature porte sur ce contenu précis.
   const verrou = motifVerrouDevis({
-    signee: !!existing.signature_client_url,
+    signee: devisSigne(existing),
     convertie: !!existing.facture_id,
   });
   if (verrou) return { ok: false, error: verrou };
@@ -435,7 +434,7 @@ export async function setDevisStatutAction(
   const { data: existant } = await supabase
     .from("devis")
     .select(
-      "statut, date_validite, facture_id, signature_client_url, est_modele",
+      "statut, date_validite, facture_id, signature_client_url, retour_signe_url, est_modele",
     )
     .eq("id", id)
     .maybeSingle();
@@ -446,7 +445,7 @@ export async function setDevisStatutAction(
   // retour en brouillon).
   const depuis = statutAffichageDevis(existant.statut, existant.date_validite);
   const autorisee = transitionDevisAutorisee(depuis, statut, {
-    signee: !!existant.signature_client_url,
+    signee: devisSigne(existant),
     convertie: !!existant.facture_id,
     modele: existant.est_modele,
   });
@@ -491,7 +490,7 @@ export async function deleteDevisAction(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("devis")
-    .select("statut, facture_id, signature_client_url")
+    .select("statut, facture_id, signature_client_url, retour_signe_url")
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Devis introuvable." };
@@ -499,7 +498,7 @@ export async function deleteDevisAction(id: string): Promise<ActionResult> {
   // Verrou d'abord : le message « devis signé » est plus parlant que
   // « seuls les brouillons… » si la signature est la vraie raison.
   const verrou = motifVerrouDevis({
-    signee: !!existing.signature_client_url,
+    signee: devisSigne(existing),
     convertie: !!existing.facture_id,
   });
   if (verrou) return { ok: false, error: verrou };
