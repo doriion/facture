@@ -93,7 +93,7 @@ export default async function SignatureDevisPage(props: { params: Promise<{ toke
                 <tr key={l.id} className="border-t">
                   <td className="px-3 py-2">{l.designation}</td>
                   <td className="px-2 py-2 text-right tabular-nums">{formatQuantite(l.quantite)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatEuros(Number(l.total_ht))}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{formatEuros(Number(l.total_ht))}</td>
                 </tr>
               ))}
             </tbody>
@@ -102,7 +102,7 @@ export default async function SignatureDevisPage(props: { params: Promise<{ toke
                 <td className="px-3 py-2 font-semibold" colSpan={2}>
                   Total
                 </td>
-                <td className="px-3 py-2 text-right text-base font-bold tabular-nums">{formatEuros(Number(d.total_ht))}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right text-base font-bold tabular-nums">{formatEuros(Number(d.total_ht))}</td>
               </tr>
             </tfoot>
           </table>
