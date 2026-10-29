@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileCheck2 } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { listProduits } from "@/lib/actions/produits";
@@ -145,17 +145,22 @@ export default async function EditDevisPage(
       </div>
 
       {devis.retour_signe_url && (
-        <p className="text-xs text-muted-foreground">
-          Signé sur papier{devis.date_signature ? ` le ${formatDateFr(devis.date_signature)}` : ""}
-          {devis.signataire_nom ? ` par ${devis.signataire_nom}` : ""} ·{" "}
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-green-600/30 bg-green-500/5 px-3 py-2 text-sm">
+          <span>
+            Signé sur papier{devis.date_signature ? ` le ${formatDateFr(devis.date_signature)}` : ""}
+            {devis.signataire_nom ? ` par ${devis.signataire_nom}` : ""}
+          </span>
           {urlRetourSigne ? (
-            <a href={urlRetourSigne} target="_blank" rel="noopener" className="underline">
-              voir le devis signé reçu
-            </a>
+            <Button asChild size="sm" variant="outline">
+              <a href={urlRetourSigne} target="_blank" rel="noopener">
+                <FileCheck2 className="size-4" />
+                Voir le devis signé reçu
+              </a>
+            </Button>
           ) : (
-            "document archivé"
+            <span className="text-xs text-muted-foreground">document archivé</span>
           )}
-        </p>
+        </div>
       )}
       {!devis.est_modele && (
         <LienSignatureDevis

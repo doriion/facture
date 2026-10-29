@@ -35,4 +35,4 @@ comment on column public.devis.signature_ip is
 comment on column public.devis.signature_user_agent is
   'Navigateur du signataire (signature en ligne) — faisceau de preuves.';
 comment on column public.devis.signature_origine is
-  'sur_place (dans l''application) ou en_ligne (page publique).';
+  'sur_place (dans l''application), en_ligne (page publique) ou papier (retour signé joint).';
