@@ -31,12 +31,26 @@ export function RetourSigneDialog({ devisId, numero, clientNom }: { devisId: str
       toast.error("Choisissez la photo ou le PDF du devis signé.");
       return;
     }
+    if (fichier.size > 8 * 1024 * 1024) {
+      toast.error("Fichier trop lourd", { description: "8 Mo maximum : exportez le PDF en qualité réduite, ou prenez une photo." });
+      return;
+    }
     setEnCours(true);
     const fd = new FormData();
     fd.set("fichier", fichier);
     fd.set("date_signature", date);
     fd.set("signataire_nom", nom);
-    const res = await joindreRetourSigneAction(devisId, fd);
+    let res: Awaited<ReturnType<typeof joindreRetourSigneAction>>;
+    try {
+      res = await joindreRetourSigneAction(devisId, fd);
+    } catch (e) {
+      // Erreur réseau ou envoi refusé avant d'atteindre l'action : on le dit.
+      setEnCours(false);
+      toast.error("Envoi impossible", {
+        description: e instanceof Error && /body|size|limit|large/i.test(e.message) ? "Fichier trop volumineux pour l'envoi." : "Vérifiez la connexion et réessayez.",
+      });
+      return;
+    }
     setEnCours(false);
     if (!res.ok) {
       toast.error("Retour signé non enregistré", { description: res.error });
@@ -67,7 +81,7 @@ export function RetourSigneDialog({ devisId, numero, clientNom }: { devisId: str
               <Input
                 id="retour-fichier"
                 type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
+                accept="image/*,.heic,.heif,application/pdf,.pdf"
                 onChange={(e) => setFichier(e.target.files?.[0] ?? null)}
                 className="h-auto py-2"
               />

@@ -17,8 +17,18 @@ const TYPES_ACCEPTES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
   "application/pdf": "pdf",
 };
+
+/** Type réel d'après l'extension quand le navigateur n'en donne pas (fichier iCloud, Android). */
+function typeFichier(fichier: File): string {
+  if (fichier.type && fichier.type !== "application/octet-stream") return fichier.type;
+  const ext = fichier.name.split(".").pop()?.toLowerCase();
+  const parExt: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", heic: "image/heic", heif: "image/heif", pdf: "application/pdf" };
+  return (ext && parExt[ext]) || fichier.type;
+}
 
 /**
  * Le client a signé le devis sur papier et l'a renvoyé (photo, scan,
@@ -37,8 +47,9 @@ export async function joindreRetourSigneAction(devisId: string, formData: FormDa
   const fichier = formData.get("fichier");
   if (!(fichier instanceof File) || fichier.size === 0) return { ok: false, error: "Joignez la photo ou le PDF du devis signé." };
   if (fichier.size > MAX_OCTETS) return { ok: false, error: "Fichier trop lourd (8 Mo maximum)." };
-  const ext = TYPES_ACCEPTES[fichier.type];
-  if (!ext) return { ok: false, error: "Format accepté : photo (JPEG, PNG, WebP) ou PDF." };
+  const type = typeFichier(fichier);
+  const ext = TYPES_ACCEPTES[type];
+  if (!ext) return { ok: false, error: `Format accepté : photo (JPEG, PNG, WebP, HEIC) ou PDF — reçu : ${fichier.type || fichier.name}.` };
   const dateSignature = String(formData.get("date_signature") ?? "").trim();
   const today = aujourdhuiParis();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateSignature)) return { ok: false, error: "Indiquez la date portée sur le devis signé." };
@@ -60,14 +71,14 @@ export async function joindreRetourSigneAction(devisId: string, formData: FormDa
   const path = `${user.id}/devis/${devisId}/retour-signe-${Date.now()}.${ext}`;
   const { error: uploadErr } = await supabase.storage
     .from("signatures")
-    .upload(path, fichier, { contentType: fichier.type, upsert: false });
+    .upload(path, fichier, { contentType: type, upsert: false });
   if (uploadErr) return { ok: false, error: uploadErr.message };
 
   const { data: modifie, error } = await supabase
     .from("devis")
     .update({
       retour_signe_url: path,
-      retour_signe_mime: fichier.type,
+      retour_signe_mime: type,
       signataire_nom: signataireNom,
       date_signature: dateSignature,
       signe_le: new Date().toISOString(),
