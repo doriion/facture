@@ -34,6 +34,12 @@ const ENTETES_SECURITE = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Les envois de fichiers passent par des actions serveur (photo ou
+    // PDF d'un devis signé, photos de chantier) : la limite par défaut
+    // d'un mégaoctet refusait silencieusement la moindre photo.
+    serverActions: { bodySizeLimit: "12mb" },
+  },
   images: {
     remotePatterns: [
       {
