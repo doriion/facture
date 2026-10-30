@@ -11,6 +11,7 @@ import {
   Users,
   Package,
   Wrench,
+  Snowflake,
   CalendarClock,
   CalendarDays,
   ScrollText,
@@ -74,6 +75,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Interventions",
     icon: Wrench,
     description: "Suivi chantiers + fluides frigo",
+  },
+  {
+    href: "/fiches-gaz",
+    label: "Fiches gaz",
+    icon: Snowflake,
+    description: "CERFA 15497 et bons de réception, signature du client",
   },
   {
     href: "/contrats",

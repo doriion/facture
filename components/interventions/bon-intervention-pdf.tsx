@@ -65,6 +65,17 @@ export type BonInterventionData = {
   } | null;
   factureNumero: string | null;
   genereLe: string;
+  /**
+   * Fiche gaz : le bon devient un BON DE RÉCEPTION des travaux (objet,
+   * n° de devis, réserves du client). Absent/null pour un bon ordinaire.
+   */
+  reception?: {
+    ficheNumero: string | null;
+    objet: string | null;
+    devisNumero: string | null;
+    reserves: "sans" | "avec" | null;
+    reservesTexte: string | null;
+  } | null;
 };
 
 const MOMENT_LABELS: Record<string, string> = {
@@ -203,9 +214,11 @@ export function BonInterventionPdf({
   const equip = data.equipement;
   const aEquipement = Boolean(equip.marque || equip.modele || equip.numSerie);
   const photosAffichees = photos.filter((p) => p.imageDataUrl).slice(0, 6);
+  const reception = data.reception ?? null;
+  const titreDoc = reception ? "Bon de réception" : "Bon d'intervention";
 
   return (
-    <Document title={`Bon d'intervention ${formatDateFr(data.dateIntervention)}`} author={data.entreprise.nom}>
+    <Document title={`${titreDoc} ${formatDateFr(data.dateIntervention)}`} author={data.entreprise.nom}>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View style={styles.brand}>
@@ -222,7 +235,8 @@ export function BonInterventionPdf({
             </View>
           </View>
           <View style={styles.titreBlock}>
-            <Text style={styles.titre}>BON D&apos;INTERVENTION</Text>
+            <Text style={styles.titre}>{reception ? "BON DE RÉCEPTION" : "BON D'INTERVENTION"}</Text>
+            {reception?.ficheNumero && <Text style={styles.sousTitre}>Fiche n° {reception.ficheNumero}</Text>}
             <Text style={styles.sousTitre}>Intervention {periode}</Text>
             {plage && <Text style={styles.sousTitre}>Horaires : {plage}</Text>}
             {dureeText && <Text style={styles.sousTitre}>Durée : {dureeText}</Text>}
@@ -255,11 +269,35 @@ export function BonInterventionPdf({
         </View>
 
         <View style={styles.box}>
-          <Text style={styles.blockTitle}>Travaux réalisés</Text>
+          <Text style={styles.blockTitle}>{reception ? "Objet des travaux" : "Travaux réalisés"}</Text>
           <Text style={styles.description}>
-            {data.description?.trim() || "Aucun descriptif saisi."}
+            {(reception?.objet ?? data.description)?.trim() || "Aucun descriptif saisi."}
           </Text>
+          {reception?.devisNumero && (
+            <Text style={[styles.muted, { marginTop: 3 }]}>Suivant devis n° {reception.devisNumero}</Text>
+          )}
         </View>
+
+        {reception && (
+          <View style={styles.box}>
+            <Text style={styles.blockTitle}>Réception des travaux</Text>
+            <Text style={styles.description}>
+              {reception.reserves === "sans"
+                ? "Le client déclare recevoir les travaux SANS RÉSERVE : l'installation fonctionne et a été présentée en service."
+                : reception.reserves === "avec"
+                  ? "Le client reçoit les travaux AVEC RÉSERVES, à lever par l'intervenant :"
+                  : "Réserves : à indiquer par le client lors de la signature."}
+            </Text>
+            {reception.reserves === "avec" && (
+              <Text style={[styles.description, { marginTop: 3, fontFamily: "Helvetica-Bold" }]}>
+                {reception.reservesTexte?.trim() || "Réserves non détaillées."}
+              </Text>
+            )}
+            <Text style={[styles.muted, { marginTop: 4 }]}>
+              La fiche d&apos;intervention fluides frigorigènes (CERFA 15497) est remise au client avec ce bon.
+            </Text>
+          </View>
+        )}
 
         {aEquipement && (
           <View style={styles.box}>
@@ -365,7 +403,9 @@ export function BonInterventionPdf({
               )}
             </View>
             <View style={styles.signatureBox}>
-              <Text style={styles.signatureTitle}>Le client — travaux réalisés, bon pour accord</Text>
+              <Text style={styles.signatureTitle}>
+                {reception ? "Le client — réception des travaux" : "Le client — travaux réalisés, bon pour accord"}
+              </Text>
               {signatureClient ? (
                 <>
                   {signatureClient.imageDataUrl && (
