@@ -100,6 +100,8 @@ export type CerfaData = {
   fuite: {
     constatee: boolean | null;
     localisation: string;
+    /** Suite donnée (cadre 10, colonne « Réparation de la fuite »). */
+    reparation: "realisee" | "a_faire" | null;
   };
   quantites: {
     chargeViergeKg: number;
@@ -297,6 +299,10 @@ export function buildCerfaData(
         ? intervention.etancheite_fuite
         : null,
       localisation: intervention.etancheite_fuite_localisation ?? "",
+      reparation:
+        intervention.fuite_reparation === "realisee" || intervention.fuite_reparation === "a_faire"
+          ? intervention.fuite_reparation
+          : null,
     },
     quantites: {
       chargeViergeKg,
