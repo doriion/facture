@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { completerPrixAchatCatalogue } from "@/lib/catalogue-sync";
 import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
 import { ajouterJours } from "@/lib/agenda-vues";
@@ -246,6 +247,7 @@ export async function createFactureAction(
     await supabase.from("factures").delete().eq("id", facture.id);
     return { ok: false, error: lignesErr.message };
   }
+  await completerPrixAchatCatalogue(supabase, v.lignes).catch(() => 0);
 
   if (options?.interventionId) {
     // `.is("facture_id", null)` : ne jamais écraser un lien existant
@@ -369,6 +371,7 @@ export async function updateFactureAction(
   );
   if (!remplacement.ok) return { ok: false, error: remplacement.error };
 
+  await completerPrixAchatCatalogue(supabase, v.lignes).catch(() => 0);
   revalidatePath("/factures");
   revalidatePath(`/factures/${id}`);
   return { ok: true, data: undefined };

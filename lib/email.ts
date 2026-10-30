@@ -430,6 +430,48 @@ export function buildFicheSigneeArtisanEmail(args: {
 }
 
 /**
+ * Relance d'un devis resté sans réponse : rappel cordial, PDF joint,
+ * lien de signature si le devis n'est pas signé, validité rappelée.
+ */
+export function buildRelanceDevisEmail(args: {
+  numero: string;
+  clientNom: string;
+  expediteurNom: string;
+  totalText: string;
+  dateText: string;
+  validiteText?: string;
+  natureActivite?: string | null;
+  lienSignature?: string | null;
+  messagePerso?: string;
+  signature?: SignatureEmail;
+}): { subject: string; html: string; text: string } {
+  const subject = `Votre devis ${args.numero} — avez-vous pu y jeter un œil ?`;
+  const resume: Array<[string, string]> = [
+    ["Devis", args.numero],
+    ["Émis le", args.dateText],
+    ["Montant", args.totalText],
+  ];
+  if (args.validiteText) resume.push(["Valable jusqu'au", args.validiteText]);
+  return emailDepuisContenu(subject, {
+    titre: `Devis ${args.numero}`,
+    apercu: `Petit rappel concernant le devis ${args.numero}`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `Je me permets de revenir vers vous au sujet du devis ${args.numero} ${objetPrestation(args.natureActivite)}, que je vous ai adressé le ${args.dateText}. Vous le retrouverez en pièce jointe.`,
+      args.lienSignature
+        ? "S'il vous convient, vous pouvez le signer en ligne en un instant grâce au bouton ci-dessous. Si vous avez des questions ou souhaitez l'ajuster, je suis à votre disposition."
+        : "S'il vous convient, un simple retour de votre part suffit pour que je planifie l'intervention. Si vous avez des questions ou souhaitez l'ajuster, je suis à votre disposition.",
+    ],
+    resume,
+    bouton: args.lienSignature ? { libelle: "Lire et signer le devis en ligne", href: args.lienSignature } : undefined,
+    messagePerso: args.messagePerso,
+    conclusion: "Merci de votre attention, et à bientôt.",
+    signature: sig(args.signature, args.expediteurNom),
+    mentionPied: mentionTvaFranchise(),
+  });
+}
+
+/**
  * Relance pour facture impayée. Ton ferme mais courtois.
  */
 export function buildRelanceEmail(args: {

@@ -5,6 +5,7 @@ import {
   ListTodo,
   MapPin,
   Phone,
+  FileSignature,
   Receipt,
   Send,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FacturerDevisButton, RelancerDevisButton } from "@/components/devis/devis-raccourcis";
 
 const MAX_TACHES = 6;
 const MAX_RELANCES = 4;
@@ -38,7 +40,7 @@ export function FilDuJourCard({
   taches: TacheDuJour[];
   relances: FactureEnRetard[];
 }) {
-  const total = fil.rdv.length + fil.nbAFacturer + relances.length + taches.length;
+  const total = fil.rdv.length + fil.nbAFacturer + fil.devisAFacturer.length + fil.devisARelancer.length + relances.length + taches.length;
 
   return (
     <Card className="border-primary/30">
@@ -53,7 +55,7 @@ export function FilDuJourCard({
       <CardContent className="space-y-4">
         {total === 0 && (
           <p className="text-sm text-muted-foreground">
-            Rien de prévu aujourd&apos;hui, aucune facture ni relance en attente.
+            Rien de prévu aujourd&apos;hui, aucun devis, facture ni relance en attente.
           </p>
         )}
 
@@ -89,6 +91,45 @@ export function FilDuJourCard({
               <li className="pt-1 text-xs">
                 <Link href="/agenda" className="text-primary hover:underline">
                   + {fil.nbAFacturer - fil.aFacturer.length} autre(s) à facturer
+                </Link>
+              </li>
+            )}
+          </Section>
+        )}
+
+        {fil.devisAFacturer.length > 0 && (
+          <Section titre="Devis acceptés à facturer" nb={fil.devisAFacturer.length} icone={<FileSignature className="size-3.5" />}>
+            {fil.devisAFacturer.map((d) => (
+              <li key={d.id} className="flex items-center gap-2 py-1.5 text-sm">
+                <Link href={`/devis/${d.id}`} className="min-w-0 flex-1 hover:underline">
+                  <span className="font-mono font-medium">{d.numero}</span>
+                  <span className="text-muted-foreground"> · {d.client_nom ?? "client"}</span>
+                  <span className="block text-xs text-muted-foreground">{formatEuros(d.total_ht)} · accepté, pas encore facturé</span>
+                </Link>
+                <FacturerDevisButton devisId={d.id} />
+              </li>
+            ))}
+          </Section>
+        )}
+
+        {fil.devisARelancer.length > 0 && (
+          <Section titre="Devis sans réponse" nb={fil.devisARelancer.length} icone={<Send className="size-3.5" />}>
+            {fil.devisARelancer.slice(0, MAX_RELANCES).map((d) => (
+              <li key={d.id} className="flex items-center gap-2 py-1.5 text-sm">
+                <Link href={`/devis/${d.id}`} className="min-w-0 flex-1 hover:underline">
+                  <span className="font-mono font-medium">{d.numero}</span>
+                  <span className="text-muted-foreground"> · {d.client_nom ?? "client"}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {formatEuros(d.total_ht)} · envoyé il y a {d.joursSansReponse} j{d.date_validite ? ` · valable jusqu'au ${formatDateFr(d.date_validite)}` : ""}
+                  </span>
+                </Link>
+                <RelancerDevisButton devisId={d.id} clientEmail={d.client_email} />
+              </li>
+            ))}
+            {fil.devisARelancer.length > MAX_RELANCES && (
+              <li className="pt-1 text-xs">
+                <Link href="/devis?statut=envoye" className="text-primary hover:underline">
+                  + {fil.devisARelancer.length - MAX_RELANCES} autre(s) sans réponse
                 </Link>
               </li>
             )}

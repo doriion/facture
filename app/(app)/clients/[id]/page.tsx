@@ -11,8 +11,7 @@ import {
   MessageSquare,
   Phone,
   ScrollText,
-  Wrench,
-} from "lucide-react";
+  Wrench, Navigation, } from "lucide-react";
 
 import { getClient } from "@/lib/actions/clients";
 import { statutAffichageDevis } from "@/lib/validations/devis";
@@ -97,6 +96,30 @@ export default async function ClientDetailPage(
             </div>
           </div>
           <ActionsFiche>
+            {client.telephone && (
+              <Button variant="outline" asChild>
+                <a href={lienAppel(client.telephone)}>
+                  <Phone className="size-4" />
+                  Appeler
+                </a>
+              </Button>
+            )}
+            {client.telephone && (
+              <Button variant="outline" asChild>
+                <a href={lienSms(client.telephone)}>
+                  <MessageSquare className="size-4" />
+                  SMS
+                </a>
+              </Button>
+            )}
+            {adresseClient(client) && (
+              <Button variant="outline" asChild>
+                <a href={lienItineraire(adresseClient(client)!)} target="_blank" rel="noopener">
+                  <Navigation className="size-4" />
+                  Itinéraire
+                </a>
+              </Button>
+            )}
             <Button asChild>
               <Link href={`/interventions/nouvelle?client=${client.id}`}>
                 <CalendarPlus className="size-4" />

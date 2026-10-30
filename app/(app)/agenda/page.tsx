@@ -15,6 +15,7 @@ import {
   premierDuMois,
 } from "@/lib/agenda-vues";
 import { AgendaCalendar } from "@/components/agenda/agenda-calendar";
+import { PushBanniere } from "@/components/push-banniere";
 
 export const metadata = { title: "Agenda — NG Gestion" };
 
@@ -84,6 +85,7 @@ export default async function AgendaPage(
 
   return (
     <div className="space-y-3 sm:space-y-6">
+      <PushBanniere />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Agenda</h1>
