@@ -61,6 +61,25 @@ export const PRG_FLUIDES: Record<string, number> = {
   R22: 1810,
 };
 
+/**
+ * Famille réglementaire du fluide, pour les cases du cadre 7 du CERFA
+ * 15497*04 (seuils HCFC en kg, HFC/PFC en t éq. CO2, HFO en kg) :
+ * HCFC (R22), HFO purs (R1234yf, R1234ze…), sinon HFC — y compris les
+ * mélanges HFC/HFO (R454B, R513A…) que le formulaire range avec les HFC.
+ * Fluides naturels (R290, R600a, R744, R717) ou inconnus → null.
+ */
+const HCFC = new Set(["R22", "R401A", "R401B", "R402A", "R402B", "R403A", "R403B", "R408A", "R409A"]);
+
+export function familleFluide(raw: string | null | undefined): "HCFC" | "HFC" | "HFO" | null {
+  const f = normalizeFluide(raw);
+  if (!f) return null;
+  if (HCFC.has(f)) return "HCFC";
+  if (/^R1234/.test(f) || /^R1233/.test(f) || f === "R1336MZZ") return "HFO";
+  if (f === "R290" || f === "R600A" || f === "R744" || f === "R717" || f === "R1270") return null;
+  if (f in PRG_FLUIDES || /^R\d{2,3}[A-Z]?$/.test(f)) return "HFC";
+  return null;
+}
+
 /** Liste triée des fluides connus, pour un <Select> côté UI. */
 export const FLUIDES_CONNUS = Object.keys(PRG_FLUIDES).sort();
 

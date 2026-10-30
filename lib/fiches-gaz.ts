@@ -145,7 +145,7 @@ export function descriptionDepuisFiche(f: { bon_objet: string | null | undefined
  * Intervention telle que le CERFA doit la lire : description de
  * l'équipement (type + repère) à la place du descriptif des travaux,
  * contrôle d'étanchéité réputé fait dès qu'un détecteur ou un contrôle
- * est renseigné, suite donnée à la fuite ajoutée à sa localisation.
+ * est renseigné (la réparation de la fuite a sa colonne au cadre 10).
  */
 export function interventionPourCerfa<T extends {
   description: string | null;
@@ -165,8 +165,7 @@ export function interventionPourCerfa<T extends {
     Boolean(it.etancheite_detecteur?.trim()) ||
     it.natures_cerfa.includes("controle_periodique") ||
     it.natures_cerfa.includes("controle_non_periodique");
-  const suite = it.fuite_reparation === "realisee" ? "Réparation réalisée" : it.fuite_reparation === "a_faire" ? "Réparation à prévoir" : null;
-  const localisation = it.etancheite_fuite ? [it.etancheite_fuite_localisation?.trim() || null, suite].filter(Boolean).join(" — ") : it.etancheite_fuite_localisation;
+  const localisation = it.etancheite_fuite ? it.etancheite_fuite_localisation?.trim() || null : it.etancheite_fuite_localisation;
   return {
     ...it,
     description,

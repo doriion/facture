@@ -104,7 +104,7 @@ describe("libellés et intervention pour le CERFA", () => {
     expect(descriptionDepuisFiche({ bon_objet: "", natures_cerfa: ["mise_en_service", "assemblage"], equipement_type: "pompe_a_chaleur" })).toBe("Mise en service, Assemblage — pompe à chaleur");
     expect(descriptionDepuisFiche({ bon_objet: null, natures_cerfa: [], equipement_type: null })).toBe("Fiche fluides frigorigènes");
   });
-  it("interventionPourCerfa : contrôle réputé fait avec un détecteur, suite de la fuite ajoutée", () => {
+  it("interventionPourCerfa : contrôle réputé fait avec un détecteur, localisation nettoyée", () => {
     const base = {
       description: "Travaux",
       equipement_type: "pompe_a_chaleur",
@@ -119,7 +119,8 @@ describe("libellés et intervention pour le CERFA", () => {
     const r = interventionPourCerfa(base);
     expect(r.description).toBe("Pompe à chaleur — repère PAC garage");
     expect(r.etancheite_controle).toBe(true);
-    expect(r.etancheite_fuite_localisation).toBe("raccord UE — Réparation réalisée");
+    expect(r.etancheite_fuite_localisation).toBe("raccord UE");
+    expect(r.fuite_reparation).toBe("realisee");
     // Sans détecteur ni contrôle : rien n'est inventé.
     const sans = interventionPourCerfa({ ...base, etancheite_detecteur: null, etancheite_fuite: null, etancheite_fuite_localisation: null, fuite_reparation: null });
     expect(sans.etancheite_controle).toBeNull();

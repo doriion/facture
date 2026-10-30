@@ -7,6 +7,7 @@ import {
   normalizeFluide,
   periodiciteControleMois,
   prgFluide,
+  familleFluide,
 } from "./fluides";
 
 describe("normalizeFluide", () => {
@@ -117,5 +118,19 @@ describe("periodiciteControleMois", () => {
     expect(periodiciteControleMois("R9999", 50)).toBeNull();
     expect(periodiciteControleMois("R32", null)).toBeNull();
     expect(periodiciteControleMois(null, 50)).toBeNull();
+  });
+});
+
+describe("familleFluide (cadre 7 du CERFA)", () => {
+  it("classe HCFC, HFC (mélanges compris), HFO et écarte les naturels", () => {
+    expect(familleFluide("R22")).toBe("HCFC");
+    expect(familleFluide("r408a")).toBe("HCFC");
+    expect(familleFluide("R32")).toBe("HFC");
+    expect(familleFluide("R-410A")).toBe("HFC");
+    expect(familleFluide("R454B")).toBe("HFC");
+    expect(familleFluide("R1234yf")).toBe("HFO");
+    expect(familleFluide("R290")).toBeNull();
+    expect(familleFluide("")).toBeNull();
+    expect(familleFluide(null)).toBeNull();
   });
 });
