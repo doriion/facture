@@ -88,3 +88,30 @@ describe("margesParMois / totalMarges", () => {
     expect(totalMarges([])).toEqual({ nbFactures: 0, totalHt: 0, coutRenseigne: 0, margeEuros: 0, nbLignesSansPa: 0, margePct: null });
   });
 });
+
+describe("facture ventilée en acompte + solde", () => {
+  const parent = facture({ id: "p", numero: "F-2026-0020", statut: "brouillon", total_ht: 2167, date_emission: "2026-10-30" });
+  const acompte = facture({ id: "a", numero: "F-2026-0022", type_facture: "acompte", statut: "payee", total_ht: 650, facture_parent_id: "p", date_emission: "2026-10-30" });
+  const solde = facture({ id: "s", numero: "F-2026-0023", type_facture: "solde", statut: "envoyee", total_ht: 1517, facture_parent_id: "p", date_emission: "2026-10-30" });
+  const lignes = [
+    ligne({ facture: parent, prix_unitaire_ht: 1019, prix_achat_ttc_unitaire: 861.22 }),
+    ligne({ facture: parent, prix_unitaire_ht: 1148, prix_achat_ttc_unitaire: null }),
+    ligne({ facture: acompte, prix_unitaire_ht: 650, prix_achat_ttc_unitaire: null }),
+    ligne({ facture: solde, prix_unitaire_ht: 1517, prix_achat_ttc_unitaire: null }),
+  ];
+  it("compte la facture de référence une fois, avec ses prix d'achat, et ignore acompte et solde", () => {
+    const chantiers = margesParChantier(lignes);
+    expect(chantiers.map((c) => c.numero)).toEqual(["F-2026-0020"]);
+    expect(chantiers[0]).toMatchObject({ ventilee: true, totalHt: 2167, coutRenseigne: 861.22, margeEuros: 1305.78, nbLignesSansPa: 1 });
+    expect(totalMarges(margesParMois(chantiers)).totalHt).toBe(2167);
+  });
+  it("acompte annulé seul : le parent reste un brouillon ordinaire, exclu", () => {
+    const annule = { ...acompte, statut: "annulee" };
+    const chantiers = margesParChantier([ligne({ facture: parent }), ligne({ facture: annule, prix_unitaire_ht: 650, prix_achat_ttc_unitaire: null })]);
+    expect(chantiers).toEqual([]);
+  });
+  it("acompte sans parent dans la période : compté comme avant", () => {
+    const chantiers = margesParChantier([ligne({ facture: acompte, prix_unitaire_ht: 650, prix_achat_ttc_unitaire: null })]);
+    expect(chantiers.map((c) => c.numero)).toEqual(["F-2026-0022"]);
+  });
+});

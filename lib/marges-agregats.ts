@@ -6,6 +6,13 @@
  * pour que l'affichage rappelle que la marge est alors surestimée.
  * Factures annulées et brouillons exclus (pas de chantier réalisé),
  * avoirs en négatif (ils reprennent de la vente).
+ *
+ * Facture VENTILÉE en acompte(s) + solde : la facture de référence reste
+ * en brouillon et ce sont ses enfants qui sont émis — mais seuls ses
+ * lignes portent les prix d'achat. Elle compte donc UNE fois, avec ses
+ * lignes et son total, et ses enfants (une ligne « Acompte… » ou
+ * « Solde… » sans coût) sont ignorés : sinon la vente apparaissait sans
+ * aucun achat et la marge du chantier était fausse.
  */
 
 import { margeReelle, totauxMarges, type LigneMargeable } from "@/lib/marges";
@@ -19,6 +26,7 @@ export type LigneMargeFacture = LigneMargeable & {
     type_facture: string | null;
     total_ht: number;
     client: { nom: string } | null;
+    facture_parent_id?: string | null;
   } | null;
 };
 
@@ -28,6 +36,8 @@ export type MargeChantier = {
   date_emission: string;
   client_nom: string | null;
   avoir: boolean;
+  /** Facture de référence ventilée en acompte(s) + solde : comptée une fois, via ses lignes. */
+  ventilee: boolean;
   totalHt: number;
   coutRenseigne: number;
   margeEuros: number;
@@ -50,10 +60,28 @@ const arrondi = (n: number) => Math.round(n * 100) / 100;
 
 /** Une entrée par facture émise (hors annulées et brouillons), la plus récente d'abord. */
 export function margesParChantier(lignes: LigneMargeFacture[]): MargeChantier[] {
+  // Parents ventilés : au moins un acompte ou un solde non annulé.
+  const parentsVentiles = new Set<string>();
+  const factures = new Map<string, NonNullable<LigneMargeFacture["facture"]>>();
+  for (const l of lignes) {
+    if (l.facture) factures.set(l.facture.id, l.facture);
+  }
+  for (const f of factures.values()) {
+    const type = f.type_facture ?? "normale";
+    if ((type === "acompte" || type === "solde") && f.facture_parent_id && f.statut !== "annulee") {
+      const parent = factures.get(f.facture_parent_id);
+      if (parent && parent.statut !== "annulee" && (parent.type_facture ?? "normale") === "normale") parentsVentiles.add(parent.id);
+    }
+  }
+
   const parFacture = new Map<string, { facture: NonNullable<LigneMargeFacture["facture"]>; lignes: LigneMargeable[] }>();
   for (const l of lignes) {
     const f = l.facture;
-    if (!f || f.statut === "annulee" || f.statut === "brouillon") continue;
+    if (!f || f.statut === "annulee") continue;
+    const type = f.type_facture ?? "normale";
+    // Enfant d'une facture ventilée comptée : la vente est déjà dans le parent.
+    if ((type === "acompte" || type === "solde") && f.facture_parent_id && parentsVentiles.has(f.facture_parent_id)) continue;
+    if (f.statut === "brouillon" && !parentsVentiles.has(f.id)) continue;
     const entree = parFacture.get(f.id) ?? { facture: f, lignes: [] };
     entree.lignes.push(l);
     parFacture.set(f.id, entree);
@@ -70,6 +98,7 @@ export function margesParChantier(lignes: LigneMargeFacture[]): MargeChantier[] 
         date_emission: facture.date_emission,
         client_nom: facture.client?.nom ?? null,
         avoir,
+        ventilee: parentsVentiles.has(facture.id),
         totalHt: signe * r.totalHt,
         coutRenseigne: signe * r.coutRenseigne,
         margeEuros: signe * r.margeEuros,
