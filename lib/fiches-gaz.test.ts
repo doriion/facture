@@ -6,6 +6,8 @@ import {
   interventionPourCerfa,
   libelleEquipement,
   libelleReserves,
+  prefillDepuisDevis,
+  prefillDepuisIntervention,
   etatLienFiche,
   ficheGazSchema,
   manipulationsDepuisJson,
@@ -125,5 +127,54 @@ describe("libellés et intervention pour le CERFA", () => {
     const sans = interventionPourCerfa({ ...base, etancheite_detecteur: null, etancheite_fuite: null, etancheite_fuite_localisation: null, fuite_reparation: null });
     expect(sans.etancheite_controle).toBeNull();
     expect(sans.etancheite_fuite_localisation).toBeNull();
+  });
+});
+
+describe("pré-remplissage d'une nouvelle fiche", () => {
+  it("depuis une fiche précédente : matériel et détecteur repris, pas la date ni les quantités", () => {
+    const p = prefillDepuisIntervention({
+      client_id: "c1",
+      equipement_type: "climatisation",
+      equipement_marque: " Daikin ",
+      equipement_repere: "UE1",
+      equipement_modele: "RXM35R",
+      equipement_num_serie: "E1",
+      fluide_frigo_type: "R32",
+      fluide_charge_totale_kg: "0.680",
+      etancheite_detecteur: "TIF XP-1A",
+      etancheite_detecteur_controle_le: "2026-01-15",
+      detection_permanente: false,
+    });
+    expect(p).toEqual({
+      client_id: "c1",
+      equipement_type: "climatisation",
+      equipement_marque: "Daikin",
+      equipement_repere: "UE1",
+      equipement_modele: "RXM35R",
+      equipement_num_serie: "E1",
+      fluide_frigo_type: "R32",
+      fluide_charge_totale_kg: "0.68",
+      etancheite_detecteur: "TIF XP-1A",
+      etancheite_detecteur_controle_le: "2026-01-15",
+      detection_permanente: false,
+    });
+    expect("date_intervention" in p).toBe(false);
+  });
+  it("depuis un devis d'installation de clim : objet, natures, n° de devis et matériel", () => {
+    const p = prefillDepuisDevis({ client_id: "c1", numero: "D-2026-0031", type_activite: "installation_clim", equipement_info: { marque: "Daikin", modele: "RXM35R", num_serie: "", fluide_frigo_type: "r32", fluide_frigo_kg: 0.68 } });
+    expect(p.bon_devis_numero).toBe("D-2026-0031");
+    expect(p.bon_objet).toBe("Fourniture et pose d'une climatisation");
+    expect(p.natures_cerfa).toEqual(["assemblage", "mise_en_service"]);
+    expect(p.equipement_type).toBe("climatisation");
+    expect(p.fluide_frigo_type).toBe("R32");
+    expect(p.fluide_charge_totale_kg).toBe("0.68");
+    // Devis de plomberie : rien d'inventé.
+    expect(prefillDepuisDevis({ client_id: "c1", numero: "D-1", type_activite: "plomberie", equipement_info: null }).natures_cerfa).toBeUndefined();
+  });
+  it("options CERFA : déchets et nature « autre » repris de la fiche", () => {
+    const o = cerfaOptionsDepuisFiche({ fiche_numero: "1", natures_cerfa: [], nature_autre: " Transfert ", detection_permanente: false, fluide_manipulations: [], dechets_bsff: "BSFF-1", dechets_contenants: "", dechets_destination: null });
+    expect(o.natureAutre).toBe("Transfert");
+    expect(o.dechets).toEqual({ numeroBsff: "BSFF-1", contenants: "", destinationNom: "" });
+    expect(cerfaOptionsDepuisFiche({ fiche_numero: null, natures_cerfa: [], detection_permanente: false, fluide_manipulations: [] }).dechets).toBeNull();
   });
 });

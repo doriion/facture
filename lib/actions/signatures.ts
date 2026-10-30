@@ -86,6 +86,19 @@ export async function uploadInterventionSignatureAction(
     .upload(path, file, { contentType: "image/png", upsert: false });
   if (uploadErr) return { ok: false, error: uploadErr.message };
 
+  // « Mémoriser ma signature » : copie dans le dossier du profil, pour
+  // signer les prochaines fiches d'un tap (bucket privé, même dossier
+  // utilisateur). Meilleur effort : la signature de l'intervention prime.
+  if (role === "operateur" && formData.get("memoriser") === "1") {
+    const pathProfil = `${user.id}/profil/signature-${Date.now()}.png`;
+    const { error: copieErr } = await supabase.storage
+      .from("signatures")
+      .upload(pathProfil, file, { contentType: "image/png", upsert: false });
+    if (!copieErr) {
+      await supabase.from("profil_entreprise").update({ signature_url: pathProfil }).eq("user_id", user.id);
+    }
+  }
+
   const { data, error: dbErr } = await supabase
     .from("intervention_signatures")
     .insert({
@@ -153,4 +166,55 @@ export async function listInterventionSignatures(
     };
   }
   return result;
+}
+
+/**
+ * Signe comme opérateur avec la signature mémorisée dans le profil :
+ * l'image est recopiée dans le dossier de l'intervention (même règle
+ * d'immuabilité qu'une signature tracée) et l'entrée est datée du jour.
+ */
+export async function signerAvecSignatureMemoriseeAction(
+  interventionId: string,
+  qualite: string,
+): Promise<ActionResult<{ id: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+  const { data: profil } = await supabase
+    .from("profil_entreprise")
+    .select("signature_url, prenom, nom, num_attestation_fluides_frigo")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!profil?.signature_url) {
+    return { ok: false, error: "Aucune signature mémorisée : signez une première fois en cochant « Mémoriser ma signature »." };
+  }
+  const { data: itv } = await supabase.from("interventions").select("id").eq("id", interventionId).maybeSingle();
+  if (!itv) return { ok: false, error: "Intervention introuvable." };
+  const { data: blob, error: dlErr } = await supabase.storage.from("signatures").download(profil.signature_url);
+  if (dlErr || !blob) return { ok: false, error: "Signature mémorisée introuvable : signez à nouveau en la mémorisant." };
+
+  const path = `${user.id}/${interventionId}/signature-operateur-${Date.now()}.png`;
+  const { error: uploadErr } = await supabase.storage
+    .from("signatures")
+    .upload(path, blob, { contentType: "image/png", upsert: false });
+  if (uploadErr) return { ok: false, error: uploadErr.message };
+  const nom = [profil.prenom, profil.nom].filter(Boolean).join(" ") || "Opérateur";
+  const { data, error: dbErr } = await supabase
+    .from("intervention_signatures")
+    .insert({
+      user_id: user.id,
+      intervention_id: interventionId,
+      role: "operateur",
+      signataire_nom: nom.slice(0, 200),
+      signataire_qualite: qualite.trim() ? qualite.trim().slice(0, 200) : null,
+      storage_path: path,
+    })
+    .select("id")
+    .single();
+  if (dbErr || !data) return { ok: false, error: dbErr?.message ?? "Erreur enregistrement." };
+  revalidatePath(`/interventions/${interventionId}`);
+  revalidatePath(`/fiches-gaz/${interventionId}`);
+  return { ok: true, data: { id: data.id } };
 }

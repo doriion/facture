@@ -2,13 +2,15 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, PenLine } from "lucide-react";
+import { Loader2, PenLine, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  signerAvecSignatureMemoriseeAction,
   uploadInterventionSignatureAction,
   type InterventionSignature,
 } from "@/lib/actions/signatures";
+import { appelerAction } from "@/lib/appel-action";
 import { appelerOuMettreEnAttente } from "@/lib/appel-action";
 import { genererId } from "@/lib/file-attente-helpers";
 import {
@@ -43,11 +45,15 @@ function SignatureBlock({
   role,
   signature,
   defaultNom,
+  defaultQualite,
+  signatureMemorisee = false,
 }: {
   interventionId: string;
   role: "operateur" | "detenteur";
   signature: InterventionSignature | null;
   defaultNom?: string;
+  defaultQualite?: string;
+  signatureMemorisee?: boolean;
 }) {
   const router = useRouter();
   const padRef = useRef<SignaturePadHandle | null>(null);
@@ -55,9 +61,27 @@ function SignatureBlock({
     signature ? "view" : "sign",
   );
   const [nom, setNom] = useState(defaultNom ?? "");
-  const [qualite, setQualite] = useState("");
+  const [qualite, setQualite] = useState(defaultQualite ?? "");
   const [hasInk, setHasInk] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Opérateur : proposer de mémoriser la signature tant qu'aucune ne l'est.
+  const [memoriser, setMemoriser] = useState(role === "operateur" && !signatureMemorisee);
+
+  async function signerDUnTap() {
+    setSaving(true);
+    try {
+      const res = await appelerAction(() => signerAvecSignatureMemoriseeAction(interventionId, qualite));
+      if (!res.ok) {
+        toast.error("Erreur", { description: res.error });
+        return;
+      }
+      toast.success("Signé avec votre signature mémorisée");
+      setMode("view");
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function onSave() {
     if (!padRef.current) return;
@@ -78,6 +102,7 @@ function SignatureBlock({
     fd.append("role", role);
     fd.append("nom", nom);
     fd.append("qualite", qualite);
+    if (role === "operateur" && memoriser) fd.append("memoriser", "1");
     try {
       const res = await appelerOuMettreEnAttente(
         {
@@ -174,7 +199,19 @@ function SignatureBlock({
               />
             </div>
           </div>
+          {role === "operateur" && signatureMemorisee && (
+            <Button type="button" variant="secondary" className="w-full" onClick={signerDUnTap} disabled={saving}>
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              Signer d&apos;un tap avec ma signature mémorisée
+            </Button>
+          )}
           <SignaturePad padRef={padRef} onInkChange={setHasInk} disabled={saving} />
+          {role === "operateur" && (
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+              <input type="checkbox" className="size-4 accent-primary" checked={memoriser} onChange={(e) => setMemoriser(e.target.checked)} />
+              Mémoriser cette signature pour signer d&apos;un tap les prochaines fiches
+            </label>
+          )}
           <div className="flex justify-end gap-2">
             {signature && (
               <Button
@@ -217,11 +254,17 @@ export function InterventionSignatures({
   operateur,
   detenteur,
   operateurNom,
+  operateurQualite,
+  signatureMemorisee = false,
 }: {
   interventionId: string;
   operateur: InterventionSignature | null;
   detenteur: InterventionSignature | null;
   operateurNom?: string;
+  /** Qualité proposée pour l'opérateur (ex : « Opérateur — attestation n° … »). */
+  operateurQualite?: string;
+  /** Une signature d'opérateur est mémorisée dans le profil : bouton « d'un tap ». */
+  signatureMemorisee?: boolean;
 }) {
   return (
     <Card>
@@ -243,6 +286,8 @@ export function InterventionSignatures({
           role="operateur"
           signature={operateur}
           defaultNom={operateurNom}
+          defaultQualite={operateurQualite}
+          signatureMemorisee={signatureMemorisee}
         />
         <SignatureBlock
           interventionId={interventionId}

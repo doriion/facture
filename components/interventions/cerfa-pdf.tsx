@@ -274,9 +274,9 @@ export function CerfaPdf({ data, signatureOperateur, signatureDetenteur }: { dat
               <Case coche={natures.has("controle_non_periodique")} libelle="Contrôle d'étanchéité non périodique" />
               <Case coche={natures.has("demantelement")} libelle="Démantèlement" />
               <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                <Case coche={false} libelle="Autre (préciser) :" />
+                <Case coche={Boolean(data.natureAutre)} libelle="Autre (préciser) :" />
                 <View style={{ flex: 1 }}>
-                  <Champ />
+                  <Champ>{data.natureAutre}</Champ>
                 </View>
               </View>
             </Cel>

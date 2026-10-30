@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, Plus, Receipt } from "lucide-react";
+import { ArrowLeft, CalendarDays, Plus, Receipt, Repeat } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { detecteursConnus, getFicheGaz } from "@/lib/actions/fiches-gaz";
@@ -35,6 +35,7 @@ export default async function FicheGazPage(props: { params: Promise<{ id: string
     getProfil(),
   ]);
   const operateurNom = [profil?.prenom, profil?.nom].filter(Boolean).join(" ") || undefined;
+  const operateurQualite = profil?.num_attestation_fluides_frigo ? `Opérateur — attestation n° ${profil.num_attestation_fluides_frigo}` : "Opérateur";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -91,7 +92,14 @@ export default async function FicheGazPage(props: { params: Promise<{ id: string
 
       <InterventionPhotos interventionId={intervention.id} photos={photos} />
 
-      <InterventionSignatures interventionId={intervention.id} operateur={signatures.operateur} detenteur={signatures.detenteur} operateurNom={operateurNom} />
+      <InterventionSignatures
+        interventionId={intervention.id}
+        operateur={signatures.operateur}
+        detenteur={signatures.detenteur}
+        operateurNom={operateurNom}
+        operateurQualite={operateurQualite}
+        signatureMemorisee={Boolean(profil?.signature_url)}
+      />
 
       {!intervention.supprime_le && (
         <FicheGazDocuments
@@ -110,14 +118,22 @@ export default async function FicheGazPage(props: { params: Promise<{ id: string
 
       {client && (
         <div className="rounded-lg border border-dashed p-4 text-sm">
-          <p className="font-medium">Un autre équipement chez {client.nom} ?</p>
-          <p className="text-muted-foreground">Chaque équipement a sa fiche et son CERFA.</p>
-          <Button variant="outline" size="sm" asChild className="mt-2">
-            <Link href={`/fiches-gaz/nouvelle?client=${client.id}&date=${intervention.date_intervention}`}>
-              <Plus className="size-4" />
-              Ajouter un équipement (une fiche de plus)
-            </Link>
-          </Button>
+          <p className="font-medium">Et ensuite chez {client.nom} ?</p>
+          <p className="text-muted-foreground">Chaque équipement a sa fiche et son CERFA ; la visite suivante repart du même matériel.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/fiches-gaz/nouvelle?client=${client.id}&date=${intervention.date_intervention}`}>
+                <Plus className="size-4" />
+                Ajouter un équipement (une fiche de plus)
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/fiches-gaz/nouvelle?source=${intervention.id}`}>
+                <Repeat className="size-4" />
+                Nouvelle visite sur cet équipement
+              </Link>
+            </Button>
+          </div>
         </div>
       )}
     </div>

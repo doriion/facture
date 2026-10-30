@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileCheck2 } from "lucide-react";
+import { ArrowLeft, FileCheck2, Snowflake } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { listProduits } from "@/lib/actions/produits";
@@ -107,6 +107,16 @@ export default async function EditDevisPage(
             </p>
           </div>
           <ActionsFiche>
+            {/* Clim / PAC / entretien : la fiche gaz de mise en service
+                repart du devis (client, n° de devis, objet, matériel). */}
+            {!devis.est_modele && ["installation_clim", "installation_pac", "entretien", "depannage"].includes(devis.type_activite) && (
+              <Button variant="outline" asChild>
+                <Link href={`/fiches-gaz/nouvelle?devis=${devis.id}`}>
+                  <Snowflake className="size-4" />
+                  Fiche gaz d&apos;après ce devis
+                </Link>
+              </Button>
+            )}
             {!devis.est_modele && (
               <AjouterTacheButton
                 lienLabel={`Devis ${devis.numero}`}

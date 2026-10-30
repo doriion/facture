@@ -179,20 +179,32 @@ export function interventionPourCerfa<T extends {
 export function cerfaOptionsDepuisFiche(f: {
   fiche_numero: string | null;
   natures_cerfa: string[];
+  nature_autre?: string | null;
   detection_permanente: boolean;
   fluide_manipulations: unknown;
+  dechets_bsff?: string | null;
+  dechets_contenants?: string | null;
+  dechets_destination?: string | null;
 }): CerfaOptions {
   const t = totauxManipulations(manipulationsDepuisJson(f.fluide_manipulations));
+  const dechets = [f.dechets_bsff, f.dechets_contenants, f.dechets_destination].some((v) => (v ?? "").trim());
   return {
     ficheNumero: f.fiche_numero ?? "",
     natures: f.natures_cerfa.filter((n): n is NatureIntervention => n in NATURES_INTERVENTION),
+    natureAutre: f.nature_autre?.trim() ?? "",
     systemePermanentDetection: f.detection_permanente,
     chargeViergeKg: t.vierge,
     chargeRecycleKg: t.recycle,
     chargeRegenereKg: t.regenere,
     recupereTraitementKg: t.traitement,
     recupereReutilisationKg: t.reutilisation,
-    dechets: null,
+    dechets: dechets
+      ? {
+          numeroBsff: f.dechets_bsff?.trim() ?? "",
+          contenants: f.dechets_contenants?.trim() ?? "",
+          destinationNom: f.dechets_destination?.trim() ?? "",
+        }
+      : null,
   };
 }
 
@@ -206,6 +218,7 @@ export const ficheGazSchema = z.object({
   client_id: z.string().uuid("Sélectionnez un client."),
   date_intervention: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date obligatoire."),
   natures_cerfa: z.array(z.enum(Object.keys(NATURES_INTERVENTION) as [NatureIntervention, ...NatureIntervention[]])).default([]),
+  nature_autre: texte(120),
   equipement_type: z.enum(["climatisation", "pompe_a_chaleur"]).nullable().optional(),
   equipement_marque: texte(100),
   equipement_repere: texte(100),
@@ -221,6 +234,9 @@ export const ficheGazSchema = z.object({
   etancheite_fuite_localisation: texte(500),
   fuite_reparation: z.enum(["realisee", "a_faire"]).nullable().optional(),
   fluide_observations: texte(2000),
+  dechets_bsff: texte(60),
+  dechets_contenants: texte(200),
+  dechets_destination: texte(300),
   bon_devis_numero: texte(60),
   bon_objet: texte(200),
   bon_reserves: z.enum(["sans", "avec"]).nullable().optional(),
@@ -250,3 +266,103 @@ export const signatureFichePubliqueSchema = z.object({
   bon_reserves: z.enum(["sans", "avec"]),
   bon_reserves_texte: z.string().trim().max(1000).optional().or(z.literal("")),
 });
+
+/** Valeurs proposées à l'ouverture d'une nouvelle fiche (tout est modifiable). */
+export type FichePrefill = Partial<{
+  client_id: string;
+  date_intervention: string;
+  natures_cerfa: NatureIntervention[];
+  equipement_type: TypeEquipement;
+  equipement_marque: string;
+  equipement_repere: string;
+  equipement_modele: string;
+  equipement_num_serie: string;
+  fluide_frigo_type: string;
+  fluide_charge_totale_kg: string;
+  etancheite_detecteur: string;
+  etancheite_detecteur_controle_le: string;
+  detection_permanente: boolean;
+  bon_devis_numero: string;
+  bon_objet: string;
+}>;
+
+const txt = (v: string | null | undefined) => (v ?? "").trim();
+const kgTexte = (v: number | string | null | undefined) => (v === null || v === undefined || v === "" ? "" : String(Number(v)));
+
+/**
+ * Nouvelle visite sur un équipement déjà vu (fiche ou intervention
+ * précédente) : client et matériel repris, la date, les natures, les
+ * quantités et les réserves restent à saisir.
+ */
+export function prefillDepuisIntervention(it: {
+  client_id: string | null;
+  equipement_type?: string | null;
+  equipement_marque: string | null;
+  equipement_repere?: string | null;
+  equipement_modele: string | null;
+  equipement_num_serie: string | null;
+  fluide_frigo_type: string | null;
+  fluide_charge_totale_kg: number | string | null;
+  etancheite_detecteur?: string | null;
+  etancheite_detecteur_controle_le?: string | null;
+  detection_permanente?: boolean | null;
+}): FichePrefill {
+  const p: FichePrefill = {
+    equipement_marque: txt(it.equipement_marque),
+    equipement_repere: txt(it.equipement_repere),
+    equipement_modele: txt(it.equipement_modele),
+    equipement_num_serie: txt(it.equipement_num_serie),
+    fluide_frigo_type: txt(it.fluide_frigo_type),
+    fluide_charge_totale_kg: kgTexte(it.fluide_charge_totale_kg),
+    detection_permanente: it.detection_permanente ?? false,
+  };
+  if (it.client_id) p.client_id = it.client_id;
+  if (it.equipement_type === "climatisation" || it.equipement_type === "pompe_a_chaleur") p.equipement_type = it.equipement_type;
+  if (txt(it.etancheite_detecteur)) {
+    p.etancheite_detecteur = txt(it.etancheite_detecteur);
+    p.etancheite_detecteur_controle_le = txt(it.etancheite_detecteur_controle_le);
+  }
+  return p;
+}
+
+/**
+ * Fiche de mise en service d'après un devis accepté : client, n° de
+ * devis, objet et natures déduits de l'activité, matériel du devis.
+ */
+export function prefillDepuisDevis(devis: {
+  client_id: string;
+  numero: string;
+  type_activite: string;
+  equipement_info: unknown;
+}): FichePrefill {
+  const eq = (devis.equipement_info && typeof devis.equipement_info === "object" ? devis.equipement_info : {}) as Record<string, unknown>;
+  const str = (k: string) => (typeof eq[k] === "string" ? (eq[k] as string).trim() : "");
+  const p: FichePrefill = {
+    client_id: devis.client_id,
+    bon_devis_numero: devis.numero,
+    equipement_marque: str("marque"),
+    equipement_modele: str("modele"),
+    equipement_num_serie: str("num_serie"),
+    fluide_frigo_type: str("fluide_frigo_type").toUpperCase(),
+    fluide_charge_totale_kg: kgTexte(typeof eq.fluide_frigo_kg === "number" || typeof eq.fluide_frigo_kg === "string" ? eq.fluide_frigo_kg : null),
+  };
+  switch (devis.type_activite) {
+    case "installation_clim":
+      p.equipement_type = "climatisation";
+      p.bon_objet = OBJETS_BON[1];
+      p.natures_cerfa = ["assemblage", "mise_en_service"];
+      break;
+    case "installation_pac":
+      p.equipement_type = "pompe_a_chaleur";
+      p.bon_objet = OBJETS_BON[0];
+      p.natures_cerfa = ["assemblage", "mise_en_service"];
+      break;
+    case "entretien":
+      p.natures_cerfa = ["maintenance"];
+      break;
+    case "depannage":
+      p.natures_cerfa = ["modification"];
+      break;
+  }
+  return p;
+}
