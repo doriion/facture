@@ -42,6 +42,7 @@ function sanitizeOptions(raw: CerfaOptions): CerfaOptions {
     natures: (Array.isArray(raw.natures) ? raw.natures : []).filter(
       (nat): nat is NatureIntervention => nat in NATURES_INTERVENTION,
     ),
+    natureAutre: txt(raw.natureAutre, 120),
     systemePermanentDetection: raw.systemePermanentDetection === true,
     chargeViergeKg: kg(raw.chargeViergeKg),
     chargeRecycleKg: kg(raw.chargeRecycleKg),

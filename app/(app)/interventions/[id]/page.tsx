@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarPlus, FileText, Receipt, Repeat } from "lucide-react";
+import { ArrowLeft, CalendarPlus, FileText, Receipt, Repeat, Snowflake } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { getIntervention } from "@/lib/actions/interventions";
@@ -19,6 +19,7 @@ import { InterventionDeleteButton } from "@/components/interventions/interventio
 import { InterventionCorbeilleBanner } from "@/components/interventions/intervention-corbeille-banner";
 import { HistoriqueClientCard } from "@/components/interventions/historique-client-card";
 import { ActionsFiche } from "@/components/actions-fiche";
+import { ConvertirFicheGazButton } from "@/components/fiches-gaz/convertir-fiche-gaz-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateFr } from "@/lib/format";
@@ -46,6 +47,9 @@ export default async function EditInterventionPage(
 
   const operateurNom =
     [profil?.prenom, profil?.nom].filter(Boolean).join(" ") || undefined;
+  const operateurQualite = profil?.num_attestation_fluides_frigo
+    ? `Opérateur — attestation n° ${profil.num_attestation_fluides_frigo}`
+    : "Opérateur";
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -139,6 +143,18 @@ export default async function EditInterventionPage(
               </Button>
             )}
             <ActionsFiche>
+              {/* Fiche gaz : la même intervention, vue CERFA + bon de
+                  réception (pas de doublon dans l'agenda). */}
+              {intervention.est_fiche_gaz ? (
+                <Button variant="outline" asChild>
+                  <Link href={`/fiches-gaz/${intervention.id}`}>
+                    <Snowflake className="size-4" />
+                    Ouvrir la fiche gaz
+                  </Link>
+                </Button>
+              ) : (
+                <ConvertirFicheGazButton interventionId={intervention.id} />
+              )}
               <AjouterTacheButton
                 lienLabel={`Intervention du ${formatDateFr(intervention.date_intervention)}`}
                 interventionId={intervention.id}
@@ -193,6 +209,8 @@ export default async function EditInterventionPage(
             operateur={signatures.operateur}
             detenteur={signatures.detenteur}
             operateurNom={operateurNom}
+            operateurQualite={operateurQualite}
+            signatureMemorisee={Boolean(profil?.signature_url)}
           />
         </div>
 

@@ -44,6 +44,8 @@ export type NatureIntervention = keyof typeof NATURES_INTERVENTION;
 export type CerfaOptions = {
   ficheNumero?: string;
   natures: NatureIntervention[];
+  /** Case « Autre (préciser) » du cadre 4. */
+  natureAutre?: string;
   systemePermanentDetection: boolean;
   /** Ventilation du fluide chargé (kg) — cadre 11 A/B/C */
   chargeViergeKg?: number | null;
@@ -87,6 +89,7 @@ export type CerfaData = {
     chargeTeqCo2: number | null;
   };
   natures: NatureIntervention[];
+  natureAutre: string;
   detecteur: {
     identification: string;
     dernierControle: string;
@@ -277,6 +280,7 @@ export function buildCerfaData(
       chargeTeqCo2: equivalentCo2Tonnes(fluide, chargeKg),
     },
     natures: options.natures,
+    natureAutre: options.natureAutre?.trim() ?? "",
     detecteur:
       intervention.etancheite_controle && intervention.etancheite_detecteur
         ? {

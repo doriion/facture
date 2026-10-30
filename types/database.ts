@@ -1411,6 +1411,10 @@ export type Database = {
           signature_token: string | null;
           signature_token_expires_at: string | null;
           signature_demandee_le: string | null;
+          nature_autre: string | null;
+          dechets_bsff: string | null;
+          dechets_contenants: string | null;
+          dechets_destination: string | null;
           id: string;
           notes: string | null;
           rappel_push_envoye_le: string | null;
@@ -1459,6 +1463,10 @@ export type Database = {
           signature_token?: string | null;
           signature_token_expires_at?: string | null;
           signature_demandee_le?: string | null;
+          nature_autre?: string | null;
+          dechets_bsff?: string | null;
+          dechets_contenants?: string | null;
+          dechets_destination?: string | null;
           id?: string;
           notes?: string | null;
           rappel_push_envoye_le?: string | null;
@@ -1507,6 +1515,10 @@ export type Database = {
           signature_token?: string | null;
           signature_token_expires_at?: string | null;
           signature_demandee_le?: string | null;
+          nature_autre?: string | null;
+          dechets_bsff?: string | null;
+          dechets_contenants?: string | null;
+          dechets_destination?: string | null;
           id?: string;
           notes?: string | null;
           rappel_push_envoye_le?: string | null;
@@ -1737,6 +1749,7 @@ export type Database = {
           iban: string | null;
           id: string;
           logo_url: string | null;
+          signature_url: string | null;
           mediateur_adresse: string | null;
           mediateur_nom: string | null;
           mediateur_site_web: string | null;
@@ -1794,6 +1807,7 @@ export type Database = {
           iban?: string | null;
           id?: string;
           logo_url?: string | null;
+          signature_url?: string | null;
           mediateur_adresse?: string | null;
           mediateur_nom?: string | null;
           mediateur_site_web?: string | null;
@@ -1851,6 +1865,7 @@ export type Database = {
           iban?: string | null;
           id?: string;
           logo_url?: string | null;
+          signature_url?: string | null;
           mediateur_adresse?: string | null;
           mediateur_nom?: string | null;
           mediateur_site_web?: string | null;

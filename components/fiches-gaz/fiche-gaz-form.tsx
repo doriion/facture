@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, History, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { enregistrerFicheGazAction } from "@/lib/actions/fiches-gaz";
+import { listEquipementsClientAction } from "@/lib/actions/interventions";
+import type { EquipementClient } from "@/lib/equipements-client";
 import { appelerAction } from "@/lib/appel-action";
 import { NATURES_INTERVENTION, periodiciteLabel, type NatureIntervention } from "@/lib/cerfa";
 import {
@@ -17,6 +19,7 @@ import {
   totauxManipulations,
   TYPES_EQUIPEMENT,
   type FicheGazInput,
+  type FichePrefill,
   type Manipulation,
   type NatureManipulation,
 } from "@/lib/fiches-gaz";
@@ -40,6 +43,7 @@ type Etat = {
   client_id: string;
   date_intervention: string;
   natures_cerfa: NatureIntervention[];
+  nature_autre: string;
   equipement_type: "climatisation" | "pompe_a_chaleur" | null;
   equipement_marque: string;
   equipement_repere: string;
@@ -55,6 +59,9 @@ type Etat = {
   etancheite_fuite_localisation: string;
   fuite_reparation: "realisee" | "a_faire" | null;
   fluide_observations: string;
+  dechets_bsff: string;
+  dechets_contenants: string;
+  dechets_destination: string;
   bon_devis_numero: string;
   bon_objet: string;
   bon_reserves: "sans" | "avec" | null;
@@ -63,29 +70,34 @@ type Etat = {
 
 const AUTRE_FLUIDE = "__autre__";
 
-function etatDepuisFiche(fiche: Intervention | null, defauts: { date: string; clientId?: string }): Etat {
+function etatDepuisFiche(fiche: Intervention | null, defauts: { date: string; clientId?: string; prefill?: FichePrefill }): Etat {
   const kg = (v: number | null | undefined) => (v === null || v === undefined ? "" : String(v));
+  const p = fiche ? {} : (defauts.prefill ?? {});
   return {
-    client_id: fiche?.client_id ?? defauts.clientId ?? "",
-    date_intervention: fiche?.date_intervention ?? defauts.date,
-    natures_cerfa: (fiche?.natures_cerfa ?? []).filter((n): n is NatureIntervention => n in NATURES_INTERVENTION),
-    equipement_type: fiche?.equipement_type === "climatisation" || fiche?.equipement_type === "pompe_a_chaleur" ? fiche.equipement_type : null,
-    equipement_marque: fiche?.equipement_marque ?? "",
-    equipement_repere: fiche?.equipement_repere ?? "",
-    equipement_modele: fiche?.equipement_modele ?? "",
-    equipement_num_serie: fiche?.equipement_num_serie ?? "",
-    fluide_frigo_type: fiche?.fluide_frigo_type ?? "",
-    fluide_charge_totale_kg: kg(fiche?.fluide_charge_totale_kg !== null && fiche?.fluide_charge_totale_kg !== undefined ? Number(fiche.fluide_charge_totale_kg) : null),
+    client_id: fiche?.client_id ?? p.client_id ?? defauts.clientId ?? "",
+    date_intervention: fiche?.date_intervention ?? p.date_intervention ?? defauts.date,
+    natures_cerfa: (fiche?.natures_cerfa ?? p.natures_cerfa ?? []).filter((n): n is NatureIntervention => n in NATURES_INTERVENTION),
+    nature_autre: fiche?.nature_autre ?? "",
+    equipement_type: fiche?.equipement_type === "climatisation" || fiche?.equipement_type === "pompe_a_chaleur" ? fiche.equipement_type : (p.equipement_type ?? null),
+    equipement_marque: fiche?.equipement_marque ?? p.equipement_marque ?? "",
+    equipement_repere: fiche?.equipement_repere ?? p.equipement_repere ?? "",
+    equipement_modele: fiche?.equipement_modele ?? p.equipement_modele ?? "",
+    equipement_num_serie: fiche?.equipement_num_serie ?? p.equipement_num_serie ?? "",
+    fluide_frigo_type: fiche?.fluide_frigo_type ?? p.fluide_frigo_type ?? "",
+    fluide_charge_totale_kg: fiche ? kg(fiche.fluide_charge_totale_kg !== null ? Number(fiche.fluide_charge_totale_kg) : null) : (p.fluide_charge_totale_kg ?? ""),
     manipulations: manipulationsDepuisJson(fiche?.fluide_manipulations).map((m) => ({ ...m, kg: String(m.kg) })),
-    etancheite_detecteur: fiche?.etancheite_detecteur ?? "",
-    etancheite_detecteur_controle_le: fiche?.etancheite_detecteur_controle_le ?? "",
-    detection_permanente: fiche?.detection_permanente ?? false,
+    etancheite_detecteur: fiche?.etancheite_detecteur ?? p.etancheite_detecteur ?? "",
+    etancheite_detecteur_controle_le: fiche?.etancheite_detecteur_controle_le ?? p.etancheite_detecteur_controle_le ?? "",
+    detection_permanente: fiche?.detection_permanente ?? p.detection_permanente ?? false,
     etancheite_fuite: fiche?.etancheite_fuite ?? null,
     etancheite_fuite_localisation: fiche?.etancheite_fuite_localisation ?? "",
     fuite_reparation: fiche?.fuite_reparation === "realisee" || fiche?.fuite_reparation === "a_faire" ? fiche.fuite_reparation : null,
     fluide_observations: fiche?.fluide_observations ?? "",
-    bon_devis_numero: fiche?.bon_devis_numero ?? "",
-    bon_objet: fiche?.bon_objet ?? "",
+    dechets_bsff: fiche?.dechets_bsff ?? "",
+    dechets_contenants: fiche?.dechets_contenants ?? "",
+    dechets_destination: fiche?.dechets_destination ?? "",
+    bon_devis_numero: fiche?.bon_devis_numero ?? p.bon_devis_numero ?? "",
+    bon_objet: fiche?.bon_objet ?? p.bon_objet ?? "",
     bon_reserves: fiche?.bon_reserves === "sans" || fiche?.bon_reserves === "avec" ? fiche.bon_reserves : null,
     bon_reserves_texte: fiche?.bon_reserves_texte ?? "",
   };
@@ -96,6 +108,7 @@ function versSaisie(e: Etat): FicheGazInput {
     client_id: e.client_id,
     date_intervention: e.date_intervention,
     natures_cerfa: e.natures_cerfa,
+    nature_autre: e.nature_autre,
     equipement_type: e.equipement_type,
     equipement_marque: e.equipement_marque,
     equipement_repere: e.equipement_repere,
@@ -111,6 +124,9 @@ function versSaisie(e: Etat): FicheGazInput {
     etancheite_fuite_localisation: e.etancheite_fuite_localisation,
     fuite_reparation: e.fuite_reparation,
     fluide_observations: e.fluide_observations,
+    dechets_bsff: e.dechets_bsff,
+    dechets_contenants: e.dechets_contenants,
+    dechets_destination: e.dechets_destination,
     bon_devis_numero: e.bon_devis_numero,
     bon_objet: e.bon_objet,
     bon_reserves: e.bon_reserves,
@@ -158,15 +174,33 @@ export function FicheGazForm({
   dateParDefaut,
   clientIdParDefaut,
   detecteurs,
+  prefill,
 }: {
   clients: Client[];
   fiche: Intervention | null;
   dateParDefaut: string;
   clientIdParDefaut?: string;
   detecteurs: Array<{ nom: string; controle_le: string | null }>;
+  /** Valeurs proposées pour une nouvelle fiche (devis, visite précédente, dernier détecteur). */
+  prefill?: FichePrefill;
 }) {
   const router = useRouter();
-  const [etat, setEtat] = useState<Etat>(() => etatDepuisFiche(fiche, { date: dateParDefaut, clientId: clientIdParDefaut }));
+  const [etat, setEtat] = useState<Etat>(() => etatDepuisFiche(fiche, { date: dateParDefaut, clientId: clientIdParDefaut, prefill }));
+  // Matériel déjà vu chez ce client : repris d'un tap au lieu d'être ressaisi.
+  const [equipementsClient, setEquipementsClient] = useState<EquipementClient[]>([]);
+  useEffect(() => {
+    if (!etat.client_id) {
+      setEquipementsClient([]);
+      return;
+    }
+    let actif = true;
+    listEquipementsClientAction(etat.client_id).then((r) => {
+      if (actif) setEquipementsClient(r.ok ? r.data : []);
+    });
+    return () => {
+      actif = false;
+    };
+  }, [etat.client_id]);
   const [erreurClient, setErreurClient] = useState<string | undefined>();
   const [enregistrement, setEnregistrement] = useState<"inactif" | "en_cours" | "fait" | "erreur">("inactif");
   const [creation, setCreation] = useState(false);
@@ -174,6 +208,8 @@ export function FicheGazForm({
   const derniereSauvegarde = useRef<string>(JSON.stringify(versSaisie(etat)));
   const fluideAutre = etat.fluide_frigo_type !== "" && !FLUIDES_CONNUS.includes(etat.fluide_frigo_type);
   const [modeAutreFluide, setModeAutreFluide] = useState(fluideAutre);
+  const [autreNature, setAutreNature] = useState(Boolean(fiche?.nature_autre));
+  const [avecDechets, setAvecDechets] = useState(Boolean(fiche?.dechets_bsff || fiche?.dechets_contenants || fiche?.dechets_destination));
 
   const maj = useCallback((patch: Partial<Etat>) => {
     modifie.current = true;
@@ -282,7 +318,11 @@ export function FicheGazForm({
               {NATURES_COURTES[n]}
             </Puce>
           ))}
+          <Puce actif={autreNature} onClick={() => { setAutreNature(!autreNature); if (autreNature) maj({ nature_autre: "" }); }}>
+            Autre
+          </Puce>
         </div>
+        {autreNature && <Input aria-label="Autre nature d'intervention" value={etat.nature_autre} onChange={(e) => maj({ nature_autre: e.target.value })} placeholder="Préciser (ex : transfert de fluide, test d'étanchéité à l'azote)" />}
       </Section>
 
       <Section titre="Équipement">
@@ -293,6 +333,37 @@ export function FicheGazForm({
             </Puce>
           ))}
         </div>
+        {equipementsClient.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <History className="size-3.5" />
+              Déjà vu chez ce client — reprendre d&apos;un tap :
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {equipementsClient.slice(0, 4).map((eq) => {
+                const libelle = [eq.marque, eq.modele].filter(Boolean).join(" ") || eq.numSerie || "Équipement";
+                const actif = Boolean(eq.marque) && etat.equipement_marque === eq.marque && (!eq.modele || etat.equipement_modele === eq.modele);
+                return (
+                  <Puce
+                    key={eq.cle}
+                    actif={actif}
+                    onClick={() =>
+                      maj({
+                        equipement_marque: eq.marque ?? etat.equipement_marque,
+                        equipement_modele: eq.modele ?? etat.equipement_modele,
+                        equipement_num_serie: eq.numSerie ?? etat.equipement_num_serie,
+                        fluide_frigo_type: eq.fluide ?? etat.fluide_frigo_type,
+                      })
+                    }
+                  >
+                    {libelle}
+                    {eq.numSerie ? <span className="font-normal text-muted-foreground"> · {eq.numSerie}</span> : null}
+                  </Puce>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="equipement_marque">Marque</Label>
@@ -417,6 +488,25 @@ export function FicheGazForm({
           Ajouter une manipulation
         </Button>
       </Section>
+
+      {(totaux.recupere > 0 || avecDechets) && (
+        <Section titre="Déchets de fluide (cadres 12-13 du CERFA)" aide="Fluide récupéré pour traitement : n° de BSFF Trackdéchets, contenant, installation de destination.">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="dechets_bsff">N° de BSFF (Trackdéchets)</Label>
+              <Input id="dechets_bsff" value={etat.dechets_bsff} onChange={(e) => { setAvecDechets(true); maj({ dechets_bsff: e.target.value }); }} placeholder="BSFF-2026…" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dechets_contenants">Contenant(s) de récupération</Label>
+              <Input id="dechets_contenants" value={etat.dechets_contenants} onChange={(e) => { setAvecDechets(true); maj({ dechets_contenants: e.target.value }); }} placeholder="Ex : bouteille de récupération n° 12" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="dechets_destination">Installation de destination (nom, SIRET, adresse)</Label>
+            <Input id="dechets_destination" value={etat.dechets_destination} onChange={(e) => { setAvecDechets(true); maj({ dechets_destination: e.target.value }); }} placeholder="Collecteur / distributeur qui reprend le fluide" />
+          </div>
+        </Section>
+      )}
 
       <Section titre="Contrôle d'étanchéité">
         <div className="grid gap-3 sm:grid-cols-2">

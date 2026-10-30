@@ -11,10 +11,14 @@ import {
   ficheGazSchema,
   libelleEquipement,
   numeroFiche,
+  prefillDepuisDevis,
+  prefillDepuisIntervention,
   totauxManipulations,
   typeInterventionDepuisNatures,
   type FicheGazInput,
+  type FichePrefill,
 } from "@/lib/fiches-gaz";
+import { naturesParDefaut } from "@/lib/cerfa";
 import {
   archiverBonFiche,
   archiverCerfaFiche,
@@ -121,6 +125,7 @@ function colonnesFiche(v: ReturnType<typeof ficheGazSchema.parse>) {
     description: descriptionDepuisFiche({ bon_objet: v.bon_objet, natures_cerfa: v.natures_cerfa, equipement_type: v.equipement_type ?? null }),
     est_fiche_gaz: true,
     natures_cerfa: v.natures_cerfa,
+    nature_autre: texteOuNull(v.nature_autre),
     equipement_type: v.equipement_type ?? null,
     equipement_marque: texteOuNull(v.equipement_marque),
     equipement_repere: texteOuNull(v.equipement_repere),
@@ -139,6 +144,9 @@ function colonnesFiche(v: ReturnType<typeof ficheGazSchema.parse>) {
     etancheite_fuite_localisation: v.etancheite_fuite ? texteOuNull(v.etancheite_fuite_localisation) : null,
     fuite_reparation: v.etancheite_fuite ? v.fuite_reparation ?? null : null,
     fluide_observations: texteOuNull(v.fluide_observations),
+    dechets_bsff: texteOuNull(v.dechets_bsff),
+    dechets_contenants: texteOuNull(v.dechets_contenants),
+    dechets_destination: texteOuNull(v.dechets_destination),
     bon_devis_numero: texteOuNull(v.bon_devis_numero),
     bon_objet: texteOuNull(v.bon_objet),
     bon_reserves: v.bon_reserves ?? null,
@@ -373,4 +381,53 @@ export async function getFicheGaz(id: string): Promise<{
       ? `${await baseUrlPublique()}/f/${it.signature_token}`
       : null;
   return { intervention: it, client: fiche.client, factureNumero: fiche.factureNumero, lienSignature };
+}
+
+/**
+ * Valeurs proposées pour une nouvelle fiche : d'après une fiche ou une
+ * intervention précédente (?source=, nouvelle visite sur le même
+ * matériel) ou d'après un devis (?devis=, mise en service). Sinon rien.
+ */
+export async function prefillFicheGaz(params: { source?: string; devis?: string }): Promise<FichePrefill> {
+  const uuid = /^[0-9a-f-]{36}$/i;
+  const supabase = await createClient();
+  if (params.source && uuid.test(params.source)) {
+    const { data } = await supabase.from("interventions").select("*").eq("id", params.source).maybeSingle();
+    if (data) return prefillDepuisIntervention(data);
+  }
+  if (params.devis && uuid.test(params.devis)) {
+    const { data } = await supabase.from("devis").select("client_id, numero, type_activite, equipement_info").eq("id", params.devis).maybeSingle();
+    if (data) return prefillDepuisDevis(data);
+  }
+  return {};
+}
+
+/**
+ * Transforme une intervention ordinaire en fiche gaz, sans la dupliquer
+ * (même rendez-vous dans l'agenda, même facture) : n° de fiche attribué,
+ * natures proposées d'après le type d'intervention.
+ */
+export async function convertirEnFicheGazAction(interventionId: string): Promise<ActionResult<{ id: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Non authentifié." };
+  const { data: it } = await supabase.from("interventions").select("id, est_fiche_gaz, fiche_numero, date_intervention, type, etancheite_controle, supprime_le").eq("id", interventionId).maybeSingle();
+  if (!it) return { ok: false, error: "Intervention introuvable." };
+  if (it.supprime_le) return { ok: false, error: "Intervention dans la corbeille : restaurez-la d'abord." };
+  if (it.est_fiche_gaz) return { ok: true, data: { id: it.id } };
+  const { count } = await supabase.from("interventions").select("id", { count: "exact", head: true }).eq("est_fiche_gaz", true).eq("date_intervention", it.date_intervention);
+  const { error } = await supabase
+    .from("interventions")
+    .update({
+      est_fiche_gaz: true,
+      fiche_numero: it.fiche_numero ?? numeroFiche(it.date_intervention, (count ?? 0) + 1),
+      natures_cerfa: naturesParDefaut(it),
+    })
+    .eq("id", it.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/fiches-gaz");
+  revalidatePath(`/interventions/${it.id}`);
+  return { ok: true, data: { id: it.id } };
 }
