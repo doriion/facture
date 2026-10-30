@@ -57,7 +57,7 @@ export function MargesVue({ marges }: { marges: MargesAnnee }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Par mois</CardTitle>
-          <CardDescription>Mois d&apos;émission des factures (hors brouillons et annulées, avoirs en moins).</CardDescription>
+          <CardDescription>Mois d&apos;émission des factures (hors brouillons et annulées, avoirs en moins). Une facture ventilée en acompte + solde compte une fois, avec ses prix d&apos;achat.</CardDescription>
         </CardHeader>
         <CardContent>
           {mois.length === 0 ? (
@@ -160,6 +160,7 @@ function LigneChantier({ c }: { c: MargeChantier }) {
           <p className="truncate">
             <span className="font-mono font-medium">{c.numero}</span>
             {c.avoir && <span className="ml-1 text-xs uppercase text-muted-foreground">avoir</span>}
+            {c.ventilee && <span className="ml-1 text-xs text-muted-foreground">(acompte + solde)</span>}
             <span className="text-muted-foreground"> · {c.client_nom ?? "client supprimé"}</span>
           </p>
           <p className="text-xs text-muted-foreground">

@@ -28,7 +28,7 @@ export async function getMargesAnnee(annee?: number): Promise<MargesAnnee> {
   const { data } = await supabase
     .from("factures_lignes")
     .select(
-      "type, quantite, prix_unitaire_ht, prix_achat_ttc_unitaire, facture:factures!inner(id, numero, date_emission, statut, type_facture, total_ht, client:clients(nom))",
+      "type, quantite, prix_unitaire_ht, prix_achat_ttc_unitaire, facture:factures!inner(id, numero, date_emission, statut, type_facture, total_ht, facture_parent_id, client:clients(nom))",
     )
     .gte("facture.date_emission", `${an}-01-01`)
     .lt("facture.date_emission", `${an + 1}-01-01`);
