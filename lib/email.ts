@@ -332,6 +332,104 @@ export function buildBonInterventionEmail(args: {
 }
 
 /**
+ * E-mail d'envoi d'une fiche gaz (CERFA 15497 + bon de réception joints)
+ * au client, une fois la fiche signée ou simplement pour information.
+ */
+export function buildFicheGazEmail(args: {
+  clientNom: string;
+  expediteurNom: string;
+  dateText: string;
+  ficheNumero: string | null;
+  equipementText: string | null;
+  messagePerso?: string;
+  signature?: SignatureEmail;
+}): { subject: string; html: string; text: string } {
+  const numero = args.ficheNumero ? ` n° ${args.ficheNumero}` : "";
+  const subject = `Fiche d'intervention fluide frigorigène${numero} — ${args.dateText}`;
+  const resume: Array<[string, string]> = [["Intervention", `le ${args.dateText}`]];
+  if (args.ficheNumero) resume.push(["Fiche n°", args.ficheNumero]);
+  if (args.equipementText) resume.push(["Équipement", args.equipementText]);
+  return emailDepuisContenu(subject, {
+    titre: `Fiche d'intervention${numero}`,
+    apercu: `Intervention du ${args.dateText}${args.equipementText ? ` · ${args.equipementText}` : ""}`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `Vous trouverez en pièces jointes la fiche d'intervention fluides frigorigènes (CERFA 15497) et le bon de réception relatifs à mon intervention du ${args.dateText}.`,
+      "Cette fiche est un document réglementaire : conservez-la avec les papiers de votre équipement (elle est exigible pendant cinq ans).",
+    ],
+    resume,
+    messagePerso: args.messagePerso,
+    conclusion: "Je reste à votre disposition pour toute question. Merci de votre confiance.",
+    signature: sig(args.signature, args.expediteurNom),
+  });
+}
+
+/**
+ * E-mail invitant le client à signer la fiche gaz en ligne (lien unique).
+ */
+export function buildSignatureFicheEmail(args: {
+  clientNom: string;
+  expediteurNom: string;
+  dateText: string;
+  ficheNumero: string | null;
+  equipementText: string | null;
+  lien: string;
+  expireLeText: string;
+  signature?: SignatureEmail;
+}): { subject: string; html: string; text: string } {
+  const numero = args.ficheNumero ? ` n° ${args.ficheNumero}` : "";
+  const subject = `À signer : fiche d'intervention${numero} du ${args.dateText}`;
+  const resume: Array<[string, string]> = [["Intervention", `le ${args.dateText}`]];
+  if (args.ficheNumero) resume.push(["Fiche n°", args.ficheNumero]);
+  if (args.equipementText) resume.push(["Équipement", args.equipementText]);
+  resume.push(["Lien valable", `jusqu'au ${args.expireLeText}`]);
+  return emailDepuisContenu(subject, {
+    titre: `Fiche d'intervention${numero} à signer`,
+    apercu: `Signature en ligne de la fiche du ${args.dateText}`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes: [
+      `Suite à mon intervention du ${args.dateText} sur votre équipement, la fiche d'intervention fluides frigorigènes (CERFA 15497) et le bon de réception des travaux sont prêts.`,
+      "Le bouton ci-dessous vous permet de relire les documents, d'indiquer d'éventuelles réserves et de signer au doigt, directement depuis votre téléphone. Vous recevrez ensuite vos exemplaires signés par e-mail.",
+    ],
+    resume,
+    bouton: { libelle: "Lire et signer la fiche", href: args.lien },
+    conclusion: "Merci de votre confiance, et à bientôt.",
+    signature: sig(args.signature, args.expediteurNom),
+  });
+}
+
+/**
+ * Copie interne : le détenteur a signé la fiche gaz en ligne.
+ */
+export function buildFicheSigneeArtisanEmail(args: {
+  clientNom: string;
+  signataireNom: string;
+  dateSignatureText: string;
+  ficheNumero: string | null;
+  reservesText: string;
+  lienFiche: string;
+}): { subject: string; html: string; text: string } {
+  const numero = args.ficheNumero ? ` n° ${args.ficheNumero}` : "";
+  const subject = `Fiche gaz${numero} signée en ligne par ${args.signataireNom}`;
+  return emailDepuisContenu(subject, {
+    titre: `Fiche gaz${numero} signée`,
+    apercu: `${args.signataireNom} · ${args.reservesText}`,
+    salutation: "Bonjour,",
+    paragraphes: [
+      `${args.signataireNom} (${args.clientNom}) vient de signer en ligne la fiche d'intervention${numero}. Le CERFA et le bon de réception signés sont joints ; le client les a reçus aussi.`,
+    ],
+    resume: [
+      ["Client", args.clientNom],
+      ["Signé par", args.signataireNom],
+      ["Le", args.dateSignatureText],
+      ["Réception", args.reservesText],
+    ],
+    bouton: { libelle: "Ouvrir la fiche", href: args.lienFiche },
+    signature: { nom: NOM_APPLICATION },
+  });
+}
+
+/**
  * Relance pour facture impayée. Ton ferme mais courtois.
  */
 export function buildRelanceEmail(args: {
