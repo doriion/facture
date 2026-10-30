@@ -1,36 +1,45 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  CalendarDays,
-  FileSignature,
-  FileText,
-  MoreHorizontal,
-  ScrollText,
-  type LucideIcon,
-} from "lucide-react";
+import { MoreHorizontal, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { NAV_ITEMS } from "@/lib/constants";
+import { lireOnglets, ONGLETS_PAR_DEFAUT } from "@/lib/onglets-mobile";
 import { MobileNav } from "@/components/mobile-nav";
 
 /**
- * Barre d'onglets du bas (téléphone, < md) : les quatre écrans utilisés
- * sur le terrain à un tap du pouce, et « Plus » qui ouvre le menu
- * complet. Sur PC (≥ md) la barre latérale reste la navigation.
+ * Barre d'onglets du bas (téléphone, < md) : quatre écrans à un tap du
+ * pouce (choisis dans Paramètres → Onglets du téléphone, mémorisés sur
+ * l'appareil), et « Plus » qui ouvre le menu complet. Sur PC (≥ md) la
+ * barre latérale reste la navigation.
  *
  * Placée dans le flux du layout (pas en position fixe) : le contenu ne
  * passe jamais dessous et la zone sous la barre iPhone est respectée.
  */
-export const ONGLETS: Array<{ href: string; label: string; icon: LucideIcon }> = [
-  { href: "/agenda", label: "Agenda", icon: CalendarDays },
-  { href: "/devis", label: "Devis", icon: FileSignature },
-  { href: "/factures", label: "Factures", icon: FileText },
-  { href: "/contrats", label: "Contrats", icon: ScrollText },
-];
+type Onglet = { href: string; label: string; icon: LucideIcon };
+
+/** Liens mémorisés → onglets (icône et libellé de la navigation). */
+function ongletsDepuis(hrefs: string[]): Onglet[] {
+  return hrefs
+    .map((href) => NAV_ITEMS.find((n) => n.href === href))
+    .filter((n): n is (typeof NAV_ITEMS)[number] => Boolean(n))
+    .map((n) => ({ href: n.href, label: n.label, icon: n.icon }));
+}
 
 export function BarreOnglets({ badgeTaches = 0 }: { badgeTaches?: number }) {
   const pathname = usePathname();
+  // Rendu serveur avec les onglets par défaut, puis ceux choisis sur
+  // cet appareil (Paramètres → Onglets du téléphone).
+  const [ONGLETS, setOnglets] = useState<Onglet[]>(() => ongletsDepuis(ONGLETS_PAR_DEFAUT));
+  useEffect(() => {
+    const relire = () => setOnglets(ongletsDepuis(lireOnglets()));
+    relire();
+    window.addEventListener("onglets-mobile", relire);
+    return () => window.removeEventListener("onglets-mobile", relire);
+  }, []);
   const actif = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const plusActif = !ONGLETS.some((o) => actif(o.href));
 

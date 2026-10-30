@@ -13,6 +13,7 @@ import { AutomatisationsCard } from "@/components/parametres/automatisations-car
 import { HorairesVisitesCard } from "@/components/parametres/horaires-visites-card";
 import { normaliserHoraires } from "@/lib/horaires-visites";
 import { RappelsPushCard } from "@/components/parametres/rappels-push-card";
+import { OngletsMobileCard } from "@/components/parametres/onglets-mobile-card";
 import { DoubleAuthentificationCard } from "@/components/parametres/double-authentification-card";
 import { etatMfa } from "@/lib/actions/mfa";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
@@ -114,6 +115,8 @@ export default async function ParametresPage() {
       <ProfilForm profil={profil} />
 
       <RappelsPushCard reglages={reglagesPush} appareils={appareilsPush} />
+
+      <OngletsMobileCard />
 
       <HorairesVisitesCard horaires={normaliserHoraires(profil?.horaires_visites)} />
 

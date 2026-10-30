@@ -30,6 +30,7 @@ import {
 } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
 import { EmailDocumentButton } from "@/components/email-document-button";
+import { ProlongerValiditeButton, RelancerDevisButton } from "@/components/devis/devis-raccourcis";
 import { PartagerPdfButton } from "@/components/partager-pdf-button";
 import { NomModeleDialog } from "@/components/devis/nom-modele-dialog";
 import {
@@ -336,6 +337,8 @@ export function DevisActions({
             )}
             Marquer accepté
           </Button>
+          {!signee && <RelancerDevisButton devisId={devisId} clientEmail={clientEmail ?? null} size="default" />}
+          {!signee && <ProlongerValiditeButton devisId={devisId} />}
           <Button
             variant="outline"
             onClick={() => changeStatut("refuse", "Devis refusé")}
@@ -389,6 +392,8 @@ export function DevisActions({
           </AlertDialogContent>
         </AlertDialog>
       )}
+
+      {statut === "expire" && !signee && !factureId && <ProlongerValiditeButton devisId={devisId} />}
 
       {(statut === "refuse" || statut === "expire") && (
         <Button

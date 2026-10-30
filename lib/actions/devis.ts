@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { completerPrixAchatCatalogue } from "@/lib/catalogue-sync";
+import { expirationLienDevis } from "@/lib/devis-public";
 import { MODELE_DEVIS_COMPLET } from "@/lib/devis-modele";
 import { motifIlike } from "@/lib/postgrest";
 import { aujourdhuiParis } from "@/lib/dates";
@@ -12,7 +14,7 @@ import { remplacerLignesDocument } from "@/lib/actions/lignes-helpers";
 import {
   conversionDevisAutorisee,
   motifVerrouDevis,
-  transitionDevisAutorisee, devisSigne } from "@/lib/devis-transitions";
+  transitionDevisAutorisee, devisSigne, MOTIF_DEVIS_MODELE, MOTIF_DEVIS_CONVERTI, MOTIF_DEVIS_SIGNE } from "@/lib/devis-transitions";
 import { normaliserNomModele, trierModeles } from "@/lib/modeles-devis";
 import {
   devisSchema,
@@ -325,6 +327,8 @@ export async function createDevisAction(
     await supabase.from("devis").delete().eq("id", devis.id);
     return { ok: false, error: lignesErr.message };
   }
+  // Prix d'achat saisis → articles du catalogue qui n'en ont pas (marges justes ensuite).
+  await completerPrixAchatCatalogue(supabase, v.lignes).catch(() => 0);
 
   revalidatePath("/devis");
   revalidatePath("/devis/modeles");
@@ -416,6 +420,8 @@ export async function updateDevisAction(
     })),
   );
   if (!remplacement.ok) return { ok: false, error: remplacement.error };
+
+  await completerPrixAchatCatalogue(supabase, v.lignes).catch(() => 0);
 
   revalidatePath("/devis");
   revalidatePath("/devis/modeles");
@@ -691,4 +697,42 @@ function cleanedAides(a: DevisFormValues["aides_financieres"]): Json {
   if (a.cee !== null && a.cee !== undefined) out.cee = a.cee;
   if (a.eco_ptz !== null && a.eco_ptz !== undefined) out.eco_ptz = a.eco_ptz;
   return out as Json;
+}
+
+/**
+ * Prolonge la validité d'un devis envoyé (ou expiré) de `jours` à partir
+ * d'aujourd'hui, sans repasser par le brouillon : le devis garde son
+ * numéro, son contenu et son statut « envoyé » ; le lien de signature
+ * en ligne, s'il existe, est prolongé d'autant. Un devis signé ou
+ * facturé ne se prolonge pas.
+ */
+export async function prolongerValiditeDevisAction(id: string, jours = 30): Promise<ActionResult<{ date_validite: string }>> {
+  const n = Math.round(Number(jours));
+  if (!Number.isFinite(n) || n < 1 || n > 180) return { ok: false, error: "Durée de prolongation : entre 1 et 180 jours." };
+  const supabase = await createClient();
+  const { data: existant } = await supabase
+    .from("devis")
+    .select("statut, facture_id, signature_client_url, retour_signe_url, est_modele, access_token")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existant) return { ok: false, error: "Devis introuvable." };
+  if (existant.est_modele) return { ok: false, error: MOTIF_DEVIS_MODELE };
+  if (existant.facture_id) return { ok: false, error: MOTIF_DEVIS_CONVERTI };
+  if (devisSigne(existant)) return { ok: false, error: MOTIF_DEVIS_SIGNE };
+  if (existant.statut !== "envoye") return { ok: false, error: "Seul un devis envoyé (ou expiré) se prolonge." };
+  const today = aujourdhuiParis();
+  const date_validite = ajouterJours(today, n);
+  const { error } = await supabase
+    .from("devis")
+    .update({
+      date_validite,
+      ...(existant.access_token ? { token_expires_at: expirationLienDevis(date_validite, new Date().toISOString()) } : {}),
+    })
+    .eq("id", id)
+    .eq("statut", "envoye");
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/devis");
+  revalidatePath(`/devis/${id}`);
+  revalidatePath("/dashboard");
+  return { ok: true, data: { date_validite } };
 }

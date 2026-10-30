@@ -2,6 +2,19 @@
 
 import { getAgendaEvents, type AFacturerItem, type AgendaEvent } from "@/lib/actions/agenda";
 import { aujourdhuiParis, composantesYmd } from "@/lib/dates";
+import { createClient } from "@/lib/supabase/server";
+import { devisARelancer, joursDepuisContact } from "@/lib/devis-relances";
+
+export type DevisDuFil = {
+  id: string;
+  numero: string;
+  client_nom: string | null;
+  client_email: string | null;
+  total_ht: number;
+  date_validite: string | null;
+  /** Jours depuis le dernier envoi au client (devis à relancer). */
+  joursSansReponse: number;
+};
 
 export type RdvDuJour = Pick<
   AgendaEvent,
@@ -26,6 +39,10 @@ export type FilDuJour = {
   aFacturer: AFacturerItem[];
   /** Nombre total d'interventions à facturer (la liste est tronquée). */
   nbAFacturer: number;
+  /** Devis acceptés qui n'ont pas encore de facture. */
+  devisAFacturer: DevisDuFil[];
+  /** Devis envoyés sans réponse depuis 7 jours, encore valables. */
+  devisARelancer: DevisDuFil[];
 };
 
 const MAX_A_FACTURER = 5;
@@ -63,10 +80,41 @@ export async function getFilDuJour(): Promise<FilDuJour> {
       a_facturer: e.a_facturer,
     }));
 
+  const { devisAFacturer, devisARelancer: aRelancer } = await devisDuFil(date);
+
   return {
     date,
     rdv,
     aFacturer: aFacturer.slice(0, MAX_A_FACTURER),
     nbAFacturer: aFacturer.length,
+    devisAFacturer,
+    devisARelancer: aRelancer,
+  };
+}
+
+/** Devis qui attendent une action : acceptés sans facture, envoyés sans réponse. */
+async function devisDuFil(today: string): Promise<{ devisAFacturer: DevisDuFil[]; devisARelancer: DevisDuFil[] }> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("devis")
+    .select("id, numero, statut, est_modele, date_emission, date_validite, email_envoye_le, facture_id, total_ht, client:clients(nom, email)")
+    .eq("est_modele", false)
+    .in("statut", ["accepte", "envoye"])
+    .is("facture_id", null)
+    .order("date_emission", { ascending: true });
+  type Row = NonNullable<typeof data>[number] & { client: { nom: string; email: string | null } | null };
+  const rows = (data ?? []) as Row[];
+  const versFil = (d: Row): DevisDuFil => ({
+    id: d.id,
+    numero: d.numero,
+    client_nom: d.client?.nom ?? null,
+    client_email: d.client?.email ?? null,
+    total_ht: Number(d.total_ht),
+    date_validite: d.date_validite,
+    joursSansReponse: joursDepuisContact(d, today),
+  });
+  return {
+    devisAFacturer: rows.filter((d) => d.statut === "accepte").map(versFil),
+    devisARelancer: devisARelancer(rows, today).map(versFil),
   };
 }

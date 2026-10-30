@@ -8,6 +8,7 @@ import { jobReconduction } from "@/lib/cron/jobs/reconduction";
 import { jobChatel } from "@/lib/cron/jobs/chatel";
 import { jobEmailTaches } from "@/lib/cron/jobs/taches";
 import { jobVisitesSuivi } from "@/lib/cron/jobs/visites-suivi";
+import { jobRecapMatin } from "@/lib/cron/jobs/recap-matin";
 
 /**
  * Registre des tâches orchestrées par /api/cron/quotidien (UN SEUL
@@ -26,4 +27,7 @@ export const JOBS: JobDef[] = [
   jobReconduction,
   jobChatel,
   jobEmailTaches,
+  // Récap du matin en dernier : il compte ce que les jobs du jour ont
+  // laissé à faire.
+  jobRecapMatin,
 ];

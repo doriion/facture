@@ -16,8 +16,7 @@ import {
   buildRelanceEmail,
   isEmailConfigured,
   sendEmail,
-  signatureDepuisProfil,
-} from "@/lib/email";
+  signatureDepuisProfil, buildRelanceDevisEmail } from "@/lib/email";
 import { formatDateFr, formatEuros } from "@/lib/format";
 import { joursDeRetard } from "@/lib/relances-helpers";
 import { getFacture, setFactureStatutAction } from "@/lib/actions/factures";
@@ -219,6 +218,7 @@ export async function envoyerFactureParEmailAction(
 export async function envoyerDevisParEmailAction(
   devisId: string,
   messagePerso?: string,
+  options: { relance?: boolean } = {},
 ): Promise<ActionResult> {
   if (!isEmailConfigured()) {
     return {
@@ -309,7 +309,20 @@ export async function envoyerDevisParEmailAction(
     if (!erreurJeton) lienSignature = `${await baseUrlPublique()}/d/${token}`;
   }
 
-  const email = buildDocumentEmail({
+  const email = options.relance
+    ? buildRelanceDevisEmail({
+        numero: devis.numero,
+        clientNom: client.nom,
+        expediteurNom,
+        totalText: formatEuros(Number(devis.total_ht)),
+        dateText: formatDateFr(devis.date_emission),
+        validiteText: devis.date_validite ? formatDateFr(devis.date_validite) : undefined,
+        natureActivite: devis.type_activite,
+        lienSignature,
+        messagePerso,
+        signature: signatureDepuisProfil(profil, expediteurNom),
+      })
+    : buildDocumentEmail({
     type: "devis",
     numero: devis.numero,
     clientNom: client.nom,
@@ -503,4 +516,13 @@ async function devisSourceDe(
     .eq("id", devisId)
     .maybeSingle();
   return data ?? null;
+}
+
+/**
+ * Relance d'un devis envoyé resté sans réponse : même PDF, même lien de
+ * signature, texte de rappel. MANUELLE (bouton du fil du jour ou de la
+ * fiche devis). L'envoi met à jour la date de dernier envoi au client.
+ */
+export async function envoyerRelanceDevisAction(devisId: string, messagePerso?: string): Promise<ActionResult> {
+  return envoyerDevisParEmailAction(devisId, messagePerso, { relance: true });
 }

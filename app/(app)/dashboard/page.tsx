@@ -18,6 +18,8 @@ import { automatismesEnPanne } from "@/lib/journal-helpers";
 import { aujourdhuiParis } from "@/lib/dates";
 import { AttestationsAlerte } from "@/components/dashboard/attestations-alerte";
 import { TopClients } from "@/components/dashboard/top-clients";
+import { SectionChiffres } from "@/components/dashboard/section-chiffres";
+import { PushBanniere } from "@/components/push-banniere";
 import {
   DevisRecentsCard,
   FacturesRecentesCard,
@@ -44,6 +46,8 @@ export default async function DashboardPage() {
         </p>
       </div>
 
+      <PushBanniere />
+
       <FilDuJourCard fil={fil} taches={tachesDuJour} relances={enRetard.factures} />
 
       <DeclarationRappelCard rappel={rappelDeclaration} />
@@ -53,6 +57,18 @@ export default async function DashboardPage() {
         mediateurManquant={data.mediateurManquant}
       />
 
+      {/* Téléphone : les alertes avant les chiffres (repliés). */}
+      <div className="md:hidden">
+        <AlertesSection
+          automatismes={automatismesEnPanne(journal, aujourdhuiParis())}
+          facturesEnRetard={data.facturesEnRetard}
+          devisExpirantBientot={data.devisExpirantBientot}
+          prochainesVisitesMaintenance={data.prochainesVisitesMaintenance}
+          contratsPdfManquant={data.contratsPdfManquant}
+        />
+      </div>
+
+      <SectionChiffres>
       <KpiCards
         caMois={data.caMois}
         caEncaisseMois={data.caEncaisseMois}
@@ -81,19 +97,22 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <AlertesSection
-        automatismes={automatismesEnPanne(journal, aujourdhuiParis())}
-        facturesEnRetard={data.facturesEnRetard}
-        devisExpirantBientot={data.devisExpirantBientot}
-        prochainesVisitesMaintenance={data.prochainesVisitesMaintenance}
-        contratsPdfManquant={data.contratsPdfManquant}
-      />
+      <div className="max-md:hidden">
+        <AlertesSection
+          automatismes={automatismesEnPanne(journal, aujourdhuiParis())}
+          facturesEnRetard={data.facturesEnRetard}
+          devisExpirantBientot={data.devisExpirantBientot}
+          prochainesVisitesMaintenance={data.prochainesVisitesMaintenance}
+          contratsPdfManquant={data.contratsPdfManquant}
+        />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <FacturesRecentesCard factures={data.facturesRecentes} />
         <DevisRecentsCard devis={data.devisRecents} />
         <TopClients clients={data.topClients} annee={data.annee} />
       </div>
+      </SectionChiffres>
     </div>
   );
 }

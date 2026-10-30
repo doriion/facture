@@ -122,6 +122,11 @@ export function ProduitsTable({ produits }: { produits: Produit[] }) {
                     {marge && marge.margeEuros !== null ? ` · marge ${formatEuros(marge.margeEuros)}` : ""}
                   </span>
                 )}
+                {afficherCouts && p.prix_achat_ttc === null && (
+                  <Badge variant="outline" className="border-amber-400 font-normal text-amber-700 dark:text-amber-300">
+                    Prix d&apos;achat manquant
+                  </Badge>
+                )}
               </div>
               <div className="mt-3 flex items-center justify-between border-t pt-2">
                 <div className="flex items-center gap-1">
@@ -257,7 +262,13 @@ function CellulesCouts({ produit }: { produit: Produit }) {
   return (
     <>
       <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
-        {achat === null ? "—" : formatEuros(achat)}
+        {achat === null ? (
+          <Badge variant="outline" className="border-amber-400 font-normal text-amber-700 dark:text-amber-300">
+            manquant
+          </Badge>
+        ) : (
+          formatEuros(achat)
+        )}
       </TableCell>
       <TableCell className="text-right text-sm tabular-nums">
         {marge.margeEuros === null ? (

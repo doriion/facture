@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Link2 } from "lucide-react";
+import { Copy, Link2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,25 @@ export function LienSignatureDevis({
         >
           <Copy className="size-3.5" />
           Copier
+        </Button>
+      )}
+      {!perime && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7"
+          onClick={() => {
+            const url = `${window.location.origin}/d/${token}`;
+            if (typeof navigator.share === "function") {
+              void navigator.share({ title: "Devis à signer", text: `Bonjour, voici le devis à relire et signer en ligne : ${url}` }).catch(() => {});
+            } else {
+              void navigator.clipboard.writeText(url).then(() => toast.success("Lien de signature copié."));
+            }
+          }}
+        >
+          <Share2 className="size-3.5" />
+          Partager (SMS, WhatsApp…)
         </Button>
       )}
     </div>
