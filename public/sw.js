@@ -9,7 +9,9 @@
  * - Pages (navigations) : RÉSEAU D'ABORD avec un délai plafonné ; si le
  *   réseau est absent ou trop lent, la dernière version de la MÊME page
  *   est servie depuis le cache (données du dernier passage), sinon la
- *   page /hors-ligne. Chaque page reçue du réseau est mise en cache.
+ *   page /hors-ligne. Chaque page reçue du réseau est mise en cache ;
+ *   une page déjà en cache s'affiche IMMÉDIATEMENT et se rafraîchit
+ *   sur place dès que le serveur répond (ouverture instantanée).
  *   Les pages sont donc conservées sur l'appareil : le cache est vidé à
  *   la déconnexion (message VIDER_PAGES) et à chaque nouvelle version.
  * - Préchauffage : après connexion, la page envoie PRECHAUFFER et les
@@ -32,7 +34,7 @@
  * et « Planifier » ne s'ouvrait plus.
  */
 
-const VERSION = "v5";
+const VERSION = "v6";
 const CACHE_STATIQUE = `ng-statique-${VERSION}`;
 const CACHE_PAGES = `ng-pages-${VERSION}`;
 const CACHE_PHOTOS = `ng-photos-${VERSION}`;
@@ -134,7 +136,7 @@ self.addEventListener("fetch", (event) => {
   // « Pas de connexion » à la place d'un PDF un peu long à produire.
   if (req.mode === "navigate") {
     if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/c/")) return;
-    event.respondWith(pageReseauPuisCache(req, event));
+    event.respondWith(pageCacheDAbordPuisReseau(req, event));
   }
   // Le reste (API, PDF, RSC, Supabase) passe par le réseau, sans interception.
 });
@@ -143,6 +145,65 @@ function pageCachable(url) {
   if (url.pathname.startsWith("/api/")) return false;
   if (url.pathname.startsWith("/c/")) return false;
   return !PAGES_SANS_CACHE.some((p) => url.pathname === p || url.pathname.startsWith(p + "/"));
+}
+
+/**
+ * OUVERTURE IMMÉDIATE : une page déjà vue est affichée tout de suite
+ * depuis le cache, et la version fraîche est demandée en même temps au
+ * serveur. Quand elle arrive, le cache est mis à jour et la page est
+ * prévenue (PAGE_RAFRAICHIE) : elle recharge ses données sur place,
+ * sans clignoter. Session expirée côté serveur (redirection vers
+ * /login) : la page est prévenue (SESSION_EXPIREE) et s'y rend. Sans
+ * copie en cache (premier passage) : réseau d'abord, comme avant.
+ */
+async function pageCacheDAbordPuisReseau(req, event) {
+  const url = new URL(req.url);
+  if (!pageCachable(url)) return pageReseauPuisCache(req, event);
+  const cache = await caches.open(CACHE_PAGES);
+  const cle = cleDePage(url);
+  const enCache = await cache.match(cle);
+  if (!enCache) return pageReseauPuisCache(req, event);
+
+  event.waitUntil(
+    (async () => {
+      let message = null;
+      try {
+        const reponse = await fetch(req);
+        const versLogin = reponse.redirected || new URL(reponse.url || cle).pathname.startsWith("/login");
+        if (versLogin) {
+          message = { type: "SESSION_EXPIREE" };
+        } else if (reponse.ok && reponse.type === "basic") {
+          await cache.put(cle, reponse.clone());
+          limiterPages(cache).catch(() => {});
+          message = { type: "PAGE_RAFRAICHIE" };
+        } else {
+          message = { type: "PAGE_RAFRAICHIE", echec: true };
+        }
+      } catch {
+        // Pas de réseau : la copie affichée est la dernière connue.
+        message = { type: "PAGE_PERIMEE", date: enCache.headers.get("date") || "" };
+      }
+      await prevenirClient(event, message);
+    })(),
+  );
+  return enCache;
+}
+
+/**
+ * Envoie un message à la page issue de cette navigation. Le client
+ * n'existe qu'une fois la page engagée : on réessaie quelques instants.
+ */
+async function prevenirClient(event, message) {
+  const idClient = event.resultingClientId;
+  if (!idClient) return;
+  for (let i = 0; i < 20; i++) {
+    const client = await self.clients.get(idClient);
+    if (client) {
+      client.postMessage(message);
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
 }
 
 async function pageReseauPuisCache(req, event) {
