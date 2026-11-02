@@ -133,3 +133,13 @@
     user-select: none;
   }
 }
+
+/* Trait de mise à jour en haut de l'écran (ouverture immédiate depuis le cache). */
+@keyframes glisser {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}

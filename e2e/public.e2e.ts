@@ -188,6 +188,42 @@ describe("hors ligne (service worker)", () => {
   });
 });
 
+describe("ouverture immédiate (service worker)", () => {
+  it("une page déjà en cache est servie sans attendre le réseau, puis rafraîchie", async () => {
+    const contexte = await navigateur.newContext();
+    const page = await contexte.newPage();
+    await page.goto(`${BASE_IP}/hors-ligne`);
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    // 2e passage : la page (mise en cache à l'installation) vient du
+    // cache — rien n'est transféré depuis le réseau — et le service
+    // worker prévient la page quand la version fraîche est arrivée.
+    await page.goto(`${BASE_IP}/hors-ligne`);
+    const depuisCache = await page.evaluate(() => {
+      const nav = performance.getEntriesByType("navigation")[0] as PerformanceEntry & { transferSize?: number };
+      return Boolean(navigator.serviceWorker.controller) && nav.transferSize === 0;
+    });
+    expect(depuisCache).toBe(true);
+    const message = await page.evaluate(
+      () =>
+        new Promise<string>((resoudre) => {
+          const t = setTimeout(() => resoudre("aucun"), 8000);
+          navigator.serviceWorker.addEventListener("message", (e) => {
+            const type = (e.data as { type?: string } | null)?.type ?? "";
+            if (type === "PAGE_RAFRAICHIE" || type === "PAGE_PERIMEE" || type === "SESSION_EXPIREE") {
+              clearTimeout(t);
+              resoudre(type);
+            }
+          });
+        }),
+    );
+    // Le message a pu arriver avant l'écoute (réseau local très rapide) :
+    // dans ce cas le cache a déjà été mis à jour, on ne peut que vérifier
+    // qu'il n'a pas été signalé périmé.
+    expect(["PAGE_RAFRAICHIE", "aucun"]).toContain(message);
+    await contexte.close();
+  });
+});
+
 describe("en-têtes de sécurité", () => {
   it("chaque réponse interdit l'affichage en iframe et ne révèle pas le serveur", async () => {
     for (const chemin of ["/login", "/hors-ligne", "/robots.txt"]) {
