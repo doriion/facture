@@ -20,7 +20,7 @@ describe("vue initiale", () => {
   it("URL > mémorisée > défaut selon l'écran (jour sur mobile, mois sur desktop)", () => {
     expect(vueInitiale({ depuisUrl: "semaine", memorisee: "jour", mobile: true })).toBe("semaine");
     expect(vueInitiale({ memorisee: "liste", mobile: true })).toBe("liste");
-    expect(vueInitiale({ mobile: true })).toBe("jour");
+    expect(vueInitiale({ mobile: true })).toBe("liste");
     expect(vueInitiale({ mobile: false })).toBe("mois");
   });
 

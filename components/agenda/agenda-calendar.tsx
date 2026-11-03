@@ -68,6 +68,7 @@ import { useGlissement } from "@/components/agenda/use-glissement";
 import { EvenementDetailSheet } from "@/components/agenda/evenement-detail-sheet";
 import { VueGrilleHoraire } from "@/components/agenda/vue-grille-horaire";
 import { LigneEvenement, VueListe } from "@/components/agenda/vue-liste";
+import type { TacheDuJour } from "@/lib/actions/taches";
 import {
   getAgendaExternes,
   type AgendaData,
@@ -225,6 +226,7 @@ export function AgendaCalendar({
   vueUrl = null,
   externesCle = 0,
   aujourdhui,
+  taches = [],
 }: {
   data: AgendaData;
   clients: ClientOption[];
@@ -239,6 +241,8 @@ export function AgendaCalendar({
   externesCle?: number;
   /** Date du jour (heure de Paris) calculée par le serveur : même rendu des deux côtés. */
   aujourdhui?: string;
+  /** Tâches échues aujourd'hui et en retard (vue liste, bloc « Aujourd'hui »). */
+  taches?: TacheDuJour[];
 }) {
   const router = useRouter();
   // « Aujourd'hui » vit : une PWA laissée ouverte passe minuit, et le
@@ -617,7 +621,7 @@ export function AgendaCalendar({
       : vue === "semaine"
         ? libelleSemaine(dateCourante)
         : vue === "liste"
-          ? `${JOURS_LISTE} prochains jours`
+          ? "À faire"
           : `${MOIS_FR[month - 1]} ${year}`;
 
   const styleDe = (e: AgendaEvent) => eventStyle(e, couleurs, couleursEvenements, todayYmd);
@@ -867,6 +871,10 @@ export function AgendaCalendar({
           style={styleDe}
           onOuvrir={setDetail}
           onPlanifier={openQuickAdd}
+          taches={taches}
+          aFacturer={data.aFacturer}
+          nbExternalAFacturer={stats.nbExternalAFacturer}
+          onVoirAFacturer={() => setAFacturerOuvert(true)}
         />
       )}
 
