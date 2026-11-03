@@ -16,7 +16,8 @@ export const LABELS_VUE: Record<VueAgenda, string> = {
 };
 
 /** Clé localStorage du dernier choix de vue (par appareil, pas de migration). */
-export const CLE_VUE_AGENDA = "facture-ae:agenda-vue";
+/** Clé v2 : le défaut mobile est passé de « jour » à « liste » (à faire d'un coup d'œil). */
+export const CLE_VUE_AGENDA = "facture-ae:agenda-vue-v2";
 
 export function normaliserVue(v: unknown): VueAgenda | null {
   return typeof v === "string" && (VUES_AGENDA as readonly string[]).includes(v)
@@ -26,9 +27,9 @@ export function normaliserVue(v: unknown): VueAgenda | null {
 
 /**
  * Vue au premier affichage : celle de l'URL, sinon le dernier choix
- * mémorisé, sinon JOUR sur mobile (agenda principal : « qu'est-ce que
- * j'ai aujourd'hui », avec le bandeau des jours pour naviguer) et MOIS
- * sur desktop (comme avant).
+ * mémorisé, sinon LISTE sur mobile (« tout ce que j'ai à faire » :
+ * aujourd'hui, tâches, à facturer, puis les prochains jours à la
+ * suite) et MOIS sur desktop (comme avant).
  */
 export function vueInitiale(args: {
   depuisUrl?: unknown;
@@ -38,7 +39,7 @@ export function vueInitiale(args: {
   return (
     normaliserVue(args.depuisUrl) ??
     normaliserVue(args.memorisee) ??
-    (args.mobile ? "jour" : "mois")
+    (args.mobile ? "liste" : "mois")
   );
 }
 

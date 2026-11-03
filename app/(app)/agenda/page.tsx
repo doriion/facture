@@ -4,6 +4,7 @@ import { Smartphone } from "lucide-react";
 import { getAgendaEvents } from "@/lib/actions/agenda";
 import { listClientsLegers } from "@/lib/actions/clients";
 import { getProfil } from "@/lib/actions/profil";
+import { getTachesDuJour } from "@/lib/actions/taches";
 import { getCouleursEvenements } from "@/lib/actions/agenda-couleurs";
 import { aujourdhuiParis } from "@/lib/agenda-facturation";
 import { normalizeCouleurs } from "@/lib/agenda-colors";
@@ -72,7 +73,7 @@ export default async function AgendaPage(
   // 6 jours des mois adjacents, qui restaient vides au swipe.
   const debutFenetre = ajouterJours(moisPrecedent, -7);
   const finFenetre = ajouterJours(moisSuivant, 7);
-  const [data, clients, profil, couleursEvenements] = await Promise.all([
+  const [data, clients, profil, couleursEvenements, taches] = await Promise.all([
     getAgendaEvents(year, month, {
       depuis: debutFenetre < aujourdhui ? debutFenetre : aujourdhui,
       jusquau: finFenetre > finListe ? finFenetre : finListe,
@@ -80,6 +81,8 @@ export default async function AgendaPage(
     listClientsLegers(),
     getProfil(),
     getCouleursEvenements(),
+    // Tâches échues / en retard : affichées dans « Aujourd'hui » (vue liste).
+    getTachesDuJour(),
   ]);
   const couleurs = normalizeCouleurs(profil?.agenda_couleurs);
 
@@ -116,6 +119,7 @@ export default async function AgendaPage(
         vueUrl={vue}
         externesCle={0}
         aujourdhui={aujourdhui}
+        taches={taches}
       />
     </div>
   );
