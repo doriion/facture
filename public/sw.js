@@ -34,7 +34,7 @@
  * et « Planifier » ne s'ouvrait plus.
  */
 
-const VERSION = "v6";
+const VERSION = "v7";
 const CACHE_STATIQUE = `ng-statique-${VERSION}`;
 const CACHE_PAGES = `ng-pages-${VERSION}`;
 const CACHE_PHOTOS = `ng-photos-${VERSION}`;
@@ -54,7 +54,7 @@ const DELAI_RESEAU_MS = 8000;
  * serveur complet ; huit écrans en série ralentissaient la navigation
  * qui suivait l'ouverture.
  */
-const PAGES_A_PRECHAUFFER = ["/agenda", "/taches", "/interventions", "/clients"];
+const PAGES_A_PRECHAUFFER = ["/accueil", "/agenda", "/taches", "/interventions", "/clients"];
 /** Pages jamais gardées en cache (sans intérêt hors ligne, ou sensibles). */
 const PAGES_SANS_CACHE = ["/login", "/exports", "/parametres"];
 /** Nombre maximal de pages conservées (les plus anciennes sont évincées). */

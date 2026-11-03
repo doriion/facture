@@ -4,6 +4,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
+  LayoutGrid,
   LayoutDashboard,
   ListTodo,
   FileText,
@@ -25,6 +26,8 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   description?: string;
+  /** Écran pensé pour le téléphone : absent de la barre latérale (PC). */
+  mobileSeulement?: boolean;
 };
 
 /**
@@ -32,6 +35,13 @@ export type NavItem = {
  * Ordre = ordre d'affichage.
  */
 export const NAV_ITEMS: NavItem[] = [
+  {
+    href: "/accueil",
+    label: "Accueil",
+    icon: LayoutGrid,
+    description: "Grandes tuiles vers vos écrans (téléphone)",
+    mobileSeulement: true,
+  },
   {
     href: "/dashboard",
     label: "Tableau de bord",
