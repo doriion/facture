@@ -9,8 +9,8 @@ import { NAV_ITEMS } from "@/lib/constants";
 export const CLE_ONGLETS = "facture-ae:onglets";
 export const NB_ONGLETS = 4;
 
-/** Par défaut : agenda, devis, factures, interventions (le terrain). */
-export const ONGLETS_PAR_DEFAUT = ["/agenda", "/devis", "/factures", "/interventions"];
+/** Par défaut : accueil (grandes tuiles), agenda, devis, factures. */
+export const ONGLETS_PAR_DEFAUT = ["/accueil", "/agenda", "/devis", "/factures"];
 
 /** Écrans proposés au choix (tout sauf les réglages). */
 export const ONGLETS_POSSIBLES = NAV_ITEMS.filter((n) => n.href !== "/parametres").map((n) => ({ href: n.href, label: n.label }));

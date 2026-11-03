@@ -25,7 +25,7 @@ export function Sidebar({ badgeTaches = 0 }: { badgeTaches?: number }) {
         </Link>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => !item.mobileSeulement).map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;

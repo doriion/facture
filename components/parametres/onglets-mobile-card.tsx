@@ -70,7 +70,7 @@ export function OngletsMobileCard() {
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={reinitialiser}>
           <Undo2 className="size-4" />
-          Rétablir Agenda · Devis · Factures · Interventions
+          Rétablir Accueil · Agenda · Devis · Factures
         </Button>
       </CardContent>
     </Card>
