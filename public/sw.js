@@ -34,7 +34,7 @@
  * et « Planifier » ne s'ouvrait plus.
  */
 
-const VERSION = "v7";
+const VERSION = "v8";
 const CACHE_STATIQUE = `ng-statique-${VERSION}`;
 const CACHE_PAGES = `ng-pages-${VERSION}`;
 const CACHE_PHOTOS = `ng-photos-${VERSION}`;
