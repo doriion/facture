@@ -12,6 +12,7 @@ import { RestaurationDefilement } from "@/components/restauration-defilement";
 import { IndicateurHorsLigne } from "@/components/indicateur-hors-ligne";
 import { FileAttentePanneau } from "@/components/file-attente-panneau";
 import { RafraichissementPage } from "@/components/rafraichissement-page";
+import { LancementAccueil } from "@/components/lancement-accueil";
 
 /**
  * Layout pour toutes les routes authentifiées (sous le groupe `(app)`).
@@ -53,6 +54,7 @@ export default async function AppLayout({
       </Suspense>
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar email={user.email} />
+        <LancementAccueil />
         <RafraichissementPage />
         <IndicateurHorsLigne />
         <FileAttentePanneau />
