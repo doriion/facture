@@ -12,20 +12,51 @@ import { NAV_ITEMS } from "@/lib/constants";
 
 export const CLE_TUILES = "facture-ae:tuiles";
 
-export type Tuile = { href: string; label: string; icon: LucideIcon; description?: string; action?: boolean };
+export type Tuile = { href: string; label: string; icon: LucideIcon; description?: string; action?: boolean; couleur: string };
+
+/**
+ * Couleur de chaque écran (dégradé Tailwind du carré d'icône, façon
+ * icônes d'iPhone) : une teinte par famille, reconnaissable d'un coup
+ * d'œil. Les actions reprennent la teinte de leur écran.
+ */
+export const COULEURS_TUILES: Record<string, string> = {
+  "/dashboard": "from-indigo-500 to-blue-700",
+  "/taches": "from-rose-500 to-pink-600",
+  "/agenda": "from-sky-400 to-blue-600",
+  "/factures": "from-emerald-400 to-green-600",
+  "/devis": "from-violet-500 to-purple-700",
+  "/clients": "from-orange-400 to-amber-600",
+  "/produits": "from-teal-400 to-cyan-600",
+  "/interventions": "from-amber-400 to-orange-600",
+  "/fiches-gaz": "from-cyan-400 to-sky-600",
+  "/contrats": "from-fuchsia-500 to-purple-600",
+  "/maintenance": "from-lime-400 to-green-600",
+  "/exports": "from-slate-400 to-slate-600",
+  "/marges": "from-green-500 to-emerald-700",
+  "/parametres": "from-zinc-400 to-zinc-600",
+  "/devis/nouveau": "from-violet-500 to-purple-700",
+  "/factures/nouvelle": "from-emerald-400 to-green-600",
+  "/fiches-gaz/nouvelle": "from-cyan-400 to-sky-600",
+  "/interventions/nouvelle": "from-amber-400 to-orange-600",
+  "/taches?ajouter=1": "from-rose-500 to-pink-600",
+};
+const COULEUR_PAR_DEFAUT = "from-slate-400 to-slate-600";
+const couleurDe = (href: string) => COULEURS_TUILES[href] ?? COULEUR_PAR_DEFAUT;
 
 /** Actions rapides proposées en plus des écrans. */
-export const ACTIONS_RAPIDES: Tuile[] = [
-  { href: "/devis/nouveau", label: "Nouveau devis", icon: FilePlus2, description: "Créer un devis", action: true },
-  { href: "/factures/nouvelle", label: "Nouvelle facture", icon: Receipt, description: "Créer une facture", action: true },
-  { href: "/fiches-gaz/nouvelle", label: "Nouvelle fiche gaz", icon: Snowflake, description: "CERFA + bon de réception", action: true },
-  { href: "/interventions/nouvelle", label: "Nouvelle intervention", icon: CalendarPlus, description: "Planifier un rendez-vous", action: true },
-  { href: "/taches?ajouter=1", label: "Nouvelle tâche", icon: ListPlus, description: "À ne pas oublier", action: true },
-];
+export const ACTIONS_RAPIDES: Tuile[] = (
+  [
+    { href: "/devis/nouveau", label: "Nouveau devis", icon: FilePlus2, description: "Créer un devis" },
+    { href: "/factures/nouvelle", label: "Nouvelle facture", icon: Receipt, description: "Créer une facture" },
+    { href: "/fiches-gaz/nouvelle", label: "Nouvelle fiche gaz", icon: Snowflake, description: "CERFA + bon de réception" },
+    { href: "/interventions/nouvelle", label: "Nouvelle intervention", icon: CalendarPlus, description: "Planifier un rendez-vous" },
+    { href: "/taches?ajouter=1", label: "Nouvelle tâche", icon: ListPlus, description: "À ne pas oublier" },
+  ] as Array<Omit<Tuile, "couleur" | "action">>
+).map((t) => ({ ...t, action: true, couleur: couleurDe(t.href) }));
 
 /** Tout ce qui peut devenir une tuile : écrans (sauf l'accueil lui-même) puis actions. */
 export const TUILES_POSSIBLES: Tuile[] = [
-  ...NAV_ITEMS.filter((n) => n.href !== "/accueil").map((n) => ({ href: n.href, label: n.label, icon: n.icon, description: n.description })),
+  ...NAV_ITEMS.filter((n) => n.href !== "/accueil").map((n) => ({ href: n.href, label: n.label, icon: n.icon, description: n.description, couleur: couleurDe(n.href) })),
   ...ACTIONS_RAPIDES,
 ];
 

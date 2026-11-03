@@ -63,16 +63,19 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/factures",
     label: "Factures",
     icon: FileText,
+    description: "Factures et encaissements",
   },
   {
     href: "/devis",
     label: "Devis",
     icon: FileSignature,
+    description: "Devis et signature en ligne",
   },
   {
     href: "/clients",
     label: "Clients",
     icon: Users,
+    description: "Fiches, historique, contacts",
   },
   {
     href: "/produits",
