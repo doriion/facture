@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Receipt, Trash2 } from "lucide-react";
+import { ListPlus, Plus, Receipt, Trash2 } from "lucide-react";
 
 import { bilanFluidesFrigo, listCorbeille, listInterventions } from "@/lib/actions/interventions";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,12 @@ export default async function InterventionsPage(
               </Link>
             </Button>
           )}
+          <Button asChild variant="outline" className="max-md:hidden">
+            <Link href="/interventions/tournee">
+              <ListPlus className="size-4" />
+              Saisir une tournée
+            </Link>
+          </Button>
           <Button asChild className="max-md:hidden">
             <Link href="/interventions/nouvelle">
               <Plus className="size-4" />
