@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EyeOff } from "lucide-react";
+import { EyeOff, ScanLine } from "lucide-react";
 
 import { getMargesAnnee } from "@/lib/actions/marges";
 import { aujourdhuiParis } from "@/lib/dates";
@@ -28,7 +28,13 @@ export default async function MargesPage(props: { searchParams: Promise<{ annee?
             Suivi interne : total HT facturé moins les achats saisis sur les lignes. Jamais sur un document client.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="secondary">
+            <Link href="/marges/scan-fournisseur">
+              <ScanLine className="size-4" />
+              Scanner une facture fournisseur
+            </Link>
+          </Button>
           {[anneeCourante, anneeCourante - 1].map((a) => (
             <Button key={a} asChild size="sm" variant={a === annee ? "default" : "outline"}>
               <Link href={`/marges?annee=${a}`}>{a}</Link>
