@@ -242,26 +242,36 @@ export function ScanFournisseur({ cibles }: { cibles: CiblesCouts }) {
                     <div className="flex items-start gap-2">
                       <input type="checkbox" className="mt-2.5 size-4 accent-primary" checked={l.garder} onChange={(e) => maj(l.cle, { garder: e.target.checked })} aria-label="Retenir cette ligne" />
                       <div className="grid flex-1 gap-2">
-                        <div className="grid grid-cols-[1fr_4rem_6rem] gap-2">
+                        <div className="grid gap-2 sm:grid-cols-[1fr_15rem]">
                           <Input value={l.designation} onChange={(e) => maj(l.cle, { designation: e.target.value })} aria-label="Désignation" className="font-medium" />
-                          <Input
-                            inputMode="decimal"
-                            value={String(l.quantite).replace(".", ",")}
-                            onChange={(e) => {
-                              const q = Number(e.target.value.replace(",", "."));
-                              if (Number.isFinite(q) && q > 0) maj(l.cle, { quantite: q, prixUnitaire: Math.round((l.montant / q) * 100) / 100 });
-                            }}
-                            aria-label="Quantité"
-                          />
-                          <Input
-                            inputMode="decimal"
-                            value={String(l.prixUnitaire).replace(".", ",")}
-                            onChange={(e) => {
-                              const p = Number(e.target.value.replace(",", "."));
-                              if (Number.isFinite(p) && p >= 0) maj(l.cle, { prixUnitaire: p, montant: Math.round(p * l.quantite * 100) / 100 });
-                            }}
-                            aria-label="Prix unitaire TTC"
-                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="relative">
+                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">Qté</span>
+                              <Input
+                                inputMode="decimal"
+                                value={String(l.quantite).replace(".", ",")}
+                                onChange={(e) => {
+                                  const q = Number(e.target.value.replace(",", "."));
+                                  if (Number.isFinite(q) && q > 0) maj(l.cle, { quantite: q, prixUnitaire: Math.round((l.montant / q) * 100) / 100 });
+                                }}
+                                aria-label="Quantité"
+                                className="pl-11 text-right"
+                              />
+                            </div>
+                            <div className="relative">
+                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">PU TTC</span>
+                              <Input
+                                inputMode="decimal"
+                                value={String(l.prixUnitaire).replace(".", ",")}
+                                onChange={(e) => {
+                                  const p = Number(e.target.value.replace(",", "."));
+                                  if (Number.isFinite(p) && p >= 0) maj(l.cle, { prixUnitaire: p, montant: Math.round(p * l.quantite * 100) / 100 });
+                                }}
+                                aria-label="Prix unitaire TTC"
+                                className="pl-16 text-right"
+                              />
+                            </div>
+                          </div>
                         </div>
                         {cible !== AUCUNE && (
                           <Select value={l.cibleId || "ignorer"} onValueChange={(v) => maj(l.cle, { cibleId: v === "ignorer" ? "" : v })}>
