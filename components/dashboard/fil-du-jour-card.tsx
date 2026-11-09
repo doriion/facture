@@ -83,7 +83,7 @@ export function FilDuJourCard({
                   </span>
                 </Link>
                 <Button asChild size="sm">
-                  <Link href={`/factures/nouvelle?intervention=${i.id}`}>Facturer</Link>
+                  <Link href={`/interventions/${i.id}/cloture`}>Clôturer</Link>
                 </Button>
               </li>
             ))}
