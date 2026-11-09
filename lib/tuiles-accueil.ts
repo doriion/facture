@@ -6,7 +6,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
-import { CalendarPlus, FilePlus2, ListPlus, Receipt, Snowflake } from "lucide-react";
+import { CalendarPlus, FilePlus2, ListPlus, Receipt, Route, Snowflake } from "lucide-react";
 
 import { NAV_ITEMS } from "@/lib/constants";
 
@@ -39,6 +39,7 @@ export const COULEURS_TUILES: Record<string, string> = {
   "/fiches-gaz/nouvelle": "from-cyan-400 to-sky-600",
   "/interventions/nouvelle": "from-amber-400 to-orange-600",
   "/taches?ajouter=1": "from-rose-500 to-pink-600",
+  "/interventions/tournee": "from-amber-400 to-orange-600",
 };
 const COULEUR_PAR_DEFAUT = "from-slate-400 to-slate-600";
 const couleurDe = (href: string) => COULEURS_TUILES[href] ?? COULEUR_PAR_DEFAUT;
@@ -51,6 +52,7 @@ export const ACTIONS_RAPIDES: Tuile[] = (
     { href: "/fiches-gaz/nouvelle", label: "Nouvelle fiche gaz", icon: Snowflake, description: "CERFA + bon de réception" },
     { href: "/interventions/nouvelle", label: "Nouvelle intervention", icon: CalendarPlus, description: "Planifier un rendez-vous" },
     { href: "/taches?ajouter=1", label: "Nouvelle tâche", icon: ListPlus, description: "À ne pas oublier" },
+    { href: "/interventions/tournee", label: "Saisir une tournée", icon: Route, description: "Coller la liste ou photographier le planning" },
   ] as Array<Omit<Tuile, "couleur" | "action">>
 ).map((t) => ({ ...t, action: true, couleur: couleurDe(t.href) }));
 

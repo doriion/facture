@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Smartphone } from "lucide-react";
+import { ListPlus, Smartphone } from "lucide-react";
 
 import { getAgendaEvents } from "@/lib/actions/agenda";
 import { listClientsLegers } from "@/lib/actions/clients";
@@ -100,6 +100,14 @@ export default async function AgendaPage(
             interventions à facturer.
           </p>
         </div>
+        <Link
+          href="/interventions/tournee"
+          aria-label="Saisir une tournée"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm font-medium hover:bg-muted/50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+        >
+          <ListPlus className="size-4 sm:size-3.5" />
+          <span className="hidden sm:inline">Saisir une tournée</span>
+        </Link>
         <Link
           href="/parametres#calendar-sync"
           aria-label="Synchroniser avec mon téléphone"
