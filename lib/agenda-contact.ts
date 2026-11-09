@@ -72,6 +72,29 @@ export function lienItineraire(adresse: string): string {
   return `https://maps.apple.com/?daddr=${encodeURIComponent(adresse.trim())}`;
 }
 
+/**
+ * Itinéraire de la journée, toutes les étapes dans l'ordre des
+ * rendez-vous : Plans ne sait pas enchaîner plusieurs étapes par lien,
+ * Google Maps si (application si installée, sinon le site). Doublons
+ * consécutifs retirés ; une seule adresse → Plans comme d'habitude ;
+ * au-delà de dix étapes, les premières (Google Maps en accepte dix).
+ */
+export function lienItineraireJournee(adresses: string[]): string | null {
+  const etapes: string[] = [];
+  for (const a of adresses) {
+    const t = a.trim();
+    if (t && etapes[etapes.length - 1] !== t) etapes.push(t);
+  }
+  if (etapes.length === 0) return null;
+  if (etapes.length === 1) return lienItineraire(etapes[0]!);
+  const retenues = etapes.slice(0, 10);
+  const destination = retenues[retenues.length - 1]!;
+  const intermediaires = retenues.slice(0, -1);
+  const params = new URLSearchParams({ api: "1", destination, travelmode: "driving" });
+  if (intermediaires.length > 0) params.set("waypoints", intermediaires.join("|"));
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
 const VOIES =
   "(?:rue|avenue|av\\.?|chemin|ch\\.?|route|rte|impasse|imp\\.?|allée|allee|all\\.?|place|pl\\.?|boulevard|bd|bvd|quai|cours|montée|montee|lotissement|lot\\.?|hameau|square|sentier|passage|traverse|clos|domaine|résidence|residence|za|zi|zac)";
 

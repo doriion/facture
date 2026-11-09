@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Download, ExternalLink, Link2, Loader2, MapPin, MessageSquare, Move, Navigation, Palette, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
+import { CheckCircle2, Copy, Download, ExternalLink, Link2, Loader2, MapPin, MessageSquare, Move, Navigation, Palette, Pencil, Phone, Repeat, Search, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { appelerAction } from "@/lib/appel-action";
@@ -309,9 +309,20 @@ export function EvenementDetailSheet({
                   </p>
                 </div>
               )}
+              {/* Fin d'intervention en un écran : photos, signature,
+                  facture en un tap ou « rien à facturer ». */}
+              {e.kind === "intervention" && !e.facture_emise && e.a_facturer !== false && (
+                <Button asChild size="lg" className="col-span-2">
+                  <Link href={`/interventions/${e.id}/cloture`}>
+                    <CheckCircle2 className="size-4" />
+                    Terminer : photos, signature, facture
+                  </Link>
+                </Button>
+              )}
               {e.kind === "intervention" && !e.facture_emise && onRegler && (
                 <Button
                   size="lg"
+                  variant="outline"
                   className="col-span-2"
                   onClick={() => {
                     onClose();

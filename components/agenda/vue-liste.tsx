@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CalendarPlus, ListTodo, MapPin, Phone, Receipt, Search, X } from "lucide-react";
+import { AlertTriangle, CalendarPlus, ListTodo, MapPin, Navigation, Phone, Receipt, Search, X } from "lucide-react";
 
 import type { AFacturerItem, AgendaEvent } from "@/lib/actions/agenda";
 import type { TacheDuJour } from "@/lib/actions/taches";
-import { contactEvenement } from "@/lib/agenda-contact";
+import { contactEvenement, lienItineraireJournee } from "@/lib/agenda-contact";
 import { grouperParJour, heureCourte, libelleJour } from "@/lib/agenda-vues";
 import { formatDateFr } from "@/lib/format";
 import { LABELS_TYPE_INTERVENTION } from "@/lib/validations/intervention";
@@ -134,6 +134,9 @@ export function VueListe({
   const aVenir = groupes.filter((g) => g.jour !== aujourdhui);
   const nbAFacturer = aFacturer.length + nbExternalAFacturer;
   const tachesEnRetard = taches.filter((t) => t.joursRetard > 0).length;
+  // Itinéraire de la journée : toutes les adresses des RDV du jour, dans l'ordre.
+  const adressesDuJour = duJour.map((e) => contactEvenement(e).adresse).filter((a): a is string => Boolean(a));
+  const itineraireJour = adressesDuJour.length >= 2 ? lienItineraireJournee(adressesDuJour) : null;
 
   const barre = (
     <div className="flex items-center gap-2">
@@ -199,9 +202,18 @@ export function VueListe({
 
       {/* AUJOURD'HUI — toujours là, même vide : c'est la question du matin. */}
       <section>
-        <h3 className="mb-1.5 flex items-baseline justify-between text-base font-bold text-primary">
-          <span>Aujourd&apos;hui</span>
-          <span className="text-xs font-normal text-muted-foreground">{libelleJour(aujourdhui)}</span>
+        <h3 className="mb-1.5 flex items-center justify-between gap-2 text-base font-bold text-primary">
+          <span>
+            Aujourd&apos;hui <span className="ml-1 text-xs font-normal text-muted-foreground">{libelleJour(aujourdhui)}</span>
+          </span>
+          {itineraireJour && (
+            <Button asChild size="sm" variant="outline" className="h-8">
+              <a href={itineraireJour} target="_blank" rel="noopener">
+                <Navigation className="size-3.5" />
+                Itinéraire du jour ({adressesDuJour.length})
+              </a>
+            </Button>
+          )}
         </h3>
         {duJour.length > 0 ? (
           <ul className="divide-y overflow-hidden rounded-lg border bg-card">
@@ -265,9 +277,9 @@ export function VueListe({
                   </span>
                 </Link>
                 <Button asChild size="sm">
-                  <Link href={`/factures/nouvelle?intervention=${it.id}`}>
+                  <Link href={`/interventions/${it.id}/cloture`}>
                     <Receipt className="size-3.5" />
-                    Facturer
+                    Clôturer
                   </Link>
                 </Button>
               </li>

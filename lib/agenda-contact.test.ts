@@ -9,6 +9,7 @@ import {
   lienItineraire,
   lienSms,
   telephoneNormalise,
+  lienItineraireJournee,
 } from "./agenda-contact";
 
 describe("extraireTelephone", () => {
@@ -130,5 +131,15 @@ describe("contactEvenement", () => {
     const c = contactEvenement({ title: "RDV 06 64 19 18 15", client_telephone: "à demander" });
     expect(c.telephone).toBe("06 64 19 18 15");
     expect(c.telephoneSource).toBe("texte");
+  });
+});
+
+describe("itinéraire de la journée", () => {
+  it("plusieurs étapes → Google Maps avec waypoints, une seule → Plans, aucune → null", () => {
+    expect(lienItineraireJournee([])).toBeNull();
+    expect(lienItineraireJournee(["1 rue A, Grenoble"])).toBe("https://maps.apple.com/?daddr=1%20rue%20A%2C%20Grenoble");
+    const lien = lienItineraireJournee(["1 rue A, Grenoble", "1 rue A, Grenoble", "2 rue B, Vizille", "3 rue C, Eybens"])!;
+    expect(lien.startsWith("https://www.google.com/maps/dir/?api=1&destination=3+rue+C%2C+Eybens")).toBe(true);
+    expect(decodeURIComponent(lien)).toContain("waypoints=1+rue+A,+Grenoble|2+rue+B,+Vizille");
   });
 });
