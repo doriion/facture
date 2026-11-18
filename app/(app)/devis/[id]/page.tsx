@@ -4,7 +4,7 @@ import { ArrowLeft, FileCheck2, Snowflake } from "lucide-react";
 
 import { listClients } from "@/lib/actions/clients";
 import { listProduits } from "@/lib/actions/produits";
-import { getDevis } from "@/lib/actions/devis";
+import { getDevis, listAutresDevisClient } from "@/lib/actions/devis";
 import { getBaremeEntretien } from "@/lib/actions/bareme-entretien";
 import { getProfil } from "@/lib/actions/profil";
 import { statutAffichageDevis } from "@/lib/validations/devis";
@@ -40,11 +40,14 @@ export default async function EditDevisPage(
   const { devis, lignes, client } = await getDevis(params.id);
   if (!devis) notFound();
 
-  const [clients, produits, profil, baremeEntretien] = await Promise.all([
+  const [clients, produits, profil, baremeEntretien, autresDevis] = await Promise.all([
     listClients(),
     listProduits({ inclureInactifs: false }),
     getProfil(),
     getBaremeEntretien(),
+    // Autres devis du même client : proposés à joindre au même e-mail
+    // (deux variantes d'un chantier partent en un seul message).
+    devis.client_id && !devis.est_modele ? listAutresDevisClient(devis.id, devis.client_id) : Promise.resolve([]),
   ]);
 
   const statutAffiche = statutAffichageDevis(devis.statut, devis.date_validite);
@@ -149,6 +152,11 @@ export default async function EditDevisPage(
               nomModele={devis.nom_modele}
               signee={signee}
               pdfBloqueMotif={pdfBloqueMotif}
+              autresDevis={autresDevis.map((d) => ({
+                id: d.id,
+                numero: d.numero,
+                libelle: `${formatEuros(d.total_ht)} · ${formatDateFr(d.date_emission)}${d.statut === "brouillon" ? " · brouillon" : d.statut === "accepte" ? " · accepté" : ""}`,
+              }))}
             />
           </ActionsFiche>
         </div>

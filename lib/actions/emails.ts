@@ -212,13 +212,91 @@ export async function envoyerFactureParEmailAction(
   return { ok: true, data: undefined };
 }
 
+type DevisCharge = Awaited<ReturnType<typeof getDevis>>;
+type DevisPret = {
+  devis: NonNullable<DevisCharge["devis"]>;
+  numero: string;
+  pdf: Buffer;
+  lienSignature: string | null;
+  signeLe: string | undefined;
+};
+
+/** Pourquoi un devis ne peut pas partir (null = il peut). */
+function motifDevisNonEnvoyable(devis: NonNullable<DevisCharge["devis"]>): string | null {
+  if (devis.statut === "refuse") return `Le devis ${devis.numero} est refusé : repassez-le en brouillon avant de le renvoyer.`;
+  if (devis.date_validite && devis.date_validite < aujourdhuiParis() && devis.statut !== "brouillon") {
+    return `Le devis ${devis.numero} est expiré : repassez-le en brouillon et prolongez sa validité avant de l'envoyer.`;
+  }
+  return null;
+}
+
+/**
+ * PDF du devis (signature « bon pour accord » incluse s'il est signé) et
+ * lien de signature en ligne, posé ou renouvelé s'il a expiré, pour un
+ * devis non signé. Commun au devis principal et aux devis joints.
+ */
+async function preparerDevisPourEnvoi(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  charge: DevisCharge,
+  profil: NonNullable<Awaited<ReturnType<typeof getProfil>>>,
+  logoUrl: string | null,
+): Promise<DevisPret> {
+  const { devis, lignes, client } = charge;
+  if (!devis) throw new Error("Devis introuvable.");
+  // Garde TVA juste avant CHAQUE rendu (lève MoteurTvaNonImplementeError).
+  verifierMoteurTva(profil, devis.emetteur);
+  const [{ renderToBuffer }, { DevisPdf }] = await Promise.all([
+    import("@react-pdf/renderer"),
+    import("@/components/devis/devis-pdf"),
+  ]);
+  let signatureData: string | null = null;
+  if (devis.signature_client_url) {
+    try {
+      const { data: blob } = await supabase.storage.from("signatures").download(devis.signature_client_url);
+      if (blob) signatureData = `data:image/png;base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`;
+    } catch {
+      signatureData = null;
+    }
+  }
+  const pdf = await renderToBuffer(
+    DevisPdf({ devis, lignes: payloadLignesPdf(lignes), client, profil, logoData: logoUrl, signatureData }),
+  );
+
+  let lienSignature: string | null = null;
+  if (!devis.signature_client_url && devis.statut !== "accepte") {
+    const nowIso = new Date().toISOString();
+    let token = devis.access_token;
+    const expire = expirationLienDevis(devis.date_validite, nowIso);
+    if (!token || !devis.token_expires_at || devis.token_expires_at <= nowIso) {
+      token = randomBytes(32).toString("base64url");
+    }
+    const { error: erreurJeton } = await supabase
+      .from("devis")
+      .update({ access_token: token, token_expires_at: expire })
+      .eq("id", devis.id);
+    if (!erreurJeton) lienSignature = `${await baseUrlPublique()}/d/${token}`;
+  }
+  return {
+    devis,
+    numero: devis.numero,
+    pdf,
+    lienSignature,
+    signeLe: devis.signature_client_url && devis.date_signature ? formatDateFr(devis.date_signature) : undefined,
+  };
+}
+
 /**
  * Envoie le devis par email. Comportement symétrique à la facture.
+ *
+ * `autresDevisIds` : d'autres devis du MÊME client joints au même
+ * e-mail (deux variantes d'un chantier) : un seul message, un PDF par
+ * devis, un lien de signature par devis non signé. Chacun passe en
+ * « envoyé » et voit ses mentions émetteur figées, comme un envoi seul.
  */
 export async function envoyerDevisParEmailAction(
   devisId: string,
   messagePerso?: string,
-  options: { relance?: boolean } = {},
+  options: { relance?: boolean; autresDevisIds?: string[] } = {},
 ): Promise<ActionResult> {
   if (!isEmailConfigured()) {
     return {
@@ -234,22 +312,29 @@ export async function envoyerDevisParEmailAction(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Non authentifié." };
 
-  const { devis, lignes, client } = await getDevis(devisId);
+  const principal = await getDevis(devisId);
+  const { devis, client } = principal;
   if (!devis) return { ok: false, error: "Devis introuvable." };
-  if (devis.statut === "refuse") {
-    return { ok: false, error: "Ce devis est refusé : repassez-le en brouillon avant de le renvoyer." };
-  }
-  if (devis.date_validite && devis.date_validite < aujourdhuiParis() && devis.statut !== "brouillon") {
-    return {
-      ok: false,
-      error: "Ce devis est expiré : repassez-le en brouillon et prolongez sa validité avant de l'envoyer.",
-    };
-  }
+  const motif = motifDevisNonEnvoyable(devis);
+  if (motif) return { ok: false, error: motif };
   if (!client?.email) {
     return {
       ok: false,
       error: "Le client n'a pas d'adresse email.",
     };
+  }
+
+  // Devis joints : même client, pas de modèle, envoyables, sans doublon.
+  const autresIds = [...new Set((options.autresDevisIds ?? []).filter((id) => id && id !== devisId))].slice(0, 10);
+  const autresCharges: DevisCharge[] = [];
+  for (const id of autresIds) {
+    const charge = await getDevis(id);
+    if (!charge.devis) return { ok: false, error: "Un des devis à joindre est introuvable." };
+    if (charge.devis.client_id !== devis.client_id) return { ok: false, error: `Le devis ${charge.devis.numero} n'est pas au même client.` };
+    if (charge.devis.est_modele) return { ok: false, error: `Le devis ${charge.devis.numero} est un modèle.` };
+    const m = motifDevisNonEnvoyable(charge.devis);
+    if (m) return { ok: false, error: m };
+    autresCharges.push(charge);
   }
 
   const profil = await getProfil();
@@ -260,54 +345,19 @@ export async function envoyerDevisParEmailAction(
     ? await getLogoUrl(profil.logo_url)
     : null;
 
+  const prets: DevisPret[] = [];
   try {
-    verifierMoteurTva(profil, devis.emetteur);
+    for (const c of [principal, ...autresCharges]) prets.push(await preparerDevisPourEnvoi(supabase, c, profil, logoUrl));
   } catch (e) {
     if (!estErreurMoteurTva(e)) throw e;
     return { ok: false, error: e.explication };
   }
-
-  const [{ renderToBuffer }, { DevisPdf }] = await Promise.all([
-    import("@react-pdf/renderer"),
-    import("@/components/devis/devis-pdf"),
-  ]);
-  // Devis signé dans l'app : la signature « bon pour accord » figure
-  // sur l'exemplaire envoyé (comme sur le PDF téléchargé).
-  let signatureData: string | null = null;
-  if (devis.signature_client_url) {
-    try {
-      const { data: blob } = await supabase.storage.from("signatures").download(devis.signature_client_url);
-      if (blob) signatureData = `data:image/png;base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`;
-    } catch {
-      signatureData = null;
-    }
-  }
-  const pdfBuffer = await renderToBuffer(
-    DevisPdf({ devis, lignes: payloadLignesPdf(lignes), client, profil, logoData: logoUrl, signatureData }),
-  );
+  const [pret, ...autresPrets] = prets as [DevisPret, ...DevisPret[]];
 
   const expediteurNom =
     profil.nom_commercial ||
     [profil.prenom, profil.nom].filter(Boolean).join(" ") ||
     "Auto-entrepreneur";
-
-  // Lien de signature en ligne : posé (ou renouvelé s'il a expiré) à
-  // chaque envoi d'un devis non signé ; il vaut jusqu'à la fin de
-  // validité du devis.
-  let lienSignature: string | null = null;
-  if (!devis.signature_client_url && devis.statut !== "accepte") {
-    const nowIso = new Date().toISOString();
-    let token = devis.access_token;
-    const expire = expirationLienDevis(devis.date_validite, nowIso);
-    if (!token || !devis.token_expires_at || devis.token_expires_at <= nowIso) {
-      token = randomBytes(32).toString("base64url");
-    }
-    const { error: erreurJeton } = await supabase
-      .from("devis")
-      .update({ access_token: token, token_expires_at: expire })
-      .eq("id", devisId);
-    if (!erreurJeton) lienSignature = `${await baseUrlPublique()}/d/${token}`;
-  }
 
   const email = options.relance
     ? buildRelanceDevisEmail({
@@ -318,7 +368,7 @@ export async function envoyerDevisParEmailAction(
         dateText: formatDateFr(devis.date_emission),
         validiteText: devis.date_validite ? formatDateFr(devis.date_validite) : undefined,
         natureActivite: devis.type_activite,
-        lienSignature,
+        lienSignature: pret.lienSignature,
         messagePerso,
         signature: signatureDepuisProfil(profil, expediteurNom),
       })
@@ -329,8 +379,8 @@ export async function envoyerDevisParEmailAction(
     expediteurNom,
     totalText: formatEuros(Number(devis.total_ht)),
     messagePerso,
-    lienSignature,
-    signeLe: devis.signature_client_url && devis.date_signature ? formatDateFr(devis.date_signature) : undefined,
+    lienSignature: pret.lienSignature,
+    signeLe: pret.signeLe,
     dateText: formatDateFr(devis.date_emission),
     validiteText: devis.date_validite ? formatDateFr(devis.date_validite) : undefined,
     natureActivite: devis.type_activite,
@@ -341,6 +391,13 @@ export async function envoyerDevisParEmailAction(
       devis.acompte_montant !== null ? Number(devis.acompte_montant) : null,
     )?.texte,
     signature: signatureDepuisProfil(profil, expediteurNom),
+    autresDevis: autresPrets.map((a) => ({
+      numero: a.numero,
+      totalText: formatEuros(Number(a.devis.total_ht)),
+      lienSignature: a.lienSignature,
+      signeLe: a.signeLe ?? null,
+      validiteText: a.devis.date_validite ? formatDateFr(a.devis.date_validite) : null,
+    })),
   });
 
   const res = await sendEmail({
@@ -350,30 +407,30 @@ export async function envoyerDevisParEmailAction(
     text: email.text,
     replyTo: profil.email_pro ?? undefined,
     fromName: expediteurNom,
-    attachments: [
-      {
-        filename: `${devis.numero}.pdf`,
-        content: pdfBuffer,
-        contentType: "application/pdf",
-      },
-    ],
+    attachments: prets.map((p) => ({
+      filename: `${p.numero}.pdf`,
+      content: p.pdf,
+      contentType: "application/pdf",
+    })),
   });
 
   if (!res.ok) return { ok: false, error: res.error };
 
   const now = new Date().toISOString();
-  await supabase
-    .from("devis")
-    .update({
-      email_envoye_le: now,
-      statut: devis.statut === "brouillon" ? "envoye" : devis.statut,
-    })
-    .eq("id", devisId);
+  for (const p of prets) {
+    await supabase
+      .from("devis")
+      .update({
+        email_envoye_le: now,
+        statut: p.devis.statut === "brouillon" ? "envoye" : p.devis.statut,
+      })
+      .eq("id", p.devis.id);
 
-  // Document envoyé au client : mentions émetteur figées.
-  await figerEmetteurDocument(supabase, "devis", devisId);
+    // Document envoyé au client : mentions émetteur figées.
+    await figerEmetteurDocument(supabase, "devis", p.devis.id);
+    revalidatePath(`/devis/${p.devis.id}`);
+  }
 
-  revalidatePath(`/devis/${devisId}`);
   revalidatePath("/devis");
   return { ok: true, data: undefined };
 }

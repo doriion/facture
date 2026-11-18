@@ -183,6 +183,32 @@ export async function renommerModeleDevisAction(
 /**
  * Récupère un devis complet avec lignes + client + profil entreprise.
  */
+export type AutreDevisClient = { id: string; numero: string; total_ht: number; statut: string; date_emission: string };
+
+/**
+ * Les autres devis du même client qui peuvent partir dans le MÊME
+ * e-mail que celui-ci : pas de modèle, ni refusés, ni expirés, ni déjà
+ * facturés. Les plus récents d'abord.
+ */
+export async function listAutresDevisClient(devisId: string, clientId: string): Promise<AutreDevisClient[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("devis")
+    .select("id, numero, total_ht, statut, date_emission, date_validite")
+    .eq("client_id", clientId)
+    .eq("est_modele", false)
+    .neq("id", devisId)
+    .neq("statut", "refuse")
+    .is("facture_id", null)
+    .order("date_emission", { ascending: false })
+    .order("numero", { ascending: false })
+    .limit(12);
+  const aujourdhui = aujourdhuiParis();
+  return (data ?? [])
+    .filter((d) => d.statut === "brouillon" || !d.date_validite || d.date_validite >= aujourdhui)
+    .map((d) => ({ id: d.id, numero: d.numero, total_ht: Number(d.total_ht), statut: d.statut, date_emission: d.date_emission }));
+}
+
 export async function getDevis(id: string): Promise<{
   devis: Devis | null;
   lignes: Ligne[];
