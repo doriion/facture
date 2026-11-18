@@ -202,7 +202,15 @@ export function buildDocumentEmail(args: {
   /** Facture : date(s) d'intervention déjà formatées, « du 28/09/2026 » ou « du 25/09/2026 au 28/09/2026 ». */
   interventionText?: string;
   signature?: SignatureEmail;
+  /**
+   * Devis : autres devis du même client joints au MÊME e-mail (deux
+   * variantes d'un chantier, deux prestations). Chacun a son PDF et,
+   * s'il n'est pas signé, son propre lien de signature : le client peut
+   * n'en retenir qu'un.
+   */
+  autresDevis?: Array<{ numero: string; totalText: string; lienSignature?: string | null; signeLe?: string | null; validiteText?: string | null }>;
 }): { subject: string; html: string; text: string } {
+  if (args.type === "devis" && args.autresDevis?.length) return buildDevisGroupesEmail({ ...args, autresDevis: args.autresDevis });
   const libelle = args.type === "facture" ? "Facture" : args.type === "avoir" ? "Avoir" : "Devis";
   const objet = objetPrestation(args.natureActivite);
   const subject = `${args.type === "facture" ? "Votre facture" : args.type === "avoir" ? "Votre avoir" : "Votre devis"} ${args.numero}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
@@ -268,6 +276,78 @@ export function buildDocumentEmail(args: {
     paragraphes,
     resume,
     bouton: args.type === "devis" && !args.signeLe && args.lienSignature ? { libelle: "Lire et signer le devis en ligne", href: args.lienSignature } : undefined,
+    messagePerso: args.messagePerso,
+    conclusion,
+    signature: sig(args.signature, args.expediteurNom),
+  });
+}
+
+/** « D-1 et D-2 », « D-1, D-2 et D-3 ». */
+export function listeNumeros(numeros: string[]): string {
+  if (numeros.length <= 1) return numeros[0] ?? "";
+  return `${numeros.slice(0, -1).join(", ")} et ${numeros[numeros.length - 1]}`;
+}
+
+/**
+ * E-mail d'envoi de PLUSIEURS devis au même client (PDF de chacun
+ * joints). Le premier est le devis d'où part l'envoi ; les autres sont
+ * listés dans l'encadré avec leur montant. Chaque devis non signé a son
+ * lien de signature en ligne : bouton pour le premier, liens pour les
+ * suivants. Les devis déjà signés sont simplement joints en copie.
+ */
+function buildDevisGroupesEmail(args: {
+  numero: string;
+  clientNom: string;
+  expediteurNom: string;
+  totalText: string;
+  messagePerso?: string;
+  signeLe?: string;
+  lienSignature?: string | null;
+  validiteText?: string;
+  dateText?: string;
+  natureActivite?: string | null;
+  signature?: SignatureEmail;
+  autresDevis: Array<{ numero: string; totalText: string; lienSignature?: string | null; signeLe?: string | null; validiteText?: string | null }>;
+}): { subject: string; html: string; text: string } {
+  const tous = [
+    { numero: args.numero, totalText: args.totalText, lienSignature: args.lienSignature ?? null, signeLe: args.signeLe ?? null, validiteText: args.validiteText ?? null },
+    ...args.autresDevis,
+  ];
+  const numeros = tous.map((d) => d.numero);
+  const objet = objetPrestation(args.natureActivite);
+  const subject = `Vos devis ${listeNumeros(numeros)}${args.expediteurNom ? " — " + args.expediteurNom : ""}`;
+
+  const paragraphes = [
+    `Comme convenu, voici vos ${tous.length} devis ${objet} : ${listeNumeros(numeros)}. Vous trouverez le détail des prestations et le montant de chacun en pièce jointe.`,
+  ];
+  // Validité : une seule phrase si elle est la même pour tous les devis
+  // non signés ; sinon elle est rappelée devis par devis dans l'encadré.
+  const validites = [...new Set(tous.filter((d) => !d.signeLe).map((d) => d.validiteText ?? ""))];
+  const validiteCommune = validites.length === 1 && validites[0] ? validites[0] : null;
+  if (validiteCommune) paragraphes.push(`Ils sont valables jusqu'au ${validiteCommune} ; n'hésitez pas à me poser vos questions d'ici là.`);
+
+  const resume: Array<[string, string]> = tous.map((d) => [
+    `Devis ${d.numero}${d.signeLe ? ` (signé le ${d.signeLe})` : !validiteCommune && d.validiteText ? ` (valable jusqu'au ${d.validiteText})` : ""}`,
+    d.totalText,
+  ]);
+
+  const aSigner = tous.filter((d) => !d.signeLe && d.lienSignature);
+  const [premier, ...suivants] = aSigner;
+  const bouton = premier ? { libelle: `Lire et signer le devis ${premier.numero} en ligne`, href: premier.lienSignature! } : undefined;
+  const liens = suivants.map((d) => ({ libelle: `Signer le devis ${d.numero} en ligne`, href: d.lienSignature! }));
+
+  const conclusion = aSigner.length
+    ? "Chaque devis se signe séparément, en un geste depuis votre téléphone : vous pouvez n'en retenir qu'un. Un retour signé « bon pour accord » par e-mail convient aussi, et vous pouvez simplement répondre à ce message pour toute question : nous fixerons ensemble une date."
+    : "Pour toute question, répondez simplement à ce message.";
+
+  return emailDepuisContenu(subject, {
+    titre: `Devis ${listeNumeros(numeros)}`,
+    apercu: `${tous.length} devis · ${tous.map((d) => d.totalText).join(" · ")}`,
+    salutation: `Bonjour ${args.clientNom},`,
+    paragraphes,
+    resume,
+    bouton,
+    liens: liens.length ? liens : undefined,
     messagePerso: args.messagePerso,
     conclusion,
     signature: sig(args.signature, args.expediteurNom),

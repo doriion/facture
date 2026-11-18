@@ -29,7 +29,7 @@ import {
   setDevisStatutAction,
 } from "@/lib/actions/devis";
 import { Button } from "@/components/ui/button";
-import { EmailDocumentButton } from "@/components/email-document-button";
+import { EmailDocumentButton, type DocumentAJoindre } from "@/components/email-document-button";
 import { ProlongerValiditeButton, RelancerDevisButton } from "@/components/devis/devis-raccourcis";
 import { PartagerPdfButton } from "@/components/partager-pdf-button";
 import { NomModeleDialog } from "@/components/devis/nom-modele-dialog";
@@ -59,6 +59,7 @@ export function DevisActions({
   nomModele = null,
   signee = false,
   pdfBloqueMotif = null,
+  autresDevis = [],
 }: {
   devisId: string;
   numero: string;
@@ -77,6 +78,8 @@ export function DevisActions({
    * `<a download>` avale le corps de la réponse sur desktop.
    */
   pdfBloqueMotif?: string | null;
+  /** Autres devis du même client, à joindre au même e-mail. */
+  autresDevis?: DocumentAJoindre[];
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
@@ -224,6 +227,7 @@ export function DevisActions({
           destinataireEmail={clientEmail ?? null}
           destinataireNom={clientNom ?? "le client"}
           variant="outline"
+          autresDocuments={autresDevis}
         />
       )}
 

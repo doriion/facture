@@ -21,9 +21,13 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+export type DocumentAJoindre = { id: string; numero: string; libelle: string };
+
 /**
  * Bouton « Envoyer par email » avec dialogue de confirmation +
  * message personnalisé optionnel. Fonctionne pour facture ou devis.
+ * Pour un devis, `autresDocuments` (autres devis du même client) se
+ * cochent pour partir dans le MÊME e-mail : un PDF par devis.
  */
 export function EmailDocumentButton({
   documentId,
@@ -32,6 +36,7 @@ export function EmailDocumentButton({
   destinataireNom,
   variant = "default",
   disabled,
+  autresDocuments = [],
 }: {
   documentId: string;
   type: "facture" | "devis" | "avoir";
@@ -39,24 +44,29 @@ export function EmailDocumentButton({
   destinataireNom: string;
   variant?: "default" | "outline";
   disabled?: boolean;
+  autresDocuments?: DocumentAJoindre[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [joints, setJoints] = useState<string[]>([]);
+  const joignables = type === "devis" ? autresDocuments : [];
 
   async function onSend() {
     if (!destinataireEmail) return;
     setSubmitting(true);
     // Un avoir est stocké comme une facture (type_facture = 'avoir') :
     // même action, PDF et email adaptés côté serveur.
-    const action =
-      type === "devis" ? envoyerDevisParEmailAction : envoyerFactureParEmailAction;
-    const res = await action(documentId, message);
+    const res =
+      type === "devis"
+        ? await envoyerDevisParEmailAction(documentId, message, { autresDevisIds: joints })
+        : await envoyerFactureParEmailAction(documentId, message);
     setSubmitting(false);
     if (res.ok) {
+      const nb = type === "devis" ? 1 + joints.length : 1;
       toast.success(
-        type === "facture" ? "Facture envoyée" : type === "avoir" ? "Avoir envoyé" : "Devis envoyé",
+        type === "facture" ? "Facture envoyée" : type === "avoir" ? "Avoir envoyé" : nb > 1 ? `${nb} devis envoyés` : "Devis envoyé",
         { description: `Email envoyé à ${destinataireEmail}` },
       );
       setOpen(false);
@@ -95,10 +105,34 @@ export function EmailDocumentButton({
               {destinataireNom}
             </DialogTitle>
             <DialogDescription>
-              Le PDF sera joint à l'email. Destinataire :{" "}
+              {joints.length > 0 ? `${1 + joints.length} PDF seront joints à l'email` : "Le PDF sera joint à l'email"}. Destinataire :{" "}
               <strong>{destinataireEmail}</strong>
             </DialogDescription>
           </DialogHeader>
+          {joignables.length > 0 && (
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Joindre aussi, dans le même e-mail</legend>
+              <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
+                {joignables.map((d) => (
+                  <li key={d.id}>
+                    <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted">
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-primary"
+                        checked={joints.includes(d.id)}
+                        onChange={(e) => setJoints((cur) => (e.target.checked ? [...cur, d.id] : cur.filter((x) => x !== d.id)))}
+                      />
+                      <span className="font-medium">{d.numero}</span>
+                      <span className="truncate text-muted-foreground">{d.libelle}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground">
+                Un PDF et un lien de signature par devis : le client peut n&apos;en retenir qu&apos;un. Chaque devis coché passe en « envoyé ».
+              </p>
+            </fieldset>
+          )}
           <div className="space-y-2">
             <Label htmlFor="email_message">
               Message personnalisé (optionnel)

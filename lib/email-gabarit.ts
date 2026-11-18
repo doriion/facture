@@ -34,6 +34,8 @@ export type ContenuEmail = {
   resume?: Array<[string, string]>;
   /** Bouton d'action (lien absolu). */
   bouton?: { libelle: string; href: string };
+  /** Liens secondaires sous le bouton (ex. signature de chaque devis joint). */
+  liens?: Array<{ libelle: string; href: string }>;
   /** Mot personnel de l'artisan, mis en évidence. */
   messagePerso?: string | null;
   /** Phrase de conclusion avant la signature. */
@@ -101,6 +103,11 @@ ${c.resume
   const bouton = c.bouton
     ? `<p style="margin:6px 0 20px;text-align:center;"><a href="${escapeHtml(c.bouton.href)}" style="display:inline-block;background:${PRINCIPAL};color:#ffffff;${police}font-size:15px;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:8px;">${escapeHtml(c.bouton.libelle)}</a></p>`
     : "";
+  const liens = c.liens?.length
+    ? `<p style="margin:-8px 0 20px;text-align:center;${police}font-size:14px;line-height:1.8;">${c.liens
+        .map((l) => `<a href="${escapeHtml(l.href)}" style="color:${PRINCIPAL};font-weight:600;text-decoration:underline;">${escapeHtml(l.libelle)}</a>`)
+        .join("<br/>")}</p>`
+    : "";
   const perso = c.messagePerso?.trim()
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 18px;"><tr><td style="border-left:4px solid ${PRINCIPAL};padding:4px 14px;${police}font-size:15px;line-height:1.55;color:${TEXTE};font-style:italic;">${multiligne(c.messagePerso.trim())}</td></tr></table>`
     : "";
@@ -139,6 +146,7 @@ ${bandeau}
 ${paragraphes}
 ${resume}
 ${bouton}
+${liens}
 ${perso}
 ${conclusion}
 ${signature}
@@ -159,6 +167,7 @@ export function texteEmail(c: ContenuEmail): string {
   blocs.push(...c.paragraphes);
   if (c.resume?.length) blocs.push(c.resume.map(([l, v]) => `${l} : ${v}`).join("\n"));
   if (c.bouton) blocs.push(`${c.bouton.libelle} : ${c.bouton.href}`);
+  if (c.liens?.length) blocs.push(c.liens.map((l) => `${l.libelle} : ${l.href}`).join("\n"));
   if (c.messagePerso?.trim()) blocs.push(c.messagePerso.trim());
   if (c.conclusion) blocs.push(c.conclusion);
   blocs.push(["Cordialement,", c.signature.nom, ...lignesSignature(c.signature).map(texteLigneSignature)].join("\n"));
